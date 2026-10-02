@@ -49,6 +49,7 @@ namespace TwentyTons.Core
 
             bool rolling = bus.Speed > p.DoorSpeedMs;        // faster than a crawl: the helper's trick
             float pace = rolling ? p.MovingDoorTimeFactor : 1f;
+            if (bus.IsPlayer && sim.Condition.DoorBent) pace *= 1.3f;   // a bent door after the rollover
             DemandZone zone = ZoneInReach(sim, bus);
 
             // ---- Getting off: finish the one on the step, then pick the next one for this zone.

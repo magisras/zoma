@@ -32,6 +32,7 @@ namespace TwentyTons.Core
         private float _stuckBehind;        // seconds held behind a slower vehicle
         private int _hornsSeen, _missedSeen, _sleepsSeen, _boardedSeen;
         private float _fallSeen = -999f;
+        private int _rolloversSeen;
         private DemandZone _calledZone;
 
         public CrewVoice(TrafficSim sim) { _sim = sim; }
@@ -90,6 +91,11 @@ namespace TwentyTons.Core
             }
             if (_sim.Condition.BrakeWear > _sim.Tuning.Bus.SoftBrakesAbove && bus.Speed > 5f)
                 Say("brakes", 600f, Speaker.Helper, "Brakes are soft, ostad. Leave room. Tell the owner, for all the good it does.");
+            if (_sim.Rollover.Count > _rolloversSeen)
+            {
+                _rolloversSeen = _sim.Rollover.Count;
+                Say("rollover", 0f, Speaker.Conductor, "Get them out! Get them out through the windows!");
+            }
             if (_sim.Fatigue.MicroSleeps > _sleepsSeen) { _sleepsSeen = _sim.Fatigue.MicroSleeps; Say("sleep", 5f, Speaker.Helper, "Ostad! Ostad! Wake up!"); }
 
             // ---- The conductor: the sergeant, the arguers, the count.

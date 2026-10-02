@@ -112,6 +112,7 @@ public static class Headless
         Console.WriteLine($"  ledger: fares {l.FaresTk:0}  zoma {l.ZomaTk:0}  fuel {l.FuelTk:0}  lineman {l.LinemanTk:0}  party {l.PartyManTk:0}  sergeant {l.SergeantTk:0}  cases {l.CaseTk:0}  repairs {l.RepairsTk:0}  => crew {l.CrewNetTk:0} Tk  ({l.Trips} trips, day over: {sim.Economy.DayOver} {sim.Economy.DayOverReason})");
         foreach (string e in l.Events) Console.WriteLine("    " + e);
         Console.WriteLine($"  wrong side {m.WrongSideSeconds:0} s");
+        if (sim.Rollover.Count > 0) Console.WriteLine($"  ROLLOVER x{sim.Rollover.Count}: {sim.Rollover.Cause}, {sim.Rollover.HurtPassengers} hurt");
         Console.WriteLine($"  bus: brake wear {sim.Condition.BrakeWear:0.00} (+{sim.Condition.BrakeWearToday:0.000} today)  dents {sim.Condition.Dents}  papers {(sim.Condition.PapersValid(sim.Day) ? "ok" : "none")}");
         Console.WriteLine($"  fatigue at end {sim.Fatigue.Level:0.00}  micro-sleeps {sim.Fatigue.MicroSleeps}");
         Console.WriteLine($"  voices: {sim.Voice.Lines.Count} lines");

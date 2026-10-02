@@ -23,6 +23,7 @@ namespace TwentyTons.Core
         public float BrakeWear;        // 0 = new, 1 = metal on metal
         public float SteerAngle;       // current front-wheel angle, radians
         public bool Held;              // a sergeant's hand, or the end of the day: the bus does not move
+        public float LastYawRate;      // rad/s this step; speed × yaw rate is the lateral acceleration that tips a bus
 
         public float MassKg(BusSettings b) => b.TareTonnes * 1000f + Passengers * b.PassengerKg;
 
@@ -55,6 +56,7 @@ namespace TwentyTons.Core
 
             // Bicycle model: yaw rate = v / L × tan(δ).
             float yawRate = speed / Mathf.Max(0.5f, b.WheelbaseMetres) * (float)System.Math.Tan(SteerAngle);
+            LastYawRate = yawRate;
             bus.Yaw += yawRate * dt;
 
             Vector3 forward = new Vector3(Mathf.Sin(bus.Yaw), 0f, Mathf.Cos(bus.Yaw));

@@ -56,7 +56,8 @@ namespace TwentyTons.Core
         public int MicroSleeps;
         public PlayerInput Frozen;         // the hands as they were when the eyes closed
 
-        public float ReactionDelay(FatigueSettings f) => Level * f.ReactionDelayMaxSeconds;
+        public bool Injured;               // the crew carrying injuries from a rollover: slower hands
+        public float ReactionDelay(FatigueSettings f) => Level * f.ReactionDelayMaxSeconds * (Injured ? f.InjuryReactionFactor : 1f);
         public float Tunnel(FatigueSettings f) => Mathf.Clamp01((Level - f.TunnelAbove) / Mathf.Max(0.01f, 1f - f.TunnelAbove));
 
         public void Step(float dt, FatigueSettings f, EconomySettings e, SeededRandom random)
@@ -106,6 +107,8 @@ namespace TwentyTons.Core
         public float SavingsTk;
         public float FatigueCarried;       // where the next shift starts
         public readonly BusCondition Bus = new BusCondition();   // the same bus every day
+        public int CrewInjuredDays;        // shifts still to drive hurt
+        public int WalkedAwayCount;        // buses left on their side
         public readonly List<DaySummary> Days = new List<DaySummary>();
 
         /// <summary>A roadside brake service, paid from savings (into debt if need be).</summary>
@@ -165,6 +168,14 @@ namespace TwentyTons.Core
             Day++;
             WorkToday = true;
             Bus.BrakeWearToday = 0f;
+            if (CrewInjuredDays > 0) CrewInjuredDays--;
+        }
+
+        /// <summary>After a rollover: the crew drives hurt for a while.</summary>
+        public void NoteRollover(bool walkedAway, EconomySettings e)
+        {
+            CrewInjuredDays = e.CrewInjuryDays + 1;   // counts down at the next start
+            if (walkedAway) WalkedAwayCount++;
         }
     }
 }

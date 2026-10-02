@@ -163,13 +163,24 @@ in the headless runner and in the browser. Entries below are appended as steps l
   run or the wrong side is not helped by paper. Helper mentions soft brakes above 70 % wear.
 - Tests: 76.
 
+**Step 11 — the rollover** (done)
+
+- Two ways to tip twenty tons: leave the road at 8 m/s or more (the railing catches the wheels;
+  asleep at the wheel this is the drift the Fraser film shows), or corner above 0.6 g at speed.
+  Everyone aboard tumbles: 30 % are hurt, all of them get out and leave. The bus lies on its
+  side (drawn so), the crowd gathers, a man offers ropes and a tractor for Tk 5,000 scaled.
+- Pay: three minutes of shouting, then back on its wheels and straight into service with a
+  cracked windscreen, a bent door (people take longer at it), ten dents and worse brakes. Walk
+  away: the day ends, the zoma is still owed, the damage is there tomorrow anyway.
+- The crew carries the injuries for two shifts: slower hands and a tired start. Conductor line.
+- Tests: 81.
+
 **Where this leaves the project**
 
 Everything in README milestones 3–6 now exists as engine-free C# with tests, runs in the browser
 sandbox and in the headless runner. Not yet done: the Unity side (project settings, scene, OSM
-import, real bus physics, 3D assets), passengers alighting
-from a moving bus with falls, the rollover set piece, repairs and the fitness certificate, the
-mirror-moment scripting, Bangla lines and audio. All numbers are placeholders until the owner
+import, real bus physics, 3D assets), the mirror-moment scripting (Act 1 as helper), Bangla
+lines and audio, and the tuning pass the thesis report asks for. All numbers are placeholders until the owner
 plays; the headless runner gives repeatable metrics for that tuning.
 
 **How to try it**: `make sandbox` (or the artifact link), P for the careful autopilot to watch,

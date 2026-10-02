@@ -18,12 +18,13 @@ namespace TwentyTons.Core
         public float SergeantTk;       // paid at the roadside
         public float CaseTk;           // cases filed when you didn't pay (or hit someone)
         public float RepairsTk;        // scrapes: paint, mirrors, a bent door
+        public float RopesTk;          // the men who dragged the bus back onto its wheels
         public int Trips;
         public bool Arrested;          // the day ended with a person under the wheels
 
         public readonly List<string> Events = new List<string>();
 
-        public float PaidOutTk => FuelTk + LinemanTk + PartyManTk + SergeantTk + CaseTk + RepairsTk;
+        public float PaidOutTk => FuelTk + LinemanTk + PartyManTk + SergeantTk + CaseTk + RepairsTk + RopesTk;
         public float CrewNetTk => (Arrested ? 0f : FaresTk) - ZomaTk - PaidOutTk;
 
         public void Log(string text) { Events.Add(text); if (Events.Count > 40) Events.RemoveAt(0); }
@@ -121,6 +122,15 @@ namespace TwentyTons.Core
                 EndDay("passenger injured twice");
             }
         }
+
+        /// <summary>Walking away from the bus on its side: the day ends, the deposit does not.</summary>
+        public void WalkAway()
+        {
+            WalkedAway = true;
+            EndDay("walked away from the bus");
+        }
+
+        public bool WalkedAway;
 
         /// <summary>Repairs come out of the crew's day (RESEARCH.md: damage comes out of the crew's day).</summary>
         public void OnScrape()

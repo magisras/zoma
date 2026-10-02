@@ -40,7 +40,7 @@ namespace TwentyTons.Tests
                 float wantedYaw = Mathf.Atan2(to.x, to.z);
                 float error = Mathf.DeltaAngle(bus.Yaw * Mathf.Rad2Deg, wantedYaw * Mathf.Rad2Deg) * Mathf.Deg2Rad;
                 sim.Bus.Steer = Mathf.Clamp(error * 3f, -1f, 1f);
-                sim.Bus.Throttle = bus.Speed > 12f ? 0f : 1f;
+                sim.Bus.Throttle = bus.Speed > 7f ? 0f : 1f;    // a square ring has real corners: take them like a bus
                 sim.Step(1f / 60f);
             }
         }
@@ -63,7 +63,7 @@ namespace TwentyTons.Tests
         {
             var sim = Ring();
             Agent bus = sim.SpawnPlayerBus(100f, -2f);
-            Drive(sim, 140f);                                 // at ~12 m/s: more than a lap of the 1 km ring
+            Drive(sim, 220f);                                 // at ~7 m/s: more than a lap of the 1 km ring
             Assert.GreaterOrEqual(sim.Economy.Ledger.Trips, 1);
             Assert.AreEqual(sim.Economy.Ledger.Trips * sim.Tuning.Economy.LinemanTkPerTrip * sim.Tuning.Economy.MoneyScale, sim.Economy.Ledger.LinemanTk, 1e-3f);
             Assert.GreaterOrEqual(sim.Economy.Ledger.PartyManTk, sim.Tuning.Economy.PartyManTkPerTrip * sim.Tuning.Economy.MoneyScale - 1e-3f);

@@ -235,6 +235,8 @@ function bindTouch() {
   // Card buttons: a one-frame key press.
   const pulse = bit => { keys |= bit; setTimeout(() => { keys &= ~bit; }, 120); };
   document.getElementById('pay').addEventListener('click', () => pulse(KEY.pay));
+  document.getElementById('ropes').addEventListener('click', () => pulse(KEY.pay));
+  document.getElementById('walk-away').addEventListener('click', () => pulse(KEY.refuse));
   document.getElementById('refuse').addEventListener('click', () => pulse(KEY.refuse));
   document.getElementById('fix-brakes').addEventListener('click', () => DotNet.invokeMethod(ASSEMBLY, 'Repair', 'brakes'));
   document.getElementById('buy-papers').addEventListener('click', () => DotNet.invokeMethod(ASSEMBLY, 'Repair', 'papers'));
@@ -296,8 +298,9 @@ function updateAgents(data) {
       meshes.set(id, m);
       scene.add(m);
     }
-    m.position.set(x, y, z);
+    m.position.set(x, (flags & 128) ? wid / 2 : y, z);
     m.rotation.y = yaw;
+    m.rotation.z = (flags & 128) ? Math.PI / 2 : 0;      // on its side
 
     // State tints: a horn flashes, a yielder goes pale blue, a bluffer goes red.
     let colour = m.userData.base;
@@ -382,6 +385,16 @@ function updateHud(f, dt) {
     el('sergeant-text').textContent = f.sergeantText;
     el('sergeant-wait').textContent = f.sergeantDecided ? 'Papers: ' + Math.ceil(f.sergeantWaitLeft) + ' s' : '';
     el('sergeant-choice').hidden = f.sergeantDecided;
+  }
+
+  // The rollover's card.
+  const rc = el('rollover');
+  rc.classList.toggle('on', f.rolled);
+  if (f.rolled) {
+    el('rollover-text').textContent = f.rolloverText;
+    el('rollover-choice').hidden = !f.rolloverPending;
+    el('ropes').textContent = 'Pay for the ropes (Tk ' + f.ropesTk.toFixed(0) + ')';
+    el('rollover-wait').textContent = f.rolloverPending ? '' : 'Shouting, ropes, a tractor: ' + Math.ceil(f.rightingLeft) + ' s';
   }
 
   // The end of the day.

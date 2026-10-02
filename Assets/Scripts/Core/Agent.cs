@@ -49,7 +49,8 @@ namespace TwentyTons.Core
         public BusLoad Load;             // passengers and door; null unless this is a bus that carries people
         public RivalBrain Brain;         // decision layer; null for generic traffic and the player
         public bool Persistent;          // never recycled by the population keeper (named crews)
-        public Agent GhostOf;            // a stand-in for another agent on a second corridor (the player on the oncoming road)
+        public Agent GhostOf;
+        public bool Rolled;              // lying on its side (the player's bus after a rollover)            // a stand-in for another agent on a second corridor (the player on the oncoming road)
         public float LateralOverride = float.NaN;   // set by the decision layer to own the lateral this step
 
         // Pedestrians only.

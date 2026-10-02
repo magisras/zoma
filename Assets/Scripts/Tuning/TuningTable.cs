@@ -411,6 +411,15 @@ namespace TwentyTons.Tuning
                  "loses speed fast. The world enforces, not the UI. placeholder")]
         public float OffRoadToleranceMetres = 2f;
         public float OffRoadDecelMs2 = 4f;
+
+        [Header("The rollover (RESEARCH: the Fraser film)")]
+        [Tooltip("Further off the road than this (beyond the tolerance) at speed, the railing catches the wheels, metres. placeholder")]
+        public float OffRoadRolloverMetres = 1.5f;
+        [Tooltip("Speed at or above which leaving the road tips the bus, m/s. placeholder")]
+        public float RolloverSpeedMs = 8f;
+        [Tooltip("Lateral acceleration that tips a top-heavy twenty tons, m/s². Real buses go at ~0.4–0.5 g, but the " +
+                 "bicycle model has no tyre slip, so 0.6 g here stands for that. placeholder")]
+        public float RolloverLateralAccelMs2 = 6f;
     }
 
     /// <summary>
@@ -548,6 +557,20 @@ namespace TwentyTons.Tuning
         [Tooltip("Each unfixed dent raises the sergeant's 'papers' chance by this factor. placeholder")]
         public float DentSergeantFactor = 0.05f;
 
+        [Header("The rollover")]
+        [Tooltip("What the men with the ropes and the tractor ask, Tk. placeholder")]
+        public float RopesTk = 5000f;
+        [Tooltip("How long it takes to drag the bus back onto its wheels, seconds. placeholder")]
+        public float RightingSeconds = 180f;
+        [Tooltip("Share of those aboard hurt in the tumble. placeholder")]
+        [Range(0f, 1f)] public float TumbleHurtFraction = 0.3f;
+        [Tooltip("Dents a rollover adds. placeholder")]
+        public int RolloverDentsAdded = 10;
+        [Tooltip("Brake wear a rollover adds (something always bends). placeholder")]
+        public float RolloverBrakeWear = 0.05f;
+        [Tooltip("Days the crew carries its injuries into the next shifts. placeholder")]
+        public int CrewInjuryDays = 2;
+
         [Header("The household")]
         [Tooltip("What the crew spends on food per day, Tk. placeholder")]
         public float FoodTkPerDay = 300f;
@@ -588,6 +611,11 @@ namespace TwentyTons.Tuning
         [Range(0f, 1f)] public float AfterBusFloor = 0.35f;
         [Tooltip("Fraction of the day's fatigue the bus floor leaves you with. placeholder")]
         [Range(0f, 1f)] public float BusFloorKeeps = 0.6f;
+        [Tooltip("Reaction delay multiplier while the crew is carrying injuries. placeholder")]
+        public float InjuryReactionFactor = 1.6f;
+        [Tooltip("Fatigue a shift starts with on top of the carried amount while injured. placeholder")]
+        public float InjuryFatigueAdded = 0.2f;
+
         [Tooltip("Fatigue after a day off. RESEARCH: 7–9 h of sleep on the off day cuts violations. placeholder")]
         [Range(0f, 1f)] public float AfterRestDay = 0.05f;
     }

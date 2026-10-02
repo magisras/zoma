@@ -54,6 +54,7 @@ namespace TwentyTons.Core
         public readonly FatigueState Fatigue = new FatigueState();
         /// <summary>The bus's wear and papers. Replace with the household's to carry it across days.</summary>
         public BusCondition Condition = new BusCondition();
+        public readonly RolloverState Rollover = new RolloverState();
         public int Day = 1;
         public CrewVoice Voice;
         public Agent Player;
@@ -286,6 +287,7 @@ namespace TwentyTons.Core
                     Metrics.WrongSideNow = Player.Lateral > Corridor.HalfWidth + Tuning.Spawn.MedianMetres * 0.5f;
                     if (Metrics.WrongSideNow) Metrics.WrongSideSeconds += dt;
                 }
+                Core.Rollover.Check(this, dt);      // after the ghost knows which road we are on
             }
 
             for (int i = 0; i < Agents.Count; i++)

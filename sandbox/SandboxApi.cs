@@ -126,6 +126,11 @@ namespace TwentyTons.Sandbox
         public bool PapersValid { get; set; }
         public int PapersDaysLeft { get; set; }
         public float BrakeServiceTk { get; set; }
+        public bool Rolled { get; set; }
+        public bool RolloverPending { get; set; }
+        public string RolloverText { get; set; }
+        public float RightingLeft { get; set; }
+        public float RopesTk { get; set; }
         public float FitnessTk { get; set; }
         public string Subtitle { get; set; }      // "Helper: ..." or null
         public float SubtitleAge { get; set; }
@@ -249,8 +254,8 @@ namespace TwentyTons.Sandbox
             bool autopilot = (keys & KeyAutopilot) != 0;
             _autopilot = autopilot;
             ScriptedDriver.Current = (keys & KeyDhaka) != 0 ? Policy.Dhaka : Policy.Careful;
-            if ((keys & KeyPay) != 0) _sim.Economy.AnswerSergeant(true);
-            if ((keys & KeyRefuse) != 0) _sim.Economy.AnswerSergeant(false);
+            if ((keys & KeyPay) != 0) { _sim.Economy.AnswerSergeant(true); Rollover.Answer(_sim, true); }
+            if ((keys & KeyRefuse) != 0) { _sim.Economy.AnswerSergeant(false); Rollover.Answer(_sim, false); }
 
             _accumulator += Mathf.Min(dt, 0.1f);           // a hidden tab must not fast-forward the world
             while (_accumulator >= FixedStep)
@@ -295,12 +300,18 @@ namespace TwentyTons.Sandbox
         public static SceneDto NextDay(bool work, int seed)
         {
             if (!_sleptChosen) Sleep(false);
+            if (_sim.Rollover.Count > 0) _household.NoteRollover(_sim.Economy.WalkedAway, _tuning.Economy);
             if (!work) _household.RestDay(_tuning.Fatigue, _tuning.Economy);   // the day off is a day of its own
             _household.StartNextWorkDay();
             _dayClosed = false;
             _sleptChosen = false;
             SceneDto scene = Reset(seed);
             _sim.Fatigue.Level = _household.FatigueCarried;
+            if (_household.CrewInjuredDays > 0)
+            {
+                _sim.Fatigue.Injured = true;
+                _sim.Fatigue.Level = Mathf.Clamp01(_sim.Fatigue.Level + _tuning.Fatigue.InjuryFatigueAdded);
+            }
             return scene;
         }
 
@@ -339,7 +350,8 @@ namespace TwentyTons.Sandbox
                 if (a.GhostOf != null) continue;                  // the ghost is the player, already drawn
                 int flags = (a.IsPlayer ? 1 : 0) | (a.IsHorning ? 2 : 0) | (a.IsYielding ? 4 : 0)
                           | (a.PedState == PedestrianState.Crossing ? 8 : 0) | (a.BluffTimer > 0f ? 16 : 0)
-                          | (a.Brain != null && a.Brain.OwnCompany ? 32 : 0) | (a.Load != null && a.Load.DoorOpen ? 64 : 0);
+                          | (a.Brain != null && a.Brain.OwnCompany ? 32 : 0) | (a.Load != null && a.Load.DoorOpen ? 64 : 0)
+                          | (a.Rolled ? 128 : 0);
                 data[k++] = a.Id;
                 data[k++] = (int)a.Class;
                 data[k++] = a.Position.x;
@@ -408,7 +420,7 @@ namespace TwentyTons.Sandbox
                 Ledger = new LedgerDto
                 {
                     Fares = ledger.FaresTk, Zoma = ledger.ZomaTk, Fuel = ledger.FuelTk, Lineman = ledger.LinemanTk,
-                    PartyMan = ledger.PartyManTk, Sergeant = ledger.SergeantTk, Cases = ledger.CaseTk, Repairs = ledger.RepairsTk,
+                    PartyMan = ledger.PartyManTk, Sergeant = ledger.SergeantTk, Cases = ledger.CaseTk, Repairs = ledger.RepairsTk + ledger.RopesTk,
                     CrewNet = ledger.CrewNetTk, Arrested = ledger.Arrested,
                 },
                 Events = events,
@@ -424,6 +436,11 @@ namespace TwentyTons.Sandbox
                 PapersValid = _sim.Condition.PapersValid(_sim.Day),
                 PapersDaysLeft = Mathf.Max(0, _sim.Condition.PapersValidUntilDay - _sim.Day),
                 BrakeServiceTk = _tuning.Economy.BrakeServiceTk * _tuning.Economy.MoneyScale,
+                Rolled = _sim.Rollover.Active,
+                RolloverPending = _sim.Rollover.Pending,
+                RolloverText = _sim.Rollover.Active ? "The bus is on its side: " + _sim.Rollover.Cause + ". " + _sim.Rollover.HurtPassengers + " hurt. A crowd gathers. A man with ropes and a tractor." : null,
+                RightingLeft = _sim.Rollover.RightingUntil >= 0f ? Mathf.Max(0f, _sim.Rollover.RightingUntil - m.Time) : 0f,
+                RopesTk = _tuning.Economy.RopesTk * _tuning.Economy.MoneyScale,
                 FitnessTk = _tuning.Economy.FitnessTk * _tuning.Economy.MoneyScale,
                 Subtitle = _sim.Voice.Latest == null ? null : SpeakerName(_sim.Voice.Latest) + ": " + _sim.Voice.Latest.Text,
                 SubtitleAge = _sim.Voice.Latest == null ? 999f : m.Time - _sim.Voice.Latest.Time,

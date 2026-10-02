@@ -14,6 +14,8 @@ namespace TwentyTons.Core
         public int Dents;                  // scrapes that were never fixed: cosmetic, and the sergeant notices
         public int PapersValidUntilDay;    // fitness certificate: a number on a piece of paper, until this day
         public float BrakeWearToday;       // how much the day's driving added
+        public bool WindscreenCracked;     // after a rollover; the owner never replaces it (Khurshid's story)
+        public bool DoorBent;              // after a rollover; people take longer at the door
 
         public bool PapersValid(int day) => day <= PapersValidUntilDay;
 

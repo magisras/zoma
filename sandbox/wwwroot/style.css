@@ -53,6 +53,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #202226; col
 .ok { color: var(--ok); }
 .events { text-align: left; font-size: 12px; max-height: 120px; overflow-y: auto; margin-top: 6px; }
 #sergeant .card { border: 1px solid var(--warn); }
+#rollover .card { border: 1px solid var(--danger); }
 
 #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--dim); }
 #loading.hidden { display: none; }
