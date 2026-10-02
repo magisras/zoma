@@ -87,6 +87,7 @@ namespace TwentyTons.Sandbox
         public float Lateral { get; set; }
         public float YawErrorDeg { get; set; }
         public bool Autopilot { get; set; }
+        public string AutopilotName { get; set; }
         public bool DoorOpen { get; set; }
         public int Seats { get; set; }
         public float FaresTk { get; set; }
@@ -129,7 +130,7 @@ namespace TwentyTons.Sandbox
     /// </summary>
     public static class SandboxApi
     {
-        private const int KeyUp = 1, KeyDown = 2, KeyLeft = 4, KeyRight = 8, KeyHorn = 16, KeyAutopilot = 32, KeyDoor = 64, KeyPay = 128, KeyRefuse = 256;
+        private const int KeyUp = 1, KeyDown = 2, KeyLeft = 4, KeyRight = 8, KeyHorn = 16, KeyAutopilot = 32, KeyDoor = 64, KeyPay = 128, KeyRefuse = 256, KeyDhaka = 512;
         private const float FixedStep = 1f / 60f;
 
         private static TrafficSim _sim;
@@ -175,6 +176,7 @@ namespace TwentyTons.Sandbox
             {
                 _sim.AddZone(SandboxWorld.ZoneNames[i], SandboxWorld.ZoneS[i], SandboxWorld.ZoneHot[i]);
             }
+            ScriptedDriver.Reset();
             _sim.SpawnPlayerBus(30f, -2f);
             // The two crews of the player's own company: one ahead, one behind, as the research describes.
             _sim.SpawnRivalBus("Rafiq", DriverPersonality.Reckless(), 180f, -2f);
@@ -233,6 +235,7 @@ namespace TwentyTons.Sandbox
             };
             bool autopilot = (keys & KeyAutopilot) != 0;
             _autopilot = autopilot;
+            ScriptedDriver.Current = (keys & KeyDhaka) != 0 ? Policy.Dhaka : Policy.Careful;
             if ((keys & KeyPay) != 0) _sim.Economy.AnswerSergeant(true);
             if ((keys & KeyRefuse) != 0) _sim.Economy.AnswerSergeant(false);
 
@@ -410,6 +413,7 @@ namespace TwentyTons.Sandbox
                 WrongSideSeconds = m.WrongSideSeconds,
                 WrongSideNow = m.WrongSideNow,
                 Autopilot = _autopilot,
+                AutopilotName = ScriptedDriver.Current == Policy.Dhaka ? "the Dhaka driver" : "the careful driver",
                 Lateral = _sim.Player.Lateral,
                 YawErrorDeg = Mathf.DeltaAngle(_sim.Corridor.YawAt(_sim.Player.S) * Mathf.Rad2Deg, _sim.Player.Yaw * Mathf.Rad2Deg),
                 Junctions = junctions,

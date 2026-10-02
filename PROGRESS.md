@@ -125,6 +125,18 @@ in the headless runner and in the browser. Entries below are appended as steps l
   autopilot's pedals; inputs now apply only on the step they were pushed.
 - Tests: 67.
 
+**Step 8 — the Dhaka driver and the thesis report** (done)
+
+- `ScriptedDriver` now has two policies: careful (as before) and Dhaka (0.6 s headway, horn,
+  cut-ins into the freest band, runs the cane when the box is clear, takes the wrong side when
+  stuck, grab-and-go stops). Both brake for a person in the way. P cycles them in the sandbox.
+- `./tools/headless.sh --batch seeds seconds [crowdRate]` runs both over the same seeds and
+  prints the research's own verdict. `docs/PLAYTEST.md` records the first result: polite driving
+  still wins, by Tk 500 a day, and why (scrapes, serial boarding, uncontested crowds), with the
+  tuning hypotheses to test.
+- Found on the way: the Dhaka driver overshot every zone at 45 km/h (now slows in for a crowd),
+  then spent its whole dwell unloading (dwell now counts from when boarding can begin).
+
 **Where this leaves the project**
 
 Everything in README milestones 3–6 now exists as engine-free C# with tests, runs in the browser

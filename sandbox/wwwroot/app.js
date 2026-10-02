@@ -4,7 +4,7 @@
 import * as THREE from './vendor/three-r170.module.js';
 
 const ASSEMBLY = 'TwentyTons.Sandbox';
-const KEY = { up: 1, down: 2, left: 4, right: 8, horn: 16, autopilot: 32, door: 64, pay: 128, refuse: 256 };
+const KEY = { up: 1, down: 2, left: 4, right: 8, horn: 16, autopilot: 32, door: 64, pay: 128, refuse: 256, dhaka: 512 };
 
 // Colours per vehicle class, in the order of the C# VehicleClass enum.
 // Pedestrian, Rickshaw, Cng, Car, Truck, Bus. Flat, no textures: this is a grey box.
@@ -199,7 +199,11 @@ function bindInput() {
     if (e.target.tagName === 'INPUT') return;
     if (map[e.code]) { keys |= map[e.code]; e.preventDefault(); }
     if (e.code === 'KeyC') topDown = !topDown;
-    if (e.code === 'KeyP') keys ^= KEY.autopilot;              // toggle the careful autopilot
+    if (e.code === 'KeyP') {                                   // P cycles: off → careful → Dhaka → off
+      if (!(keys & KEY.autopilot)) { keys |= KEY.autopilot; keys &= ~KEY.dhaka; }
+      else if (!(keys & KEY.dhaka)) keys |= KEY.dhaka;
+      else keys &= ~(KEY.autopilot | KEY.dhaka);
+    }
     if (e.code === 'KeyE') keys ^= KEY.door;                   // the helper opens or shuts the door
     if (e.code === 'KeyT') document.getElementById('tuning').classList.toggle('hidden');
     if (e.code === 'KeyR') { seed++; buildWorld(DotNet.invokeMethod(ASSEMBLY, 'Reset', seed)); }
@@ -362,6 +366,7 @@ function updateHud(f, dt) {
   el('distance').textContent = (f.distanceMetres / 1000).toFixed(2) + ' km · ' + f.agentCount + ' agents';
   el('horn-indicator').classList.toggle('on', (keys & KEY.horn) !== 0);
   el('autopilot').hidden = !f.autopilot;
+  if (f.autopilot) el('autopilot').textContent = 'autopilot (P): ' + f.autopilotName;
   el('clock').textContent = f.clock + ' · trip ' + f.trips;
   el('paidOut').textContent = 'paid out Tk ' + f.paidOutTk.toFixed(0);
 

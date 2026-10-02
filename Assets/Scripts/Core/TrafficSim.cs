@@ -490,6 +490,12 @@ namespace TwentyTons.Core
         /// </summary>
         public float StopDistanceAhead(Agent a, float lookAhead)
         {
+            return StopDistanceAhead(a, lookAhead, false);
+        }
+
+        /// <param name="ignoreCane">True for a driver who only respects what physically blocks the box.</param>
+        public float StopDistanceAhead(Agent a, float lookAhead, bool ignoreCane)
+        {
             float nearest = lookAhead;
             OfficerSettings officer = Tuning.Officer;
             for (int i = 0; i < Junctions.Count; i++)
@@ -514,7 +520,7 @@ namespace TwentyTons.Core
                     nearest = Mathf.Min(nearest, ds);   // physics, not politeness
                     continue;
                 }
-                if (!caneAgainst) continue;
+                if (!caneAgainst || ignoreCane) continue;
                 if (a.LeakingThrough == j) continue;    // already decided to run it
 
                 // The cane just dropped and I'm nearly there: a few of us go anyway.
