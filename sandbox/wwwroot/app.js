@@ -129,6 +129,30 @@ function bindInput() {
   });
   window.addEventListener('keyup', e => { if (map[e.code]) keys &= ~map[e.code]; });
   window.addEventListener('blur', () => { keys = 0; });
+  bindTouch();
+}
+
+// On-screen buttons set the same key bits as the keyboard, so the simulation never knows the difference.
+function bindTouch() {
+  for (const b of document.querySelectorAll('#touch .tbtn[data-key]')) {
+    const bit = parseInt(b.dataset.key, 10);
+    const down = e => { e.preventDefault(); keys |= bit; b.classList.add('down'); };
+    const up = e => { e.preventDefault(); keys &= ~bit; b.classList.remove('down'); };
+    b.addEventListener('pointerdown', down);
+    b.addEventListener('pointerup', up);
+    b.addEventListener('pointercancel', up);
+    b.addEventListener('pointerleave', up);
+    b.addEventListener('contextmenu', e => e.preventDefault());
+  }
+  document.getElementById('touch-camera').addEventListener('click', () => { topDown = !topDown; });
+  document.getElementById('touch-tuning').addEventListener('click', () => {
+    const t = document.getElementById('tuning');
+    t.classList.toggle('open');
+    t.classList.toggle('hidden', !t.classList.contains('open'));
+  });
+  document.getElementById('touch-restart').addEventListener('click', () => {
+    seed++; buildWorld(DotNet.invokeMethod(ASSEMBLY, 'Reset', seed));
+  });
 }
 
 function bindTuning() {
