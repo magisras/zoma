@@ -46,6 +46,7 @@ namespace TwentyTons.Core
         public float HornTimer;          // seconds left of visible horn (for rendering / HUD)
         public float LastContactTime = -999f;
         public Junction LeakingThrough;  // a closed junction this driver decided to run anyway
+        public BusLoad Load;             // passengers and door; null unless this is a bus that carries people
 
         // Pedestrians only.
         public PedestrianState PedState = PedestrianState.Waiting;

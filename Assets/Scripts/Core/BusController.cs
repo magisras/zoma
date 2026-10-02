@@ -19,7 +19,7 @@ namespace TwentyTons.Core
         public float Steer;
 
         // State.
-        public int Passengers;
+        public int Passengers;         // kept in sync from the bus's Load by TrafficSim
         public float BrakeWear;        // 0 = new, 1 = metal on metal
         public float SteerAngle;       // current front-wheel angle, radians
 

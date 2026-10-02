@@ -19,7 +19,11 @@
     <div class="row secondary"><span class="label">scrapes</span><span id="contacts">0</span></div>
     <div class="row secondary"><span class="label">cane runs</span><span id="caneRuns">0</span></div>
     <div class="row"><span class="label">horn</span><span id="hornPresses">0</span><span class="dim" id="yields"></span></div>
-    <div class="row secondary"><span class="label">passengers</span><span id="passengers">0</span></div>
+    <div class="row"><span class="label">zone</span><span id="zone">—</span></div>
+    <div class="row"><span class="label">door (E)</span><span id="door">shut</span></div>
+    <div class="row"><span class="label">passengers</span><span id="passengers">0</span></div>
+    <div class="row"><span class="label">fares</span><span id="fares">Tk 0</span></div>
+    <div class="row secondary"><span class="label">missed stops</span><span id="missed">0</span></div>
     <div class="row secondary"><span class="label">brake wear</span><span id="brakeWear">0</span></div>
     <div class="row"><span class="label">time</span><span id="time">0:00</span><span class="dim" id="distance"></span></div>
     <div class="row dim" id="fps"></div>
@@ -44,7 +48,7 @@
 
   <div id="help">
     <b>W/↑</b> throttle · <b>S/↓</b> brake · <b>A D / ← →</b> steer · <b>H</b> or <b>space</b> horn (hold = blast) ·
-    <b>C</b> camera · <b>T</b> tuning · <b>P</b> autopilot · <b>R</b> restart
+    <b>E</b> door · <b>C</b> camera · <b>T</b> tuning · <b>P</b> autopilot · <b>R</b> restart
   </div>
 
   <!-- Touch controls: shown only on coarse-pointer devices (phones, tablets). Same key bits as the keyboard. -->
@@ -54,6 +58,7 @@
       <button class="tbtn" data-key="8" aria-label="steer right">&#9654;</button>
     </div>
     <div class="pad right">
+      <button class="tbtn small" id="touch-door">DOOR</button>
       <button class="tbtn horn" data-key="16" aria-label="horn">HORN</button>
       <button class="tbtn" data-key="2" aria-label="brake">BRAKE</button>
       <button class="tbtn go" data-key="1" aria-label="throttle">GO</button>

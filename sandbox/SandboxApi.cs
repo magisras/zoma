@@ -17,6 +17,9 @@ namespace TwentyTons.Sandbox
         public float[] Buildings { get; set; }
         /// <summary>Per cross street: its left and right edge polylines.</summary>
         public List<float[]> CrossEdges { get; set; }
+        /// <summary>Per zone: x, z, yaw, side. Names in ZoneNames.</summary>
+        public float[] Zones { get; set; }
+        public string[] ZoneNames { get; set; }
     }
 
     /// <summary>One junction, every frame: where the officer stands and which way the cane points.</summary>
@@ -54,6 +57,16 @@ namespace TwentyTons.Sandbox
         public float Lateral { get; set; }
         public float YawErrorDeg { get; set; }
         public bool Autopilot { get; set; }
+        public bool DoorOpen { get; set; }
+        public int Seats { get; set; }
+        public float FaresTk { get; set; }
+        public int Boarded { get; set; }
+        public int Alighted { get; set; }
+        public int MissedAlights { get; set; }
+        public string ZoneName { get; set; }      // zone in reach, or null
+        public int ZoneWaiting { get; set; }
+        public string AtDoor { get; set; }        // who is on the step: "on: Student" / "off: Regular" / null
+        public int[] ZoneCrowds { get; set; }     // waiting count per zone, for drawing
         public List<JunctionDto> Junctions { get; set; }
     }
 
@@ -63,7 +76,7 @@ namespace TwentyTons.Sandbox
     /// </summary>
     public static class SandboxApi
     {
-        private const int KeyUp = 1, KeyDown = 2, KeyLeft = 4, KeyRight = 8, KeyHorn = 16, KeyAutopilot = 32;
+        private const int KeyUp = 1, KeyDown = 2, KeyLeft = 4, KeyRight = 8, KeyHorn = 16, KeyAutopilot = 32, KeyDoor = 64;
         private const float FixedStep = 1f / 60f;
 
         private static TrafficSim _sim;
@@ -92,6 +105,10 @@ namespace TwentyTons.Sandbox
                 crossEdges.Add(SandboxWorld.RoadEdge(cross, -cross.HalfWidth));
                 crossEdges.Add(SandboxWorld.RoadEdge(cross, cross.HalfWidth));
             }
+            for (int i = 0; i < SandboxWorld.ZoneS.Length; i++)
+            {
+                _sim.AddZone(SandboxWorld.ZoneNames[i], SandboxWorld.ZoneS[i], SandboxWorld.ZoneHot[i]);
+            }
             _sim.SpawnPlayerBus(30f, -2f);
             _accumulator = 0f;
 
@@ -103,7 +120,21 @@ namespace TwentyTons.Sandbox
                 RightEdge = SandboxWorld.RoadEdge(corridor, corridor.HalfWidth),
                 Buildings = SandboxWorld.BuildBuildings(corridor, random),
                 CrossEdges = crossEdges,
+                Zones = ZoneGeometry(),
+                ZoneNames = SandboxWorld.ZoneNames,
             };
+        }
+
+        private static float[] ZoneGeometry()
+        {
+            var data = new float[_sim.Zones.Count * 4];
+            for (int i = 0; i < _sim.Zones.Count; i++)
+            {
+                DemandZone z = _sim.Zones[i];
+                data[i * 4] = z.Position.x; data[i * 4 + 1] = z.Position.z;
+                data[i * 4 + 2] = _sim.Corridor.YawAt(z.S); data[i * 4 + 3] = z.Side;
+            }
+            return data;
         }
 
         /// <summary>Advance the world by the frame time, in fixed 60 Hz steps so physics never depends on frame rate.</summary>
@@ -118,6 +149,7 @@ namespace TwentyTons.Sandbox
 
             bool autopilot = (keys & KeyAutopilot) != 0;
             _autopilot = autopilot;
+            _sim.SetDoor((keys & KeyDoor) != 0);
 
             _accumulator += Mathf.Min(dt, 0.1f);           // a hidden tab must not fast-forward the world
             while (_accumulator >= FixedStep)
@@ -145,7 +177,7 @@ namespace TwentyTons.Sandbox
                 case "vehicles": _tuning.Spawn.VehiclesAround = (int)value; break;
                 case "pedestrians": _tuning.Spawn.PedestriansAround = (int)value; break;
                 case "brakeWear": _sim.Bus.BrakeWear = value; break;
-                case "passengers": _sim.Bus.Passengers = (int)value; break;
+                case "passengers": _sim.SetPassengerCount(_sim.Player, (int)value); break;
                 default: throw new ArgumentException("Unknown tuning parameter: " + name);
             }
             _tuning.Gap.Clamp();
@@ -183,9 +215,25 @@ namespace TwentyTons.Sandbox
                 });
             }
 
+            BusLoad load = _sim.Player.Load;
+            DemandZone near = Boarding.ZoneInReach(_sim, _sim.Player);
+            var crowds = new int[_sim.Zones.Count];
+            for (int i = 0; i < crowds.Length; i++) crowds[i] = _sim.Zones[i].Waiting.Count;
+            string atDoor = load.AtDoor == null ? null : (load.AtDoorIsAlighting ? "off: " : "on: ") + load.AtDoor.Kind;
+
             SimMetrics m = _sim.Metrics;
             return new FrameDto
             {
+                DoorOpen = load.DoorOpen,
+                Seats = _tuning.Bus.Seats,
+                FaresTk = load.FaresTk,
+                Boarded = load.Boarded,
+                Alighted = load.Alighted,
+                MissedAlights = load.MissedAlights,
+                ZoneName = near == null ? null : near.Name,
+                ZoneWaiting = near == null ? 0 : near.Waiting.Count,
+                AtDoor = atDoor,
+                ZoneCrowds = crowds,
                 CaneRuns = m.CaneRuns,
                 Autopilot = _autopilot,
                 Lateral = _sim.Player.Lateral,
@@ -201,7 +249,7 @@ namespace TwentyTons.Sandbox
                 Contacts = m.Contacts,
                 HornPresses = m.HornPresses,
                 YieldsToHorn = m.YieldsToHorn,
-                Passengers = _sim.Bus.Passengers,
+                Passengers = load.Count,
                 BrakeWear = _sim.Bus.BrakeWear,
                 Time = m.Time,
                 DistanceMetres = m.DistanceMetres,

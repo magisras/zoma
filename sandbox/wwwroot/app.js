@@ -4,7 +4,7 @@
 import * as THREE from './vendor/three-r170.module.js';
 
 const ASSEMBLY = 'TwentyTons.Sandbox';
-const KEY = { up: 1, down: 2, left: 4, right: 8, horn: 16, autopilot: 32 };
+const KEY = { up: 1, down: 2, left: 4, right: 8, horn: 16, autopilot: 32, door: 64 };
 
 // Colours per vehicle class, in the order of the C# VehicleClass enum.
 // Pedestrian, Rickshaw, Cng, Car, Truck, Bus. Flat, no textures: this is a grey box.
@@ -89,6 +89,18 @@ function buildWorld(sceneDto) {
     sceneRoot.add(stripMesh(CL, CR, 0x47474a));
   }
 
+  // Zones: a pale slab on the kerb where people wait; crowds are drawn per frame.
+  zoneMarkers.length = 0;
+  for (let i = 0; i < sceneDto.zones.length; i += 4) {
+    const [x, z, yaw, side] = sceneDto.zones.slice(i, i + 4);
+    const slab = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0x8c8878 }));
+    slab.scale.set(2.5, 0.12, 30);
+    slab.position.set(x, 0.06, z);
+    slab.rotation.y = yaw;
+    sceneRoot.add(slab);
+    zoneMarkers.push({ x, z, yaw, side, name: sceneDto.zoneNames[i / 4], boxes: [] });
+  }
+
   const B = sceneDto.buildings;
   const box = new THREE.BoxGeometry(1, 1, 1);
   for (let i = 0; i < B.length; i += 6) {
@@ -121,6 +133,30 @@ function stripMesh(L, R, colour) {
   geo.setIndex(idx);
   geo.computeVertexNormals();
   return new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: colour }));
+}
+
+// Waiting crowds: one small box per person, in a loose cluster behind the kerb slab.
+const zoneMarkers = [];
+const crowdMaterial = new THREE.MeshLambertMaterial({ color: 0xd9c4a0 });
+function updateCrowds(counts) {
+  zoneMarkers.forEach((zm, i) => {
+    const want = Math.min(counts[i] || 0, 30);
+    while (zm.boxes.length < want) {
+      const k = zm.boxes.length;
+      const m = new THREE.Mesh(geometryBox, crowdMaterial);
+      m.scale.set(0.45, 1.7, 0.45);
+      // Deterministic scatter: along the slab and a little away from the road.
+      const along = ((k * 7) % 26) - 13 + ((k * 3) % 5) * 0.3;
+      const away = 0.6 + ((k * 5) % 4) * 0.5;
+      const fx = Math.sin(zm.yaw), fz = Math.cos(zm.yaw);
+      const rx = Math.cos(zm.yaw), rz = -Math.sin(zm.yaw);     // right of travel
+      m.position.set(zm.x + fx * along + rx * away * zm.side, 0.85, zm.z + fz * along + rz * away * zm.side);
+      m.rotation.y = zm.yaw;
+      scene.add(m);
+      zm.boxes.push(m);
+    }
+    while (zm.boxes.length > want) scene.remove(zm.boxes.pop());
+  });
 }
 
 // Officers: a thin tall box at the junction centre, a cane (bar) pointing along the open flow.
@@ -158,6 +194,7 @@ function bindInput() {
     if (map[e.code]) { keys |= map[e.code]; e.preventDefault(); }
     if (e.code === 'KeyC') topDown = !topDown;
     if (e.code === 'KeyP') keys ^= KEY.autopilot;              // toggle the careful autopilot
+    if (e.code === 'KeyE') keys ^= KEY.door;                   // the helper opens or shuts the door
     if (e.code === 'KeyT') document.getElementById('tuning').classList.toggle('hidden');
     if (e.code === 'KeyR') { seed++; buildWorld(DotNet.invokeMethod(ASSEMBLY, 'Reset', seed)); }
   });
@@ -184,6 +221,7 @@ function bindTouch() {
     t.classList.toggle('open');
     t.classList.toggle('hidden', !t.classList.contains('open'));
   });
+  document.getElementById('touch-door').addEventListener('click', () => { keys ^= KEY.door; });
   document.getElementById('touch-restart').addEventListener('click', () => {
     seed++; buildWorld(DotNet.invokeMethod(ASSEMBLY, 'Reset', seed));
   });
@@ -209,6 +247,7 @@ function loop(now) {
   const frame = DotNet.invokeMethod(ASSEMBLY, 'Tick', dt, keys);
   updateAgents(frame.agents);
   updateJunctions(frame.junctions);
+  updateCrowds(frame.zoneCrowds);
   window.twentyTons = { lateral: frame.lateral, yawErrorDeg: frame.yawErrorDeg, speedKmh: frame.speedKmh };   // for scripted drivers
 
   updateHud(frame, dt);
@@ -288,7 +327,12 @@ function updateHud(f, dt) {
   el('caneRuns').textContent = f.caneRuns;
   el('hornPresses').textContent = f.hornPresses;
   el('yields').textContent = f.yieldsToHorn + ' moved';
-  el('passengers').textContent = f.passengers;
+  el('passengers').textContent = f.passengers + ' / ' + f.seats + ' seats';
+  el('fares').textContent = 'Tk ' + f.faresTk.toFixed(0);
+  el('door').textContent = f.doorOpen ? (f.atDoor ? 'open · ' + f.atDoor : 'open') : 'shut';
+  el('door').className = f.doorOpen ? 'warn' : '';
+  el('zone').textContent = f.zoneName ? f.zoneName + ' · ' + f.zoneWaiting + ' waiting' : '—';
+  el('missed').textContent = f.missedAlights;
   el('brakeWear').textContent = (f.brakeWear * 100).toFixed(0) + '%';
   const mins = Math.floor(f.time / 60), secs = Math.floor(f.time % 60);
   el('time').textContent = mins + ':' + String(secs).padStart(2, '0');

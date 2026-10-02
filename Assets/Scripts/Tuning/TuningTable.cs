@@ -612,8 +612,43 @@ namespace TwentyTons.Tuning
         [Tooltip("Seconds of conductor attention one half-fare argument costs. placeholder")]
         public float HalfFareArgumentSeconds = 15f;
 
-        [Tooltip("Load fraction (0..1) above which a waiting passenger refuses to board ('too full'). placeholder")]
-        [Range(0f, 1.5f)] public float TooFullLoad = 1.3f;
+        [Tooltip("Load as a fraction of seats above which a waiting passenger refuses to board ('too full'). placeholder")]
+        [Range(0f, 2f)] public float TooFullLoad = 1.3f;
+
+        [Header("Doors and zones")]
+        [Tooltip("Fastest the bus may roll while people get on or off, m/s. RESEARCH: picking up without stopping is common. placeholder")]
+        public float DoorSpeedMs = 3f;
+
+        [Tooltip("A bus within this distance of a zone's centre is working it, metres. placeholder")]
+        public float ZoneHalfLengthMetres = 20f;
+
+        [Tooltip("Seconds added per metre a passenger must walk out to a bus stopped away from the kerb. placeholder")]
+        public float WalkToBusSecondsPerMetre = 0.4f;
+
+        [Header("Demand")]
+        [Tooltip("People arriving per minute at an ordinary zone. placeholder")]
+        public float BaseRatePerMinute = 3f;
+
+        [Tooltip("Multiplier for hot zones (junctions, markets). RESEARCH: hot clusters at junctions. placeholder")]
+        public float HotZoneRateMultiplier = 2.5f;
+
+        [Tooltip("Crowd size at which newcomers give up and take a rickshaw. placeholder")]
+        public int MaxWaiting = 25;
+
+        [Tooltip("Share of passengers who are students (fast, half fare). placeholder")]
+        [Range(0f, 1f)] public float StudentShare = 0.2f;
+        [Tooltip("Share who are elderly with a sack (slow). placeholder")]
+        [Range(0f, 1f)] public float ElderlyShare = 0.1f;
+        [Tooltip("Share who argue the fare (slow, cost conductor attention). placeholder")]
+        [Range(0f, 1f)] public float ArguerShare = 0.05f;
+
+        [Header("Fares (RESEARCH: Ticket prices, Sep 2026)")]
+        [Tooltip("Minimum fare, Tk. RESEARCH: Tk 10")]
+        public float FareMinTk = 10f;
+        [Tooltip("Fare per km per passenger, Tk. RESEARCH: Tk 2.70")]
+        public float FarePerKmTk = 2.7f;
+        [Tooltip("Student half fare, as a factor. RESEARCH: the classic fight.")]
+        [Range(0f, 1f)] public float StudentFareFactor = 0.5f;
 
         public void Clamp()
         {

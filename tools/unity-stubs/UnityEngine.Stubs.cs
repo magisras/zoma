@@ -49,6 +49,8 @@ namespace UnityEngine
         public static float Atan2(float y, float x) => (float)Math.Atan2(y, x);
         public static float Sign(float v) => v >= 0f ? 1f : -1f;
         public static float Floor(float v) => (float)Math.Floor(v);
+        public static float Ceil(float v) => (float)Math.Ceiling(v);
+        public static int CeilToInt(float v) => (int)Math.Ceiling(v);
         public static int FloorToInt(float v) => (int)Math.Floor(v);
         public static int RoundToInt(float v) => (int)Math.Round(v);
         public static float InverseLerp(float a, float b, float v) => a == b ? 0f : Clamp01((v - a) / (b - a));

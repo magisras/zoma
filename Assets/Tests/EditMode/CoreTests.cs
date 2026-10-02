@@ -251,7 +251,7 @@ namespace TwentyTons.Tests
         {
             var sim = NewSim();
             sim.SpawnPlayerBus(10f, 0f);
-            sim.Bus.Passengers = passengers;
+            sim.SetPassengerCount(sim.Player, passengers);
             sim.Bus.Throttle = 1f;
             Run(sim, 10f);
             return sim.Player.Speed;

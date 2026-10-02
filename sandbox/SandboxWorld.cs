@@ -20,6 +20,11 @@ namespace TwentyTons.Sandbox
         /// <summary>Main-road S positions of the cross streets. Chosen on the long straights.</summary>
         public static readonly float[] JunctionS = { 260f, 1010f };
 
+        /// <summary>Where people wait, with fictional names. Hot ones sit just before the junctions.</summary>
+        public static readonly string[] ZoneNames = { "Stand", "Block 11", "Roundabout", "Market", "Kazipara", "School" };
+        public static readonly float[] ZoneS = { 60f, 235f, 420f, 760f, 985f, 1250f };
+        public static readonly bool[] ZoneHot = { true, true, false, true, true, false };
+
         public static Corridor BuildCorridor(SeededRandom random)
         {
             // A rounded rectangle, 520 × 200 m, walked anticlockwise so +lateral (right) is the outside.

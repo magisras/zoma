@@ -52,7 +52,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #202226; col
 #touch { display: none; }
 #touch .pad { position: fixed; display: flex; gap: 10px; }
 #touch .pad.left { left: 14px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
-#touch .pad.right { right: 14px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
+#touch .pad.right { right: 14px; align-items: flex-end; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
 #touch .pad.top { right: 14px; top: calc(14px + env(safe-area-inset-top, 0px)); }
 .tbtn { width: 72px; height: 72px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.18);
   background: rgba(30, 30, 34, 0.7); color: var(--ink); font: inherit; font-size: 15px; letter-spacing: 1px;

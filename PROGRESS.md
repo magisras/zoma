@@ -25,6 +25,22 @@ in the headless runner and in the browser. Entries below are appended as steps l
   driver that doesn't steer drifts onto the pavement and runs over waiting pedestrians.
 - Tests: 27.
 
+**Step 2 — demand zones, passengers, doors, fares** (done)
+
+- `Passenger` (kind, destination, boarding seconds, fare factor), `DemandZone` (kerb spot that
+  fills at a rate; hot zones ×2.5; crowd caps at 25), `BusLoad` (riders aboard, door, step timer,
+  fares taken) on any bus agent.
+- `Boarding`: a bus works a zone when within 20 m, under 3 m/s, door open. Off first, then on,
+  one at a time at each passenger's pace plus walking time if the bus stopped away from the kerb.
+  The first open door takes the crowd; a bus over 1.3× seats is skipped. Fares from the chart:
+  Tk 2.70/km, minimum Tk 10, students half. Riders carried past their zone ride on (counted).
+- Player: door on E (touch: DOOR). HUD shows zone in reach and crowd, door state and who is on
+  the step, passengers/seats, fares, missed stops. Crowds drawn as small boxes behind the kerb.
+- Six zones on the ring with fictional names; hot ones before the junctions.
+- `ScriptedDriver` (autopilot and headless) stops at zones, opens, leaves when done or after 25 s.
+- Tests: 34. Headless 5-minute shift: ~0.6–0.9 km, 2–7 scrapes, Tk 55–90 of fares. Slow and
+  cheap, as the research says a careful driver's day is.
+
 ## Session 2 — 2 Oct 2026 — Simulation core and browser sandbox
 
 **Shipped**

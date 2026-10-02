@@ -23,8 +23,11 @@ public static class Headless
             Corridor cross = SandboxWorld.BuildCrossStreet(corridor, SandboxWorld.JunctionS[i], i);
             sim.AddJunction(SandboxWorld.JunctionS[i], cross, cross.Length * 0.5f);
         }
+        for (int i = 0; i < SandboxWorld.ZoneS.Length; i++) sim.AddZone(SandboxWorld.ZoneNames[i], SandboxWorld.ZoneS[i], SandboxWorld.ZoneHot[i]);
         Agent bus = sim.SpawnPlayerBus(30f, -2f);
 
+        bool verbose = args.Length > 3 && args[3] == "-v";
+        bool doorWas = false;
         const float dt = 1f / 60f;
         float hornClock = 0f;
         for (float t = 0f; t < seconds; t += dt)
@@ -34,6 +37,12 @@ public static class Headless
             hornClock += dt;
             sim.HornInput(hornClock % 10f < 0.2f, dt);
             sim.Step(dt);
+            if (verbose && bus.Load.DoorOpen != doorWas)
+            {
+                doorWas = bus.Load.DoorOpen;
+                DemandZone z = Boarding.ZoneInReach(sim, bus);
+                Console.WriteLine($"  t={t,6:0.0} door {(doorWas ? "OPEN " : "shut ")} at {(z == null ? "-" : z.Name),-10} waiting {(z == null ? 0 : z.Waiting.Count),2}  aboard {bus.Load.Count,2}  S={bus.S:0}");
+            }
 
             if (sim.Metrics.PersonHit)
             {
@@ -50,7 +59,9 @@ public static class Headless
         }
         DumpScene(sim, bus, corridor);
         SimMetrics m = sim.Metrics;
+        BusLoad load = bus.Load;
         Console.WriteLine($"seed {seed}: {seconds:0}s  dist {m.DistanceMetres / 1000f:0.00} km  nearMisses {m.NearMisses} ({m.NearMissesPerMinute:0.0}/min)  minHeadway {m.MinHeadwaySeconds:0.00}s  scrapes {m.Contacts}  caneRuns {m.CaneRuns}  horn {m.HornPresses} moved {m.YieldsToHorn}  agents {sim.Agents.Count}");
+        Console.WriteLine($"  aboard {load.Count}  boarded {load.Boarded}  alighted {load.Alighted}  missed {load.MissedAlights}  fares Tk {load.FaresTk:0}");
         return 0;
     }
 

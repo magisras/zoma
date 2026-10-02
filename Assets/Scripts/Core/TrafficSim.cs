@@ -37,6 +37,7 @@ namespace TwentyTons.Core
         public readonly Corridor Corridor;
         public readonly List<Corridor> Corridors = new List<Corridor>();
         public readonly List<Junction> Junctions = new List<Junction>();
+        public readonly List<DemandZone> Zones = new List<DemandZone>();
         public readonly TuningTable Tuning;
         public readonly SeededRandom Random;
         public readonly List<Agent> Agents = new List<Agent>();
@@ -57,6 +58,22 @@ namespace TwentyTons.Core
             Random = new SeededRandom(seed);
         }
 
+        /// <summary>Add a place where people wait for buses. Hot zones (near junctions, markets) fill faster.</summary>
+        public DemandZone AddZone(string name, float s, bool hot)
+        {
+            PassengerSettings p = Tuning.Passengers;
+            var zone = new DemandZone
+            {
+                Name = name,
+                Index = Zones.Count,
+                S = Corridor.Wrap(s),
+                RatePerMinute = p.BaseRatePerMinute * (hot ? p.HotZoneRateMultiplier : 1f),
+            };
+            zone.Position = Corridor.PositionAt(zone.S, zone.Side * (Corridor.HalfWidth + Tuning.Spawn.KerbOffsetMetres + 0.5f));
+            Zones.Add(zone);
+            return zone;
+        }
+
         /// <summary>Add a cross street with an officer where it meets the main road.</summary>
         public Junction AddJunction(float mainS, Corridor cross, float crossS)
         {
@@ -74,10 +91,29 @@ namespace TwentyTons.Core
             Agent bus = NewVehicle(Corridor, VehicleClass.Bus, s, lateral, 0.5f);
             bus.IsPlayer = true;
             bus.Speed = 0f;
-            Bus.Passengers = Tuning.Bus.StartingPassengers;
+            bus.Load = new BusLoad();
             Bus.BrakeWear = Tuning.Bus.StartingBrakeWear;
             Player = bus;
+            SetPassengerCount(bus, Tuning.Bus.StartingPassengers);
             return bus;
+        }
+
+        /// <summary>Fill or empty a bus with anonymous riders (the sandbox slider; the start of a shift).</summary>
+        public void SetPassengerCount(Agent bus, int count)
+        {
+            BusLoad load = bus.Load;
+            while (load.Aboard.Count > count) load.Aboard.RemoveAt(load.Aboard.Count - 1);
+            while (load.Aboard.Count < count)
+            {
+                load.Aboard.Add(new Passenger
+                {
+                    Kind = PassengerKind.Regular,
+                    BoardingSeconds = Tuning.Passengers.BoardingMinSeconds,
+                    DestinationZone = Zones.Count > 0 ? Random.Range(0, Zones.Count) : 0,
+                    Paid = true,
+                });
+            }
+            if (bus.IsPlayer) Bus.Passengers = load.Count;
         }
 
         public Agent SpawnVehicle(VehicleClass vehicleClass, float s, float lateral, float nerve)
@@ -145,12 +181,16 @@ namespace TwentyTons.Core
             for (int i = 0; i < Junctions.Count; i++) Junctions[i].Tick(dt, Tuning.Officer, Random);
             CountBoxes();
 
+            Boarding.TickZones(this, dt);
+
             if (Player != null)
             {
+                Bus.Passengers = Player.Load.Count;
                 Bus.Step(Player, Corridor, Tuning.Bus, dt);
                 Metrics.DistanceMetres += Player.Speed * dt;
                 Player.HornTimer = Mathf.Max(0f, Player.HornTimer - dt);
                 WatchPlayerAtJunctions();
+                WatchPlayerAtZones();
             }
 
             for (int i = 0; i < Agents.Count; i++)
@@ -161,9 +201,38 @@ namespace TwentyTons.Core
                 else Steering.Drive(this, a, dt);
             }
 
+            for (int i = 0; i < Agents.Count; i++)
+            {
+                if (Agents[i].Load != null) Boarding.Step(this, Agents[i], dt);
+            }
+
             ResolveContacts();
             if (Player != null) UpdatePlayerMetrics(dt);
             MaintainPopulation();
+        }
+
+        /// <summary>Open or close the player's door (the helper's job). Opening stamps the time: first door wins the crowd.</summary>
+        public void SetDoor(bool open)
+        {
+            if (Player == null || Player.Load.DoorOpen == open) return;
+            Player.Load.DoorOpen = open;
+            if (open) Player.Load.DoorOpenedAt = Metrics.Time;
+        }
+
+        private DemandZone _playerZone;        // the zone the player is currently within reach of
+        private bool _playerSlowedAtZone;
+
+        /// <summary>Notice the player passing a zone without slowing: riders who wanted off stay on.</summary>
+        private void WatchPlayerAtZones()
+        {
+            DemandZone zone = Boarding.ZoneInReach(this, Player);
+            if (zone != _playerZone)
+            {
+                if (_playerZone != null && !_playerSlowedAtZone) Boarding.NoteMissedAlights(this, Player, _playerZone);
+                _playerZone = zone;
+                _playerSlowedAtZone = false;
+            }
+            if (zone != null && Player.Speed <= Tuning.Passengers.DoorSpeedMs && Player.Load.DoorOpen) _playerSlowedAtZone = true;
         }
 
         /// <summary>

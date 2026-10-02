@@ -15,14 +15,55 @@ namespace TwentyTons.Sandbox
         public static float CapKmh = 25f;
         public static float HoldLateral = -2f;
 
+        public static float MaxDwellSeconds = 25f;
+
+        private static DemandZone _working;      // the zone we are stopped at
+        private static DemandZone _lastLeft;     // don't stop twice at the same zone while still in its reach
+        private static float _dwell;
+
         public static void Apply(TrafficSim sim)
         {
             Agent bus = sim.Player;
             float h = sim.Metrics.HeadwayAheadSeconds, g = sim.Metrics.GapAheadMetres, v = bus.Speed * 3.6f;
             bool closing = h < 2f || g < 12f;
+
+            // Work a zone: stop if people are waiting (or someone wants off), open the door, leave
+            // when the step is clear and nobody is left, or after a maximum dwell.
+            DemandZone zone = Boarding.ZoneInReach(sim, bus);
+            if (zone == null) _lastLeft = null;
+            bool wantStop = zone != null && zone != _lastLeft && (zone.Waiting.Count > 0 || AnyoneFor(bus, zone))
+                            && bus.Load.Count < Boarding.TooFullCount(sim);
+            if (_working != null && zone != _working) { _working = null; _dwell = 0f; }
+            if (wantStop && _working == null) { _working = zone; _dwell = 0f; }
+            if (_working != null)
+            {
+                _dwell += 1f / 60f;
+                bool done = bus.Load.AtDoor == null && (_working.Waiting.Count == 0 || bus.Load.Count >= Boarding.TooFullCount(sim)) && !AnyoneFor(bus, _working);
+                if (done || _dwell > MaxDwellSeconds)
+                {
+                    sim.SetDoor(false);
+                    _lastLeft = _working;
+                    _working = null;
+                }
+                else
+                {
+                    sim.Bus.Throttle = 0f;
+                    sim.Bus.Brake = 1f;
+                    sim.Bus.Steer = SteerToHold(bus, sim.Corridor, HoldLateral);
+                    if (bus.Speed < 0.5f) sim.SetDoor(true);
+                    return;
+                }
+            }
+
             sim.Bus.Throttle = closing ? 0f : (v > CapKmh ? 0f : 1f);
             sim.Bus.Brake = closing ? 1f : 0f;
             sim.Bus.Steer = SteerToHold(bus, sim.Corridor, HoldLateral);
+        }
+
+        private static bool AnyoneFor(Agent bus, DemandZone zone)
+        {
+            for (int i = 0; i < bus.Load.Aboard.Count; i++) if (bus.Load.Aboard[i].DestinationZone == zone.Index) return true;
+            return false;
         }
 
         /// <summary>
