@@ -53,6 +53,7 @@ namespace TwentyTons.Core
             UtilitySettings u = sim.Tuning.Utility;
 
             WatchThePlayer(sim, bus, dt);
+            brain.Fatigue = Mathf.Clamp01(brain.Fatigue + sim.Tuning.Fatigue.RisePerShiftHour * sim.Tuning.Economy.ShiftHours / Mathf.Max(1f, sim.Tuning.Economy.DayLengthSeconds) * dt);
 
             brain.DecisionTimer -= dt;
             if (brain.DecisionTimer <= 0f)

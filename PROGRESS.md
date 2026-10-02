@@ -81,6 +81,22 @@ in the headless runner and in the browser. Entries below are appended as steps l
   reckless crew took Tk 165 of fares in the same day. That is the mirror moment, in numbers.
 - Tests: 51.
 
+**Step 5 — fatigue and the day rhythm** (done)
+
+- `FatigueState` rises per shift hour (1.0 after ~13 h). It shows through the body, never a bar:
+  the player's inputs pass through an `InputDelay` line (0.6 s late at full fatigue; nothing
+  arrives until it has had time to), vision tunnels above 0.5 (vignette in the renderer), and
+  above 0.7 micro-sleeps close the eyes for 0.5–1.5 s with the hands frozen where they were
+  (black screen; the bus keeps going). Crews tire on the same clock and start backing off.
+- `Household` across days: a worked day's net goes to savings minus food; sleep on the bus floor
+  (free, keeps 60 % of the day's fatigue, never below 0.35) or take a bed (Tk 200 scaled, down
+  to 0.1); work tomorrow or rest (no zoma, no fares, food still, fatigue to 0.05). The end-of-day
+  card asks both questions in turn and shows the running savings.
+- Sandbox: fatigue slider for testing; HUD fatigue row marked as debug.
+- Headless 15-minute day: fatigue 1.0 at the end with 17 micro-sleeps, which is the research's
+  routine 14-hour shift in miniature. Likely too harsh for play; tune with the owner.
+- Tests: 57.
+
 ## Session 2 — 2 Oct 2026 — Simulation core and browser sandbox
 
 **Shipped**

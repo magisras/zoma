@@ -30,11 +30,14 @@
     <div class="row secondary"><span class="label">crews</span><span id="rivals" style="white-space: pre-line"></span></div>
     <div class="row secondary"><span class="label">brake wear</span><span id="brakeWear">0</span></div>
     <div class="row"><span class="label">time</span><span id="time">0:00</span><span class="dim" id="distance"></span></div>
+    <div class="row secondary dim"><span class="label">fatigue</span><span id="fatigue">0%</span></div>
     <div class="row dim" id="fps"></div>
     <div class="row dim" id="autopilot" hidden>autopilot (P): the careful driver</div>
   </div>
 
   <div id="horn-indicator">HORN</div>
+  <div id="vignette"></div>
+  <div id="blackout"></div>
 
   <div id="tuning">
     <div class="title">Tuning <span class="dim">(live, from TuningTable)</span></div>
@@ -50,6 +53,7 @@
     <label>passengers <input type="range" data-param="passengers" min="0" max="90" step="5" value="30"><output>30</output></label>
     <label>day length s <input type="range" data-param="dayLength" min="60" max="1800" step="30" value="900"><output>900</output></label>
     <label>zoma Tk <input type="range" data-param="zoma" min="0" max="6000" step="100" value="3000"><output>3000</output></label>
+    <label>fatigue now <input type="range" data-param="fatigue" min="0" max="1" step="0.05" value="0"><output>0.00</output></label>
   </div>
 
   <div id="help">
@@ -94,7 +98,15 @@
       <div id="day-sub"></div>
       <div id="ledger" class="ledger"></div>
       <div id="events" class="events dim"></div>
-      <div class="choices"><button id="next-day" class="cbtn">Next day <span class="dim">(R)</span></button></div>
+      <div id="savings" class="dim" style="margin-top:8px"></div>
+      <div id="sleep-choice" class="choices">
+        <button id="sleep-bus" class="cbtn">Sleep in the bus <span class="dim">(free)</span></button>
+        <button id="sleep-bed" class="cbtn">Take a bed <span class="dim">(Tk 20)</span></button>
+      </div>
+      <div id="day-choice" class="choices" hidden>
+        <button id="next-work" class="cbtn">Work tomorrow</button>
+        <button id="next-rest" class="cbtn">Rest tomorrow <span class="dim">(no income)</span></button>
+      </div>
     </div>
   </div>
 

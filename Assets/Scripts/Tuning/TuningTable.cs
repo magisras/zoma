@@ -43,6 +43,9 @@ namespace TwentyTons.Tuning
         [Header("Money and the clock")]
         public EconomySettings Economy = new EconomySettings();
 
+        [Header("The driver's body")]
+        public FatigueSettings Fatigue = new FatigueSettings();
+
         [Header("Decision layer (rival buses)")]
         public UtilitySettings Utility = new UtilitySettings();
         public MemorySettings Memory = new MemorySettings();
@@ -497,6 +500,43 @@ namespace TwentyTons.Tuning
         public float FoodTkPerDay = 300f;
         [Tooltip("A bed for the night, Tk; the bus floor is free. placeholder")]
         public float BedTk = 200f;
+    }
+
+    /// <summary>
+    /// The driver's body (RESEARCH.md, Sleep, shifts and health; Fatigue mechanic). Shown by the
+    /// world, never by a bar.
+    /// </summary>
+    [Serializable]
+    public sealed class FatigueSettings
+    {
+        [Tooltip("Fatigue gained per shift hour. 0.075 reaches 1.0 after about 13 h. RESEARCH: 12–14 h routine. placeholder")]
+        public float RisePerShiftHour = 0.075f;
+
+        [Tooltip("Reaction delay at fatigue 1, seconds: inputs reach the wheel this late. placeholder")]
+        public float ReactionDelayMaxSeconds = 0.6f;
+
+        [Tooltip("Vision starts to tunnel above this fatigue. placeholder")]
+        [Range(0f, 1f)] public float TunnelAbove = 0.5f;
+
+        [Tooltip("Micro-sleeps start above this fatigue. placeholder")]
+        [Range(0f, 1f)] public float MicroSleepAbove = 0.7f;
+
+        [Tooltip("Chance per second of a micro-sleep at fatigue 1 (scales down to 0 at the threshold). placeholder")]
+        [Range(0f, 1f)] public float MicroSleepChancePerSecond = 0.08f;
+
+        [Tooltip("How long the eyes close, seconds. RESEARCH: 'close the screen for a moment'. placeholder")]
+        public float MicroSleepMinSeconds = 0.5f;
+        public float MicroSleepMaxSeconds = 1.5f;
+
+        [Header("Recovery")]
+        [Tooltip("Fatigue the next shift starts with after a bed. placeholder")]
+        [Range(0f, 1f)] public float AfterBed = 0.1f;
+        [Tooltip("Lowest fatigue the bus floor can bring you to. RESEARCH: sleeping in the bus recovers less. placeholder")]
+        [Range(0f, 1f)] public float AfterBusFloor = 0.35f;
+        [Tooltip("Fraction of the day's fatigue the bus floor leaves you with. placeholder")]
+        [Range(0f, 1f)] public float BusFloorKeeps = 0.6f;
+        [Tooltip("Fatigue after a day off. RESEARCH: 7–9 h of sleep on the off day cuts violations. placeholder")]
+        [Range(0f, 1f)] public float AfterRestDay = 0.05f;
     }
 
     // ------------------------------------------------------------------------------------------

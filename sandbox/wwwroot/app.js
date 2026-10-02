@@ -227,7 +227,10 @@ function bindTouch() {
   const pulse = bit => { keys |= bit; setTimeout(() => { keys &= ~bit; }, 120); };
   document.getElementById('pay').addEventListener('click', () => pulse(KEY.pay));
   document.getElementById('refuse').addEventListener('click', () => pulse(KEY.refuse));
-  document.getElementById('next-day').addEventListener('click', () => { seed++; buildWorld(DotNet.invokeMethod(ASSEMBLY, 'Reset', seed)); });
+  document.getElementById('sleep-bus').addEventListener('click', () => DotNet.invokeMethod(ASSEMBLY, 'Sleep', false));
+  document.getElementById('sleep-bed').addEventListener('click', () => DotNet.invokeMethod(ASSEMBLY, 'Sleep', true));
+  document.getElementById('next-work').addEventListener('click', () => { seed++; buildWorld(DotNet.invokeMethod(ASSEMBLY, 'NextDay', true, seed)); });
+  document.getElementById('next-rest').addEventListener('click', () => { seed++; buildWorld(DotNet.invokeMethod(ASSEMBLY, 'NextDay', false, seed)); });
   document.getElementById('touch-restart').addEventListener('click', () => {
     seed++; buildWorld(DotNet.invokeMethod(ASSEMBLY, 'Reset', seed));
   });
@@ -376,6 +379,16 @@ function updateHud(f, dt) {
       + '<div class="lrow total"><span>What the crew eats</span><span class="' + (L.crewNet < 0 ? 'danger' : 'ok') + '">' + (L.crewNet < 0 ? '−' : '') + 'Tk ' + Math.abs(L.crewNet).toFixed(0) + '</span></div>';
     el('events').innerHTML = f.events.slice(-8).map(e => '<div>' + e + '</div>').join('');
   }
+  if (f.dayOver) {
+    el('sleep-choice').hidden = f.sleptChosen;
+    el('day-choice').hidden = !f.sleptChosen;
+    el('savings').textContent = 'Day ' + f.day + ' · savings ' + (f.savingsTk < 0 ? '−' : '') + 'Tk ' + Math.abs(f.savingsTk).toFixed(0);
+  }
+
+  // The body: a narrowing view and, now and then, nothing at all.
+  el('vignette').style.opacity = (f.tunnel * 0.9).toFixed(2);
+  el('blackout').classList.toggle('on', f.asleep);
+  el('fatigue').textContent = (f.fatigue * 100).toFixed(0) + '%' + (f.microSleeps ? ' · ' + f.microSleeps + ' micro-sleeps' : '');
 
   frames++; fpsTime += dt;
   if (fpsTime >= 1) { el('fps').textContent = frames + ' fps'; frames = 0; fpsTime = 0; }

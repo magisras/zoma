@@ -45,7 +45,12 @@ namespace TwentyTons.Core
         public readonly SimMetrics Metrics = new SimMetrics();
         public readonly BusController Bus = new BusController();
         public Economy Economy;
+        public readonly FatigueState Fatigue = new FatigueState();
         public Agent Player;
+
+        private readonly InputDelay _inputDelay = new InputDelay();
+        private PlayerInput _latestInput;
+        private bool _inputsThisStep;
 
         private int _nextId = 1;
         private float _nearMissCooldown;
@@ -210,6 +215,8 @@ namespace TwentyTons.Core
 
             if (Player != null)
             {
+                Fatigue.Step(dt, Tuning.Fatigue, Tuning.Economy, Random);
+                ApplyPlayerInputs(dt);
                 Bus.Passengers = Player.Load.Count;
                 Bus.Step(Player, Corridor, Tuning.Bus, dt);
                 Metrics.DistanceMetres += Player.Speed * dt;
@@ -312,6 +319,32 @@ namespace TwentyTons.Core
                 if (d < metres) { metres = d; best = a; }
             }
             return best;
+        }
+
+        /// <summary>
+        /// The player's hands, this frame. They reach the bus after the fatigue reaction delay, and
+        /// not at all during a micro-sleep (the last hands stay where they were). Call before Step.
+        /// </summary>
+        public void PlayerInputs(PlayerInput input)
+        {
+            _latestInput = input;
+            _inputsThisStep = true;
+        }
+
+        /// <summary>Apply the delayed, possibly frozen, inputs to the bus, the horn and the door.</summary>
+        private void ApplyPlayerInputs(float dt)
+        {
+            if (!_inputsThisStep) return;                  // tests and the autopilot drive the bus directly
+            _inputDelay.Push(Metrics.Time, _latestInput);
+            PlayerInput applied = _inputDelay.At(Metrics.Time - Fatigue.ReactionDelay(Tuning.Fatigue));
+            if (Fatigue.Asleep) applied = Fatigue.Frozen;
+            else Fatigue.Frozen = applied;
+
+            Bus.Throttle = applied.Throttle;
+            Bus.Brake = applied.Brake;
+            Bus.Steer = applied.Steer;
+            HornInput(applied.Horn, dt);
+            SetDoor(applied.Door);
         }
 
         /// <summary>Open or close the player's door (the helper's job). Opening stamps the time: first door wins the crowd.</summary>

@@ -107,6 +107,13 @@ namespace TwentyTons.Sandbox
         public string DayOverReason { get; set; }
         public LedgerDto Ledger { get; set; }
         public string[] Events { get; set; }
+        public float Fatigue { get; set; }
+        public float Tunnel { get; set; }         // 0..1 how far vision has narrowed
+        public bool Asleep { get; set; }
+        public int MicroSleeps { get; set; }
+        public int Day { get; set; }
+        public float SavingsTk { get; set; }
+        public bool SleptChosen { get; set; }     // the end-of-day card's two steps
         public List<JunctionDto> Junctions { get; set; }
     }
 
@@ -123,6 +130,8 @@ namespace TwentyTons.Sandbox
         private static TuningTable _tuning;
         private static float _accumulator;
         private static bool _autopilot;
+        private static readonly Household _household = new Household();
+        private static bool _dayClosed, _sleptChosen;
 
         [JSInvokable]
         public static SceneDto Init(int seed)
@@ -184,27 +193,59 @@ namespace TwentyTons.Sandbox
         [JSInvokable]
         public static FrameDto Tick(float dt, int keys)
         {
-            BusController bus = _sim.Bus;
-            bus.Throttle = (keys & KeyUp) != 0 ? 1f : 0f;
-            bus.Brake = (keys & KeyDown) != 0 ? 1f : 0f;
-            bus.Steer = ((keys & KeyRight) != 0 ? 1f : 0f) - ((keys & KeyLeft) != 0 ? 1f : 0f);
-            bool horn = (keys & KeyHorn) != 0;
-
+            var input = new PlayerInput
+            {
+                Throttle = (keys & KeyUp) != 0 ? 1f : 0f,
+                Brake = (keys & KeyDown) != 0 ? 1f : 0f,
+                Steer = ((keys & KeyRight) != 0 ? 1f : 0f) - ((keys & KeyLeft) != 0 ? 1f : 0f),
+                Horn = (keys & KeyHorn) != 0,
+                Door = (keys & KeyDoor) != 0,
+            };
             bool autopilot = (keys & KeyAutopilot) != 0;
             _autopilot = autopilot;
-            _sim.SetDoor((keys & KeyDoor) != 0);
             if ((keys & KeyPay) != 0) _sim.Economy.AnswerSergeant(true);
             if ((keys & KeyRefuse) != 0) _sim.Economy.AnswerSergeant(false);
 
             _accumulator += Mathf.Min(dt, 0.1f);           // a hidden tab must not fast-forward the world
             while (_accumulator >= FixedStep)
             {
-                if (autopilot) ScriptedDriver.Apply(_sim);   // the "drive properly" baseline, for demos and scripts
-                _sim.HornInput(horn, FixedStep);
+                if (autopilot)
+                {
+                    ScriptedDriver.Apply(_sim);              // the "drive properly" baseline, for demos and scripts
+                    _sim.HornInput(input.Horn, FixedStep);
+                }
+                else
+                {
+                    _sim.PlayerInputs(input);                // through the tired hands
+                }
                 _sim.Step(FixedStep);
                 _accumulator -= FixedStep;
             }
             return Snapshot();
+        }
+
+        /// <summary>End of a worked day, step one: book the net, then choose where to sleep.</summary>
+        [JSInvokable]
+        public static void Sleep(bool bed)
+        {
+            if (!_sim.Economy.DayOver || _sleptChosen) return;
+            if (!_dayClosed) { _household.CloseWorkedDay(_sim.Economy.Ledger, _tuning.Economy); _dayClosed = true; }
+            _household.Sleep(bed, _sim.Fatigue.Level, _tuning.Fatigue, _tuning.Economy);
+            _sleptChosen = true;
+        }
+
+        /// <summary>Step two: work tomorrow, or take the day off. Either way a new day starts.</summary>
+        [JSInvokable]
+        public static SceneDto NextDay(bool work, int seed)
+        {
+            if (!_sleptChosen) Sleep(false);
+            if (!work) _household.RestDay(_tuning.Fatigue, _tuning.Economy);   // the day off is a day of its own
+            _household.StartNextWorkDay();
+            _dayClosed = false;
+            _sleptChosen = false;
+            SceneDto scene = Reset(seed);
+            _sim.Fatigue.Level = _household.FatigueCarried;
+            return scene;
         }
 
         /// <summary>Live tuning from the page's sliders. Names are explicit on purpose: no reflection to learn.</summary>
@@ -224,6 +265,7 @@ namespace TwentyTons.Sandbox
                 case "brakeWear": _sim.Bus.BrakeWear = value; break;
                 case "passengers": _sim.SetPassengerCount(_sim.Player, (int)value); break;
                 case "dayLength": _tuning.Economy.DayLengthSeconds = value; break;
+                case "fatigue": _sim.Fatigue.Level = value; break;
                 case "zoma": _tuning.Economy.ZomaTk = value; _sim.Economy.Ledger.ZomaTk = value * _tuning.Economy.MoneyScale; break;
                 default: throw new ArgumentException("Unknown tuning parameter: " + name);
             }
@@ -309,6 +351,13 @@ namespace TwentyTons.Sandbox
                     CrewNet = ledger.CrewNetTk, Arrested = ledger.Arrested,
                 },
                 Events = events,
+                Fatigue = _sim.Fatigue.Level,
+                Tunnel = _sim.Fatigue.Tunnel(_tuning.Fatigue),
+                Asleep = _sim.Fatigue.Asleep,
+                MicroSleeps = _sim.Fatigue.MicroSleeps,
+                Day = _household.Day,
+                SavingsTk = _household.SavingsTk,
+                SleptChosen = _sleptChosen,
                 StopsLost = m.StopsLost,
                 Rivals = rivals,
                 HelperGap = helper,
