@@ -19,12 +19,13 @@ namespace TwentyTons.Core
         public float CaseTk;           // cases filed when you didn't pay (or hit someone)
         public float RepairsTk;        // scrapes: paint, mirrors, a bent door
         public float RopesTk;          // the men who dragged the bus back onto its wheels
+        public float CameraTk;         // SMS cases from the junction cameras, booked to the owner, taken from the crew
         public int Trips;
         public bool Arrested;          // the day ended with a person under the wheels
 
         public readonly List<string> Events = new List<string>();
 
-        public float PaidOutTk => FuelTk + LinemanTk + PartyManTk + SergeantTk + CaseTk + RepairsTk + RopesTk;
+        public float PaidOutTk => FuelTk + LinemanTk + PartyManTk + SergeantTk + CaseTk + RepairsTk + RopesTk + CameraTk;
         public float CrewNetTk => (Arrested ? 0f : FaresTk) - ZomaTk - PaidOutTk;
 
         public void Log(string text) { Events.Add(text); if (Events.Count > 40) Events.RemoveAt(0); }
@@ -50,12 +51,17 @@ namespace TwentyTons.Core
         public float ShiftSeconds;
         public bool DayOver;
         public string DayOverReason;
+        /// <summary>A special drive: sergeants with targets, more stops, higher prices (docs/STREET_CONTROL.md §3).</summary>
+        public bool DriveDay;
+        /// <summary>The bus went to the dumping yard: the day ended and tomorrow has no bus.</summary>
+        public bool Seized;
 
         private readonly TrafficSim _sim;
         private readonly EconomySettings _e;
         private float _lastPlayerS;
         private bool _firstStep = true;
         private readonly Dictionary<Junction, bool> _passedJunction = new Dictionary<Junction, bool>();
+        private readonly Dictionary<Checkpoint, bool> _passedCheckpoint = new Dictionary<Checkpoint, bool>();
         private int _caneRunsSeen;
         private bool _ranCaneRecently;
 
@@ -64,6 +70,9 @@ namespace TwentyTons.Core
             _sim = sim;
             _e = sim.Tuning.Economy;
             Ledger.ZomaTk = _e.ZomaTk * _e.MoneyScale;
+            // Drawn from its own stream so the day's traffic does not change with the drive-day coin.
+            DriveDay = new SeededRandom(sim.Seed * 7919 + 17).Chance(_e.DriveDayChance);
+            if (DriveDay) Ledger.Log("The lineman says it is a drive today. Sergeants at every box.");
         }
 
         /// <summary>Clock on the wall: the shift starts at ShiftStartHour and the day's seconds map onto the shift hours.</summary>
@@ -156,11 +165,26 @@ namespace TwentyTons.Core
             }
             else
             {
+                // Refusing with no valid papers can cost the bus itself: he has the grounds, and a target.
+                if (!_sim.Condition.PapersValid(_sim.Day) && _sim.Random.Chance(_e.SeizeChanceWithoutPapers))
+                {
+                    SeizeBus();
+                    return;
+                }
                 float caseTk = _e.CaseTk * _e.MoneyScale;
                 Ledger.CaseTk += caseTk;
                 Sergeant.ReleaseAt = _sim.Metrics.Time + _e.CaseDelaySeconds;
                 Ledger.Log("Sergeant, " + Sergeant.Reason + ": refused. A case for Tk " + caseTk.ToString("0") + " and the papers take " + Mathf.RoundToInt(_e.CaseDelaySeconds / 60f) + " minutes.");
             }
+        }
+
+        /// <summary>The bus goes to the dumping yard. The day ends; the household learns how long it is gone.</summary>
+        private void SeizeBus()
+        {
+            Seized = true;
+            Sergeant.Active = false;
+            Ledger.Log("No papers, no payment. The wrecker. The bus goes to the dumping yard for " + _e.DumpingDays + " days.");
+            EndDay("bus seized");
         }
 
         // ---------------------------------------------------------------- trips and stands
@@ -203,8 +227,10 @@ namespace TwentyTons.Core
         // ---------------------------------------------------------------- the sergeant
 
         /// <summary>
-        /// Past a junction the sergeant may step out: certainly more often if you ran the cane. The
-        /// bus is held until the player answers; a refusal holds it much longer.
+        /// Past a junction the sergeant may step out if you ran the cane or came up the wrong side,
+        /// and a camera there books the case whether or not he does. Past a police box, the sergeant
+        /// on duty may step out for anything: papers, dents, his target. The bus is held until the
+        /// player answers; a refusal holds it much longer.
         /// </summary>
         private void WatchSergeant(Agent bus, float dt)
         {
@@ -238,28 +264,60 @@ namespace TwentyTons.Core
                 {
                     _passedJunction[j] = true;
                     bool wrongSide = _sim.Metrics.WrongSideNow;
-                    // Clean papers and an undented bus give him less to point at; a cane run or the wrong side, nothing helps.
-                    float papers = _sim.Tuning.Officer.SergeantStopChance * _e.SergeantChancePerPassFactor
-                                 * (_sim.Condition.PapersValid(_sim.Day) ? _e.PapersSergeantFactor : 1f)
-                                 * (1f + _sim.Condition.Dents * _e.DentSergeantFactor);
-                    float chance = ranCane ? _e.SergeantChanceAfterCaneRun
-                                 : wrongSide ? _e.WrongSideSergeantChance
-                                 : Mathf.Clamp01(papers);
-                    if (_sim.Random.Chance(chance))
+                    if (ranCane || wrongSide)
                     {
-                        Sergeant.Active = true;
-                        Sergeant.HeldSeconds = 0f;
-                        Sergeant.ReleaseAt = -1f;
-                        Sergeant.DemandTk = _e.SergeantDemandTk * _e.MoneyScale;
-                        Sergeant.Reason = ranCane ? "ran the cane" : wrongSide ? "wrong side" : "papers";
-                        _sim.Bus.Held = true;
-                        Ledger.Log("A sergeant steps out: " + Sergeant.Reason + ". Tk " + Sergeant.DemandTk.ToString("0") + " now, or a case.");
+                        // The camera does not negotiate: the owner gets the SMS, the crew gets the bill tonight.
+                        if (j.Camera)
+                        {
+                            float fine = _e.CameraFineTk * _e.MoneyScale;
+                            Ledger.CameraTk += fine;
+                            Ledger.Log("The camera on the pole. " + (ranCane ? "Ran the cane" : "Wrong side") + ": an SMS to the owner, Tk " + fine.ToString("0") + ".");
+                        }
+                        // The officer at the junction controls flow; the sergeant beside it takes the money.
+                        float chance = ranCane ? _e.SergeantChanceAfterCaneRun : _e.WrongSideSergeantChance;
+                        if (DriveDay) chance *= _e.DriveDayFactor;
+                        if (_sim.Random.Chance(Mathf.Clamp01(chance)))
+                            StepOut(ranCane ? "ran the cane" : "wrong side");
                     }
                     _ranCaneRecently = false;
                     ranCane = false;
                 }
                 else if (!justPast && ds < 0f) _passedJunction[j] = false;   // reset once we're back before it (next lap)
             }
+
+            for (int i = 0; i < _sim.Checkpoints.Count; i++)
+            {
+                Checkpoint cp = _sim.Checkpoints[i];
+                float ds = _sim.Corridor.DeltaS(cp.S, bus.S);
+                bool justPast = ds > 0f && ds < 30f;
+                bool wasPast;
+                _passedCheckpoint.TryGetValue(cp, out wasPast);
+                if (justPast && !wasPast)
+                {
+                    _passedCheckpoint[cp] = true;
+                    if (!cp.SergeantOnDuty) continue;
+                    // Clean papers and an undented bus give him less to point at. A drive day gives him a target.
+                    float chance = _e.CheckpointStopChance
+                                 * (_sim.Condition.PapersValid(_sim.Day) ? _e.PapersSergeantFactor : 1f)
+                                 * (1f + _sim.Condition.Dents * _e.DentSergeantFactor)
+                                 * (DriveDay ? _e.DriveDayFactor : 1f);
+                    if (_sim.Random.Chance(Mathf.Clamp01(chance))) StepOut("papers, " + cp.Name);
+                }
+                else if (!justPast && ds < 0f) _passedCheckpoint[cp] = false;
+            }
+        }
+
+        /// <summary>A sergeant's hand goes up in front of the bus.</summary>
+        private void StepOut(string reason)
+        {
+            if (Sergeant.Active) return;
+            Sergeant.Active = true;
+            Sergeant.HeldSeconds = 0f;
+            Sergeant.ReleaseAt = -1f;
+            Sergeant.DemandTk = _e.SergeantDemandTk * _e.MoneyScale * (DriveDay ? _e.DriveDayDemandFactor : 1f);
+            Sergeant.Reason = reason;
+            _sim.Bus.Held = true;
+            Ledger.Log("A sergeant steps out: " + reason + ". Tk " + Sergeant.DemandTk.ToString("0") + " now, or a case.");
         }
 
         private void EndDay(string reason)

@@ -108,6 +108,7 @@ namespace TwentyTons.Core
         public float FatigueCarried;       // where the next shift starts
         public readonly BusCondition Bus = new BusCondition();   // the same bus every day
         public int CrewInjuredDays;        // shifts still to drive hurt
+        public int BusInYardDays;          // days the bus still sits in the dumping yard
         public int WalkedAwayCount;        // buses left on their side
         public readonly List<DaySummary> Days = new List<DaySummary>();
 
@@ -176,6 +177,28 @@ namespace TwentyTons.Core
         {
             CrewInjuredDays = e.CrewInjuryDays + 1;   // counts down at the next start
             if (walkedAway) WalkedAwayCount++;
+        }
+
+        /// <summary>The sergeant sent the bus to the dumping yard: no bus for a while.</summary>
+        public void NoteSeizure(EconomySettings e)
+        {
+            BusInYardDays = e.DumpingDays;
+        }
+
+        /// <summary>
+        /// A day with the bus in the yard: like a rest day, but not chosen. No zoma is owed (the owner
+        /// has no bus either), food still costs, the body comes back, and the yard count falls.
+        /// </summary>
+        public DaySummary YardDay(FatigueSettings f, EconomySettings e)
+        {
+            Day++;
+            if (BusInYardDays > 0) BusInYardDays--;
+            var day = new DaySummary { Day = Day, Worked = false, FoodTk = e.FoodTkPerDay * e.MoneyScale, Note = "The bus is in the dumping yard." };
+            SavingsTk -= day.FoodTk;
+            FatigueCarried = Mathf.Min(FatigueCarried, f.AfterRestDay);
+            Days.Add(day);
+            WorkToday = BusInYardDays == 0;
+            return day;
         }
     }
 }

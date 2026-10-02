@@ -102,6 +102,7 @@ namespace TwentyTons.Tests
             j = sim.AddJunction(150f, cross, 100f);
             j.Open = JunctionFlow.Cross; j.Timer = 9999f;      // cane against us the whole time
             sim.Tuning.Economy.SergeantChanceAfterCaneRun = 1f;
+            sim.Tuning.Economy.SeizeChanceWithoutPapers = 0f;   // the yard is StreetControlTests' subject
             sim.Tuning.Spawn.CrossVehiclesPerJunction = 0;
             Agent bus = sim.SpawnPlayerBus(120f, -2f);
             bus.Speed = 8f;

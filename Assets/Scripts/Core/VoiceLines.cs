@@ -44,6 +44,9 @@ namespace TwentyTons.Core
 
             // ---- The conductor: money, the sergeant, the arguer, the wrong side.
             new VoiceLineText("sergeant", Speaker.Conductor, "Sergeant. I'm hiding the cash. Pay him, it's cheaper than the case.", "The sergeant's hand is up."),
+            new VoiceLineText("driveday", Speaker.Conductor, "Lineman says it's a drive today. Sergeants at every box, and they all have a number to make.", "Said once, a few seconds into a drive day. Tells the player why the boxes are busier without a UI."),
+            new VoiceLineText("rope", Speaker.Helper, "Rope's out. Nobody's getting through that one, don't bother.", "The constable has roped the approach ahead; the bus is braking for it."),
+            new VoiceLineText("camera", Speaker.Conductor, "That pole has a camera now. The owner gets the SMS. Guess who pays.", "A camera booked a case at the junction just passed."),
             new VoiceLineText("arguer", Speaker.Conductor, "Half fare? Show me the card. No card, full fare.", "A student-fare argument at the door."),
             new VoiceLineText("count", Speaker.Conductor, "{0} aboard. Tk {1} so far.", "Every ten boardings: the running count."),
             new VoiceLineText("wrongside", Speaker.Conductor, "Other side's empty. Cross over, we'll come back before the sergeant.", "Stuck in a jam with the oncoming road clear."),

@@ -35,6 +35,8 @@ namespace TwentyTons.Core
         private float _fallSeen = -999f;
         private int _rolloversSeen;
         private DemandZone _calledZone;
+        private bool _driveDaySaid, _ropeSeen;
+        private float _cameraTkSeen;
 
         public CrewVoice(TrafficSim sim) { _sim = sim; }
 
@@ -98,6 +100,12 @@ namespace TwentyTons.Core
                 Say("rollover", 0f);
             }
             if (_sim.Fatigue.MicroSleeps > _sleepsSeen) { _sleepsSeen = _sim.Fatigue.MicroSleeps; Say("sleep", 5f); }
+
+            // ---- The street's control: the drive, the rope, the camera.
+            if (_sim.Economy.DriveDay && !_driveDaySaid && _sim.Economy.ShiftSeconds > 3f) { _driveDaySaid = true; Say("driveday", 0f); }
+            if (_sim.Bus.HeldByRope && !_ropeSeen) Say("rope", 30f);
+            _ropeSeen = _sim.Bus.HeldByRope;
+            if (_sim.Economy.Ledger.CameraTk > _cameraTkSeen) { _cameraTkSeen = _sim.Economy.Ledger.CameraTk; Say("camera", 0f); }
 
             // ---- The conductor: the sergeant, the arguers, the count.
             if (_sim.Economy.Sergeant.Active && _sim.Economy.Sergeant.ReleaseAt < 0f)

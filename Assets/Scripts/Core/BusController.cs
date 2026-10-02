@@ -23,6 +23,7 @@ namespace TwentyTons.Core
         public float BrakeWear;        // 0 = new, 1 = metal on metal
         public float SteerAngle;       // current front-wheel angle, radians
         public bool Held;              // a sergeant's hand, or the end of the day: the bus does not move
+        public bool HeldByRope;        // a constable's rope across the road ahead: brake, whatever the pedal says
         public float LastYawRate;      // rad/s this step; speed × yaw rate is the lateral acceleration that tips a bus
 
         public float MassKg(BusSettings b) => b.TareTonnes * 1000f + Passengers * b.PassengerKg;
@@ -32,8 +33,9 @@ namespace TwentyTons.Core
             float mass = MassKg(b);
             float speed = bus.Speed;
             // Held (a sergeant's hand, the end of the day): the pedals are overridden, not overwritten.
-            float throttleIn = Held ? 0f : Throttle;
-            float brakeIn = Held ? 1f : Brake;
+            bool held = Held || HeldByRope;
+            float throttleIn = held ? 0f : Throttle;
+            float brakeIn = held ? 1f : Brake;
 
             // Engine: a fixed power means acceleration falls as speed rises and as mass rises.
             float powerLimited = (b.EnginePowerKw * 1000f) / (mass * Mathf.Max(speed, 1f));

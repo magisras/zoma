@@ -284,6 +284,10 @@ namespace TwentyTons.Tuning
         [Tooltip("A driver this close to a stop line when the cane drops may still run it (if leakers remain), metres. placeholder")]
         public float LeakZoneMetres = 14f;
 
+        [Tooltip("Chance that a closing constable ropes the approach, so nobody leaks and the player is held at the line. " +
+                 "docs/STREET_CONTROL.md: ropes, cones and bamboo. placeholder")]
+        [Range(0f, 1f)] public float RopeChance = 0.3f;
+
         [Tooltip("Probability per shift that a sergeant appears at a given junction and takes the cash. " +
                  "Lowered by a fit bus with clean papers (Milestone 5). placeholder")]
         [Range(0f, 1f)] public float SergeantStopChance = 0.3f;
@@ -464,6 +468,13 @@ namespace TwentyTons.Tuning
 
         [Tooltip("How far a pedestrian stands from the road edge while waiting, metres. placeholder")]
         public float KerbOffsetMetres = 1.0f;
+
+        [Tooltip("Share of pedestrians placed near a junction or a stand rather than anywhere along the road. " +
+                 "docs/STREET_CONTROL.md §6: the road is the crossing, and the crossing is where the people are. placeholder")]
+        [Range(0f, 1f)] public float PedestrianClusterShare = 0.6f;
+
+        [Tooltip("How far either side of a junction or stand a clustered pedestrian may stand, metres. placeholder")]
+        public float PedestrianClusterMetres = 40f;
     }
 
     /// <summary>
@@ -516,6 +527,34 @@ namespace TwentyTons.Tuning
         [Range(0f, 1f)] public float SergeantChanceAfterCaneRun = 0.6f;
         [Tooltip("Officer.SergeantStopChance is per shift; per junction pass it is multiplied by this. placeholder")]
         [Range(0f, 1f)] public float SergeantChancePerPassFactor = 0.25f;
+
+        [Header("Police boxes, drive days, the yard, the cameras (docs/STREET_CONTROL.md §3–4)")]
+        [Tooltip("Chance a sergeant on duty at a police box stops you as you pass, per pass, before papers and dents. placeholder")]
+        [Range(0f, 1f)] public float CheckpointStopChance = 0.15f;
+
+        [Tooltip("Chance a given police box has a sergeant on duty today. placeholder")]
+        [Range(0f, 1f)] public float SergeantOnDutyChance = 0.6f;
+
+        [Tooltip("Chance that today is a drive day (special drive, 1,400–2,300 cases across the city). placeholder")]
+        [Range(0f, 1f)] public float DriveDayChance = 0.2f;
+
+        [Tooltip("On a drive day stop chances are multiplied by this. placeholder")]
+        public float DriveDayFactor = 2.5f;
+
+        [Tooltip("On a drive day the sergeant asks this many times his usual figure: he has a target too. placeholder")]
+        public float DriveDayDemandFactor = 1.5f;
+
+        [Tooltip("Refusing a sergeant with no valid papers: chance the bus goes to the dumping yard. placeholder")]
+        [Range(0f, 1f)] public float SeizeChanceWithoutPapers = 0.5f;
+
+        [Tooltip("Days the bus sits in the yard. Workers protest months; they ask for ten. placeholder")]
+        public int DumpingDays = 3;
+
+        [Tooltip("What a camera case costs the owner, Tk. RESEARCH: ~Tk 2,000 for a red light.")]
+        public float CameraFineTk = 2000f;
+
+        [Tooltip("From this day the first junction has a camera (the story hook: cameras appearing along the route). 0 = never. placeholder")]
+        public int CameraFromDay = 6;
 
         [Tooltip("Chance the sergeant steps out after a junction you passed on the wrong side. placeholder")]
         [Range(0f, 1f)] public float WrongSideSergeantChance = 0.5f;

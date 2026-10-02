@@ -45,8 +45,11 @@ namespace TwentyTons.Core
         public Agent PlayerGhost;
         public readonly List<Corridor> Corridors = new List<Corridor>();
         public readonly List<Junction> Junctions = new List<Junction>();
+        /// <summary>Police boxes beside the road (docs/STREET_CONTROL.md §3).</summary>
+        public readonly List<Checkpoint> Checkpoints = new List<Checkpoint>();
         public readonly List<DemandZone> Zones = new List<DemandZone>();
         public readonly TuningTable Tuning;
+        public readonly int Seed;
         public readonly SeededRandom Random;
         public readonly List<Agent> Agents = new List<Agent>();
         public readonly SimMetrics Metrics = new SimMetrics();
@@ -74,6 +77,7 @@ namespace TwentyTons.Core
             Corridor = corridor;
             Corridors.Add(corridor);
             Tuning = tuning;
+            Seed = seed;
             Random = new SeededRandom(seed);
             Economy = new Economy(this);
             Voice = new CrewVoice(this);
@@ -93,6 +97,22 @@ namespace TwentyTons.Core
             zone.Position = Corridor.PositionAt(zone.S, zone.Side * (Corridor.HalfWidth + Tuning.Spawn.KerbOffsetMetres + 0.5f));
             Zones.Add(zone);
             return zone;
+        }
+
+        /// <summary>
+        /// Add a police box beside the main road. Whether a sergeant is on duty today is decided now,
+        /// once per day, so the player can learn which boxes are quiet (and be wrong tomorrow).
+        /// </summary>
+        public Checkpoint AddCheckpoint(string name, float s)
+        {
+            var cp = new Checkpoint
+            {
+                Name = name,
+                S = Corridor.Wrap(s),
+                SergeantOnDuty = Random.Chance(Tuning.Economy.SergeantOnDutyChance),
+            };
+            Checkpoints.Add(cp);
+            return cp;
         }
 
         /// <summary>
@@ -273,6 +293,7 @@ namespace TwentyTons.Core
                 Fatigue.Step(dt, Tuning.Fatigue, Tuning.Economy, Random);
                 ApplyPlayerInputs(dt);
                 Bus.Passengers = Player.Load.Count;
+                Bus.HeldByRope = RopeAhead(Player);
                 // The sandbox day stands for a whole day's driving: wear is scaled like the money is.
                 Condition.Brake(Bus.Held ? 0f : Bus.Brake, Player.Speed, dt / Mathf.Max(0.01f, Tuning.Economy.MoneyScale), Tuning.Bus);
                 Bus.BrakeWear = Condition.BrakeWear;
@@ -300,6 +321,7 @@ namespace TwentyTons.Core
                 else if (a.Class == VehicleClass.Bus) RaceWhenNear(a);
                 Steering.Drive(this, a, dt);
             }
+            HoldAtRopes();
             WatchStopsLost();
 
             for (int i = 0; i < Agents.Count; i++)
@@ -562,6 +584,60 @@ namespace TwentyTons.Core
             }
         }
 
+        /// <summary>
+        /// The rope is physical: a vehicle whose nose reaches a roped, closed stop line is put back at
+        /// the line and stopped, however late it braked. Without this a car arriving fast "commits" to
+        /// the box the way it does at a bare cane; with a rope there is nothing to commit through.
+        /// </summary>
+        private void HoldAtRopes()
+        {
+            OfficerSettings officer = Tuning.Officer;
+            for (int i = 0; i < Junctions.Count; i++)
+            {
+                Junction j = Junctions[i];
+                if (!j.Roped) continue;
+                for (int k = 0; k < Agents.Count; k++)
+                {
+                    Agent a = Agents[k];
+                    if (a.IsPedestrian || a.IsPlayerOrGhost) continue;
+                    if (j.IsOpenFor(a.Corridor)) continue;
+                    float lineS = j.StopLineOn(a.Corridor, officer.StopLineSetbackMetres);
+                    if (float.IsNaN(lineS)) continue;
+                    float ds = a.Corridor.DeltaS(a.S, lineS) - a.HalfLength;   // nose to rope
+                    if (ds >= 0f || ds < -(officer.StopLineSetbackMetres + j.MainHalfSpan)) continue;   // short of it, or already through
+                    a.S = a.Corridor.Wrap(lineS - a.HalfLength);
+                    a.Position = a.Corridor.PositionAt(a.S, a.Lateral);
+                    a.Speed = 0f;
+                    a.LeakingThrough = null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Is a constable's rope stretched across the road within the bus's stopping distance? The rope
+        /// is the one thing on the street that stops the player's bus without a UI: nobody drives
+        /// through a rope with a man holding each end. The bus brakes as if the pedal were down, and
+        /// its nose is held at the line until the cane turns.
+        /// </summary>
+        private bool RopeAhead(Agent bus)
+        {
+            OfficerSettings officer = Tuning.Officer;
+            BusSettings b = Tuning.Bus;
+            float decel = b.BrakeDecelNewMs2 * (1f - b.BrakeWearLoss * Mathf.Clamp01(Bus.BrakeWear));
+            float stopping = bus.Speed * bus.Speed / (2f * Mathf.Max(0.5f, decel)) + 1.5f;
+            for (int i = 0; i < Junctions.Count; i++)
+            {
+                Junction j = Junctions[i];
+                if (j.Main != bus.Corridor || !j.Roped || j.IsOpenFor(bus.Corridor)) continue;
+                float lineS = j.StopLineOn(bus.Corridor, officer.StopLineSetbackMetres);
+                float ds = bus.Corridor.DeltaS(bus.S, lineS) - bus.HalfLength;   // nose to rope
+                if (ds < -1f) continue;             // already through: the rope went up behind us
+                if (ds <= 0.3f) bus.Speed = 0f;     // nose at the rope: it does not give
+                if (ds <= stopping) return true;
+            }
+            return false;
+        }
+
         /// <summary>Count the player crossing a closed stop line (the sergeant will care later).</summary>
         private void WatchPlayerAtJunctions()
         {
@@ -577,6 +653,29 @@ namespace TwentyTons.Core
                 }
                 if (!inBox && _playerRanCane == j) _playerRanCane = null;
             }
+        }
+
+        /// <summary>
+        /// A random stand or junction on the main road between these two S values, or NaN if none.
+        /// </summary>
+        private float NearestCrowdPoint(float fromS, float toS)
+        {
+            float best = float.NaN;
+            int seen = 0;
+            for (int i = 0; i < Zones.Count; i++) seen = PickCrowdPoint(Zones[i].S, fromS, toS, seen, ref best);
+            for (int i = 0; i < Junctions.Count; i++)
+                if (Junctions[i].Main == Corridor) seen = PickCrowdPoint(Junctions[i].MainS, fromS, toS, seen, ref best);
+            return best;
+        }
+
+        /// <summary>Reservoir sampling of one point: every candidate in the window has an equal chance.</summary>
+        private int PickCrowdPoint(float pointS, float fromS, float toS, int seen, ref float best)
+        {
+            float ds = Corridor.DeltaS(fromS, pointS);
+            if (ds < 0f || ds > toS - fromS) return seen;
+            seen++;
+            if (Random.Range(0, seen) == 0) best = pointS;
+            return seen;
         }
 
         // ---------------------------------------------------------------- contacts
@@ -785,6 +884,12 @@ namespace TwentyTons.Core
             for (int attempt = 0; pedestrians < spawn.PedestriansAround && attempt < 10; attempt++)
             {
                 float s = ps + Random.Range(-spawn.PedestrianBehindMetres, spawn.SpawnAheadMetres);
+                // Most people cross where the people are: by a stand or a junction, not along a blank wall.
+                if (Random.Chance(spawn.PedestrianClusterShare))
+                {
+                    float crowd = NearestCrowdPoint(ps - spawn.PedestrianBehindMetres, ps + spawn.SpawnAheadMetres);
+                    if (!float.IsNaN(crowd)) s = crowd + Random.Range(-spawn.PedestrianClusterMetres, spawn.PedestrianClusterMetres);
+                }
                 if (Corridor.Closed || (s > 5f && s < Corridor.Length - 5f))
                 {
                     SpawnPedestrian(s, Random.Chance(0.5f) ? -1 : 1);

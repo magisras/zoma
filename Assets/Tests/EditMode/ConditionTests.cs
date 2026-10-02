@@ -64,32 +64,27 @@ namespace TwentyTons.Tests
         [Test]
         public void CleanPapersMeanFewerPapersStops()
         {
-            // Make the base chance certain; papers at factor 0 must then prevent every 'papers' stop.
+            // The 'papers' stop happens at a police box (docs/STREET_CONTROL.md §3). Make the base chance
+            // certain; papers at factor 0 must then prevent every such stop.
             var sim = Road();
-            var cross = new Corridor(new List<Vector3> { new Vector3(-100, 0, 500), new Vector3(100, 0, 500) }, 8f, false, "cross");
-            Junction j = sim.AddJunction(500f, cross, 100f);
-            j.Open = JunctionFlow.Main; j.Timer = 9999f;
-            sim.Tuning.Officer.SergeantStopChance = 1f;
-            sim.Tuning.Economy.SergeantChancePerPassFactor = 1f;
+            sim.Tuning.Economy.CheckpointStopChance = 1f;
             sim.Tuning.Economy.PapersSergeantFactor = 0f;
+            sim.AddCheckpoint("box", 500f).SergeantOnDuty = true;
             sim.Condition.PapersValidUntilDay = 99;           // clean papers
             sim.Player.Speed = 10f;
             sim.Bus.Throttle = 0.8f;
-            Run(sim, 70f);                                    // well past the junction
+            Run(sim, 70f);                                    // well past the box
             Assert.IsFalse(sim.Economy.Sergeant.Active, "nothing to point at");
             Assert.AreEqual(0f, sim.Economy.Ledger.SergeantTk);
 
             var sim2 = Road();
-            var cross2 = new Corridor(new List<Vector3> { new Vector3(-100, 0, 500), new Vector3(100, 0, 500) }, 8f, false, "cross");
-            Junction j2 = sim2.AddJunction(500f, cross2, 100f);
-            j2.Open = JunctionFlow.Main; j2.Timer = 9999f;
-            sim2.Tuning.Officer.SergeantStopChance = 1f;
-            sim2.Tuning.Economy.SergeantChancePerPassFactor = 1f;
+            sim2.Tuning.Economy.CheckpointStopChance = 1f;
+            sim2.AddCheckpoint("box", 500f).SergeantOnDuty = true;
             sim2.Player.Speed = 10f;
             sim2.Bus.Throttle = 0.8f;
             Run(sim2, 70f);
             Assert.IsTrue(sim2.Economy.Sergeant.Active, "no papers: he steps out");
-            Assert.AreEqual("papers", sim2.Economy.Sergeant.Reason);
+            StringAssert.StartsWith("papers", sim2.Economy.Sergeant.Reason);
         }
 
         [Test]

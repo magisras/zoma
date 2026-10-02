@@ -7,6 +7,12 @@ namespace TwentyTons.Core
     public enum JunctionFlow { Main, Cross }
 
     /// <summary>
+    /// What the lamps on the pole do (docs/STREET_CONTROL.md §1). They never change behaviour: the
+    /// cane and the box do. Dark is Dhaka outside the 2025–26 central pilots, and our corridor.
+    /// </summary>
+    public enum SignalMode { Dark, Manual, Timer }
+
+    /// <summary>
     /// Where a cross street meets the main road, with a traffic officer in the middle.
     ///
     /// RESEARCH.md: "The police hand is the traffic light. Signals are ignored; officers with a cane
@@ -29,6 +35,9 @@ namespace TwentyTons.Core
         public JunctionFlow Open = JunctionFlow.Main;
         public float Timer;               // seconds until the officer switches
         public int LeakersLeft;           // vehicles still allowed to run the cane this phase
+        public SignalMode Signal = SignalMode.Dark;
+        public bool Roped;                // the constable stretched a rope across the closed approach: nobody leaks
+        public bool Camera;               // an AI camera watches this junction: a cane run is an SMS to the owner
 
         // Who is physically in the box right now, counted each step by TrafficSim.
         public int MainInBox;
@@ -76,16 +85,20 @@ namespace TwentyTons.Core
         {
             if (Mirror != null)
             {
-                if (Open != Mirror.Open) LeakersLeft = officer.LeakersPerCycle;
+                if (Open != Mirror.Open) LeakersLeft = Mirror.Roped ? 0 : officer.LeakersPerCycle;
                 Open = Mirror.Open;
                 Timer = Mirror.Timer;
+                Roped = Mirror.Roped;
+                Camera = Mirror.Camera;
                 return;
             }
             Timer -= dt;
             if (Timer > 0f) return;
             Open = Open == JunctionFlow.Main ? JunctionFlow.Cross : JunctionFlow.Main;
             Timer = random.Range(officer.OpenMinSeconds, officer.OpenMaxSeconds);
-            LeakersLeft = officer.LeakersPerCycle;
+            // Sometimes the constable walks out with the rope: then nobody runs the line.
+            Roped = random.Chance(officer.RopeChance);
+            LeakersLeft = Roped ? 0 : officer.LeakersPerCycle;
         }
 
         /// <summary>Is this S on this corridor inside the box (give or take a vehicle's half length)?</summary>
