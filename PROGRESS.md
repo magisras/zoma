@@ -183,6 +183,16 @@ in the headless runner and in the browser. Entries below are appended as steps l
 - Fixed: hidden HUD rows (the autopilot label) showed anyway because the flex rule beat the
   `hidden` attribute.
 
+**Step 13 — the helper's seat** (done)
+
+- O swaps seats: the ostad (the Dhaka policy) drives, the player is the helper. The ostad stops
+  only where the helper calls (E, the door), leaves when the helper lets go, and takes the
+  helper's hand as hurry (W, 50 km/h) or easy (S, 22 km/h). Riders who want off ride on unless
+  the helper calls their stop. RESEARCH: "Act 1 as helper is the tutorial" — the player watches
+  the hierarchy, the horn and the hand before being responsible for them.
+- Verified in the browser: a scripted helper called Block 11, the ostad pulled in, Tk 125 of
+  fares in two minutes with the ostad doing the driving.
+
 **Where this leaves the project**
 
 Everything in README milestones 3–6 now exists as engine-free C# with tests, runs in the browser

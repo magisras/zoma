@@ -22,6 +22,14 @@ namespace TwentyTons.Sandbox
         public static float HoldLateral = -2f;
         public static float MaxDwellSeconds = 25f;
 
+        // ---- Act 1: the player is the helper, the ostad drives (RESEARCH: "Act 1 as helper is the tutorial").
+        // The ostad only stops where the helper calls; the helper's hand says hurry or easy.
+        public static bool HelperMode;
+        public static bool HelperCalls;        // the door key: "stop here, stop here!"
+        public static int HelperSignal;        // +1 hurry, −1 easy, 0 nothing
+        public static float OstadCapKmh = 35f, OstadHurryKmh = 50f, OstadEasyKmh = 22f;
+        public static float HelperDwellSeconds = 40f;
+
         private static DemandZone _working;      // the zone we are stopped at
         private static DemandZone _lastLeft;     // don't stop twice at the same zone while still in its reach
         private static float _dwell;
@@ -33,6 +41,7 @@ namespace TwentyTons.Sandbox
         public static void Reset()
         {
             _working = null; _lastLeft = null; _dwell = 0f; _stuckFor = 0f; _wrongSideFor = 0f; _lastTap = -99f; _wantLateral = HoldLateral;
+            HelperCalls = false; HelperSignal = 0;
         }
 
         public static void Apply(TrafficSim sim)
@@ -73,9 +82,19 @@ namespace TwentyTons.Sandbox
             float stop = sim.StopDistanceAhead(bus, 60f, ignoreCane: true);
             bool boxBlocked = stop < 60f && Steering.AllowedSpeed(stop, 0.8f, 1f) < bus.Speed;
 
-            if (WorkZone(sim, bus, 10f, 3)) return;   // grab and go
+            float cap = 45f;
+            if (HelperMode)
+            {
+                cap = HelperSignal > 0 ? OstadHurryKmh : HelperSignal < 0 ? OstadEasyKmh : OstadCapKmh;
+                // The ostad slows for a called stop and for nothing else.
+                if (WorkZone(sim, bus, HelperDwellSeconds, HelperCalls ? 0 : int.MaxValue)) return;
+            }
+            else
+            {
+                if (WorkZone(sim, bus, 10f, 3)) return;   // grab and go
+            }
 
-            bool closing = h < 0.6f || g < 4f || boxBlocked || TooFastForZoneAhead(sim, bus, 3) || PersonInTheWay(sim, bus);
+            bool closing = h < 0.6f || g < 4f || boxBlocked || TooFastForZoneAhead(sim, bus, HelperMode ? (HelperCalls ? 0 : int.MaxValue) : 3) || PersonInTheWay(sim, bus);
             bool blocked = g < 15f && bus.Speed < 5f;
             _stuckFor = blocked ? _stuckFor + dt : 0f;
 
@@ -117,7 +136,7 @@ namespace TwentyTons.Sandbox
                 _wantLateral = HoldLateral;   // drift back to the usual line when the road is open
             }
 
-            sim.Bus.Throttle = closing ? 0f : (v > 45f ? 0f : 1f);
+            sim.Bus.Throttle = closing ? 0f : (v > cap ? 0f : 1f);
             sim.Bus.Brake = closing ? 1f : 0f;
             sim.Bus.Steer = SteerToHold(bus, sim.Corridor, _wantLateral);
         }
@@ -151,8 +170,9 @@ namespace TwentyTons.Sandbox
         {
             DemandZone zone = Boarding.ZoneInReach(sim, bus);
             if (zone == null) _lastLeft = null;
-            bool wantStop = zone != null && zone != _lastLeft && (zone.Waiting.Count >= minCrowd || AnyoneFor(bus, zone))
+            bool wantStop = zone != null && zone != _lastLeft && (zone.Waiting.Count >= minCrowd || (!HelperMode && AnyoneFor(bus, zone)))
                             && bus.Load.Count < Boarding.TooFullCount(sim);
+            if (HelperMode && !HelperCalls) wantStop = false;         // nobody banged the side: drive on
             if (_working != null && zone != _working) { _working = null; _dwell = 0f; }
             if (wantStop && _working == null) { _working = zone; _dwell = 0f; }
             if (_working == null) return false;
@@ -161,6 +181,7 @@ namespace TwentyTons.Sandbox
             bool stillAlighting = bus.Load.Leaving != null || AnyoneFor(bus, _working);
             if (!stillAlighting) _dwell += 1f / 60f;
             bool done = bus.Load.AtDoor == null && bus.Load.Leaving == null && (_working.Waiting.Count == 0 || bus.Load.Count >= Boarding.TooFullCount(sim)) && !AnyoneFor(bus, _working);
+            if (HelperMode) done = !HelperCalls && bus.Load.AtDoor == null && bus.Load.Leaving == null;   // the helper decides when we go
             if (done || _dwell > maxDwell)
             {
                 sim.SetDoor(false);
@@ -171,7 +192,7 @@ namespace TwentyTons.Sandbox
             sim.Bus.Throttle = 0f;
             sim.Bus.Brake = 1f;
             sim.Bus.Steer = SteerToHold(bus, sim.Corridor, HoldLateral);
-            if (bus.Speed < 0.5f) sim.SetDoor(true);
+            if (!HelperMode && bus.Speed < 0.5f) sim.SetDoor(true);   // as helper, the door is the player's
             return true;
         }
 

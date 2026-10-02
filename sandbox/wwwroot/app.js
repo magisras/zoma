@@ -4,7 +4,7 @@
 import * as THREE from './vendor/three-r170.module.js';
 
 const ASSEMBLY = 'TwentyTons.Sandbox';
-const KEY = { up: 1, down: 2, left: 4, right: 8, horn: 16, autopilot: 32, door: 64, pay: 128, refuse: 256, dhaka: 512 };
+const KEY = { up: 1, down: 2, left: 4, right: 8, horn: 16, autopilot: 32, door: 64, pay: 128, refuse: 256, dhaka: 512, helper: 1024 };
 
 // Colours per vehicle class, in the order of the C# VehicleClass enum.
 // Pedestrian, Rickshaw, Cng, Car, Truck, Bus. Flat, no textures: this is a grey box.
@@ -205,6 +205,7 @@ function bindInput() {
       else keys &= ~(KEY.autopilot | KEY.dhaka);
     }
     if (e.code === 'KeyE') keys ^= KEY.door;                   // the helper opens or shuts the door
+    if (e.code === 'KeyO') keys ^= KEY.helper;                 // swap seats: driver, or helper with the ostad driving
     if (e.code === 'KeyT') document.getElementById('tuning').classList.toggle('hidden');
     if (e.code === 'KeyR') { seed++; buildWorld(DotNet.invokeMethod(ASSEMBLY, 'Reset', seed)); }
   });
@@ -232,6 +233,7 @@ function bindTouch() {
     t.classList.toggle('hidden', !t.classList.contains('open'));
   });
   document.getElementById('touch-door').addEventListener('click', () => { keys ^= KEY.door; });
+  document.getElementById('touch-role').addEventListener('click', () => { keys ^= KEY.helper; });
   // Card buttons: a one-frame key press.
   const pulse = bit => { keys |= bit; setTimeout(() => { keys &= ~bit; }, 120); };
   document.getElementById('pay').addEventListener('click', () => pulse(KEY.pay));
@@ -374,7 +376,7 @@ function updateHud(f, dt) {
   el('distance').textContent = (f.distanceMetres / 1000).toFixed(2) + ' km · ' + f.agentCount + ' agents';
   el('horn-indicator').classList.toggle('on', (keys & KEY.horn) !== 0);
   el('autopilot').hidden = !f.autopilot;
-  if (f.autopilot) el('autopilot').textContent = 'autopilot (P): ' + f.autopilotName;
+  if (f.autopilot) el('autopilot').textContent = f.helperRole ? 'you are the helper (O): ' + f.autopilotName + ' drives. E calls the stop, W hurry, S easy.' : 'autopilot (P): ' + f.autopilotName;
   el('clock').textContent = f.clock + ' · trip ' + f.trips;
   el('paidOut').textContent = 'paid out Tk ' + f.paidOutTk.toFixed(0);
 

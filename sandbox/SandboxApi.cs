@@ -89,6 +89,7 @@ namespace TwentyTons.Sandbox
         public float YawErrorDeg { get; set; }
         public bool Autopilot { get; set; }
         public string AutopilotName { get; set; }
+        public bool HelperRole { get; set; }
         public bool DoorOpen { get; set; }
         public int Seats { get; set; }
         public float FaresTk { get; set; }
@@ -144,13 +145,14 @@ namespace TwentyTons.Sandbox
     /// </summary>
     public static class SandboxApi
     {
-        private const int KeyUp = 1, KeyDown = 2, KeyLeft = 4, KeyRight = 8, KeyHorn = 16, KeyAutopilot = 32, KeyDoor = 64, KeyPay = 128, KeyRefuse = 256, KeyDhaka = 512;
+        private const int KeyUp = 1, KeyDown = 2, KeyLeft = 4, KeyRight = 8, KeyHorn = 16, KeyAutopilot = 32, KeyDoor = 64, KeyPay = 128, KeyRefuse = 256, KeyDhaka = 512, KeyHelperRole = 1024;
         private const float FixedStep = 1f / 60f;
 
         private static TrafficSim _sim;
         private static TuningTable _tuning;
         private static float _accumulator;
         private static bool _autopilot;
+        private static bool _helper;
         private static readonly Household _household = new Household();
         private static bool _dayClosed, _sleptChosen;
 
@@ -252,9 +254,18 @@ namespace TwentyTons.Sandbox
                 Horn = (keys & KeyHorn) != 0,
                 Door = (keys & KeyDoor) != 0,
             };
-            bool autopilot = (keys & KeyAutopilot) != 0;
+            bool helper = (keys & KeyHelperRole) != 0;
+            bool autopilot = (keys & KeyAutopilot) != 0 || helper;      // as helper, the ostad drives
             _autopilot = autopilot;
-            ScriptedDriver.Current = (keys & KeyDhaka) != 0 ? Policy.Dhaka : Policy.Careful;
+            _helper = helper;
+            ScriptedDriver.HelperMode = helper;
+            ScriptedDriver.Current = helper || (keys & KeyDhaka) != 0 ? Policy.Dhaka : Policy.Careful;
+            if (helper)
+            {
+                ScriptedDriver.HelperCalls = input.Door;
+                ScriptedDriver.HelperSignal = input.Throttle > 0f ? 1 : input.Brake > 0f ? -1 : 0;
+                _sim.SetDoor(input.Door);                         // the helper's own hands, no delay line
+            }
             if ((keys & KeyPay) != 0) { _sim.Economy.AnswerSergeant(true); Rollover.Answer(_sim, true); }
             if ((keys & KeyRefuse) != 0) { _sim.Economy.AnswerSergeant(false); Rollover.Answer(_sim, false); }
 
@@ -464,7 +475,8 @@ namespace TwentyTons.Sandbox
                 WrongSideSeconds = m.WrongSideSeconds,
                 WrongSideNow = m.WrongSideNow,
                 Autopilot = _autopilot,
-                AutopilotName = ScriptedDriver.Current == Policy.Dhaka ? "the Dhaka driver" : "the careful driver",
+                AutopilotName = _helper ? "the ostad" : ScriptedDriver.Current == Policy.Dhaka ? "the Dhaka driver" : "the careful driver",
+                HelperRole = _helper,
                 Lateral = _sim.Player.Lateral,
                 YawErrorDeg = Mathf.DeltaAngle(_sim.Corridor.YawAt(_sim.Player.S) * Mathf.Rad2Deg, _sim.Player.Yaw * Mathf.Rad2Deg),
                 Junctions = junctions,
