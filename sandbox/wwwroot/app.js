@@ -15,6 +15,10 @@ const YIELD_TINT = 0x9ad0ff;
 const BLUFF_TINT = 0xff8a7a;
 
 let renderer, scene, camera, playerLight;
+// The simulation uses Unity's left-handed axes (x right, z forward, yaw clockwise from above);
+// three.js is right-handed. Everything is drawn inside this group, mirrored in x, so a right
+// turn in the C# is a right turn on screen and the kerb is on the left, as in Dhaka.
+let world;
 let meshes = new Map();          // agent id → mesh
 let keys = 0;
 let topDown = false;
@@ -42,22 +46,25 @@ function setupRenderer() {
   renderer.shadowMap.enabled = false;
 
   scene = new THREE.Scene();
+  world = new THREE.Group();
+  world.scale.x = -1;
+  scene.add(world);
   scene.background = new THREE.Color(0xb9c3cc);                       // Dhaka haze
   scene.fog = new THREE.Fog(0xb9c3cc, 150, 600);
 
   camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.5, 1500);
 
-  scene.add(new THREE.HemisphereLight(0xdde6ee, 0x55504a, 0.9));
+  world.add(new THREE.HemisphereLight(0xdde6ee, 0x55504a, 0.9));
   const sun = new THREE.DirectionalLight(0xfff1dc, 1.1);
   sun.position.set(80, 120, -60);
-  scene.add(sun);
+  world.add(sun);
 
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(4000, 4000),
     new THREE.MeshLambertMaterial({ color: 0x5e6258 }));
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.05;
-  scene.add(ground);
+  world.add(ground);
 
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -68,8 +75,8 @@ function setupRenderer() {
 
 // Road surface from the two edge polylines, buildings as boxes.
 function buildWorld(sceneDto) {
-  if (sceneRoot) scene.remove(sceneRoot);
-  for (const m of meshes.values()) scene.remove(m);
+  if (sceneRoot) world.remove(sceneRoot);
+  for (const m of meshes.values()) world.remove(m);
   meshes.clear();
   sceneRoot = new THREE.Group();
 
@@ -137,7 +144,7 @@ function buildWorld(sceneDto) {
     m.rotation.y = yaw;
     sceneRoot.add(m);
   }
-  scene.add(sceneRoot);
+  world.add(sceneRoot);
 }
 
 // A road surface between two edge polylines (x,z pairs), as a triangle strip.
@@ -177,10 +184,10 @@ function updateCrowds(counts) {
       const rx = Math.cos(zm.yaw), rz = -Math.sin(zm.yaw);     // right of travel
       m.position.set(zm.x + fx * along + rx * away * zm.side, 0.85, zm.z + fz * along + rz * away * zm.side);
       m.rotation.y = zm.yaw;
-      scene.add(m);
+      world.add(m);
       zm.boxes.push(m);
     }
-    while (zm.boxes.length > want) scene.remove(zm.boxes.pop());
+    while (zm.boxes.length > want) world.remove(zm.boxes.pop());
   });
 }
 
@@ -201,7 +208,7 @@ function updateJunctions(list) {
     camPole.scale.set(0.15, 6, 0.15);
     const camHead = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0xf2f2f2 }));
     camHead.scale.set(0.5, 0.3, 0.9);
-    scene.add(body); scene.add(cane); scene.add(pole); scene.add(lamp); scene.add(camPole); scene.add(camHead);
+    world.add(body); world.add(cane); world.add(pole); world.add(lamp); world.add(camPole); world.add(camHead);
     officers.push({ body, cane, pole, lamp, camPole, camHead });
   }
   list.forEach((j, i) => {
@@ -238,7 +245,7 @@ function updateRopes(data) {
     const bar = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0xe8d9a0 }));
     const man = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0x2f4f8f }));
     man.scale.set(0.55, 1.7, 0.55);
-    scene.add(bar); scene.add(man);
+    world.add(bar); world.add(man);
     ropes.push({ bar, man });
   }
   ropes.forEach((r, i) => {
@@ -373,7 +380,7 @@ function updateAgents(data) {
       m.scale.set(wid, hgt, len);                     // x across, y up, z along travel
       m.userData.base = m.material.color.getHex();
       meshes.set(id, m);
-      scene.add(m);
+      world.add(m);
     }
     m.position.set(x, (flags & 128) ? wid / 2 : y, z);
     m.rotation.y = yaw;
@@ -390,7 +397,7 @@ function updateAgents(data) {
     if (isPlayer) playerPose = { x, z, yaw };
   }
   for (const [id, m] of meshes) {
-    if (!seen.has(id)) { scene.remove(m); m.material.dispose(); meshes.delete(id); }
+    if (!seen.has(id)) { world.remove(m); m.material.dispose(); meshes.delete(id); }
   }
   placeCamera();
 }
@@ -399,15 +406,16 @@ const camTarget = new THREE.Vector3(), camPos = new THREE.Vector3();
 function placeCamera() {
   const { x, z, yaw } = playerPose;
   const fx = Math.sin(yaw), fz = Math.cos(yaw);
+  // Sim x is mirrored (see `world`), so the camera's x is negated here.
   if (topDown) {
-    camPos.set(x, 90, z);
-    camera.up.set(fx, 0, fz);
-    camTarget.set(x, 0, z);
+    camPos.set(-x, 90, z);
+    camera.up.set(-fx, 0, fz);
+    camTarget.set(-x, 0, z);
     camera.position.lerp(camPos, 0.2);
   } else {
-    camPos.set(x - fx * 22, 8, z - fz * 22);
+    camPos.set(-(x - fx * 22), 8, z - fz * 22);
     camera.up.set(0, 1, 0);
-    camTarget.set(x + fx * 12, 1.5, z + fz * 12);
+    camTarget.set(-(x + fx * 12), 1.5, z + fz * 12);
     camera.position.lerp(camPos, 0.12);
   }
   camera.lookAt(camTarget);

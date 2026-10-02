@@ -240,6 +240,10 @@ in the headless runner and in the browser. Entries below are appended as steps l
   how to report, and what not to push.
 - Phones: the HUD covered the road, so it now starts folded to the speed figure; a tap on it or the
   hud button opens it. The door button no longer overlaps the steering pad at 390px.
+- The picture was mirrored: the core uses Unity's left-handed axes and three.js is right-handed, so
+  the bus drove on the right with oncoming traffic on its left, and a right turn looked like a left
+  turn. The page now draws everything in a group mirrored in x and negates the camera's x. Checked
+  top-down: the kerb and the stands are on the left, a right turn goes right. Unity will not need this.
 
 **Where this leaves the project**
 
