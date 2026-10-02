@@ -22,6 +22,7 @@ namespace TwentyTons.Core
         public int Passengers;         // kept in sync from the bus's Load by TrafficSim
         public float BrakeWear;        // 0 = new, 1 = metal on metal
         public float SteerAngle;       // current front-wheel angle, radians
+        public bool Held;              // a sergeant's hand, or the end of the day: the bus does not move
 
         public float MassKg(BusSettings b) => b.TareTonnes * 1000f + Passengers * b.PassengerKg;
 
@@ -29,13 +30,16 @@ namespace TwentyTons.Core
         {
             float mass = MassKg(b);
             float speed = bus.Speed;
+            // Held (a sergeant's hand, the end of the day): the pedals are overridden, not overwritten.
+            float throttleIn = Held ? 0f : Throttle;
+            float brakeIn = Held ? 1f : Brake;
 
             // Engine: a fixed power means acceleration falls as speed rises and as mass rises.
             float powerLimited = (b.EnginePowerKw * 1000f) / (mass * Mathf.Max(speed, 1f));
-            float engine = Mathf.Min(b.MaxAccelMs2, powerLimited) * Mathf.Clamp01(Throttle);
+            float engine = Mathf.Min(b.MaxAccelMs2, powerLimited) * Mathf.Clamp01(throttleIn);
 
             // Brakes: worn pads keep only part of their bite. This is the loan against tomorrow.
-            float brake = b.BrakeDecelNewMs2 * (1f - b.BrakeWearLoss * Mathf.Clamp01(BrakeWear)) * Mathf.Clamp01(Brake);
+            float brake = b.BrakeDecelNewMs2 * (1f - b.BrakeWearLoss * Mathf.Clamp01(BrakeWear)) * Mathf.Clamp01(brakeIn);
 
             // Losses: rolling resistance, air, and the market stalls if you leave the road.
             float drag = b.RollingDecelMs2 + b.AirDragPerMs2 * speed * speed;

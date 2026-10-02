@@ -44,6 +44,7 @@ namespace TwentyTons.Core
         public readonly List<Agent> Agents = new List<Agent>();
         public readonly SimMetrics Metrics = new SimMetrics();
         public readonly BusController Bus = new BusController();
+        public Economy Economy;
         public Agent Player;
 
         private int _nextId = 1;
@@ -57,6 +58,7 @@ namespace TwentyTons.Core
             Corridors.Add(corridor);
             Tuning = tuning;
             Random = new SeededRandom(seed);
+            Economy = new Economy(this);
         }
 
         /// <summary>Add a place where people wait for buses. Hot zones (near junctions, markets) fill faster.</summary>
@@ -197,7 +199,8 @@ namespace TwentyTons.Core
 
         public void Step(float dt)
         {
-            if (Metrics.PersonHit) return;      // the day ended; nothing moves until a reset
+            if (Metrics.PersonHit && Economy.DayOver) return;   // the day ended; nothing moves until a reset
+            if (Economy.DayOver) return;
             Metrics.Time += dt;
 
             for (int i = 0; i < Junctions.Count; i++) Junctions[i].Tick(dt, Tuning.Officer, Random);
@@ -234,6 +237,8 @@ namespace TwentyTons.Core
             ResolveContacts();
             if (Player != null) UpdatePlayerMetrics(dt);
             MaintainPopulation();
+            Economy.Step(dt);
+            Economy.SyncFares();
         }
 
         /// <summary>
@@ -551,6 +556,7 @@ namespace TwentyTons.Core
                 if (a.IsPlayer || b.IsPlayer)
                 {
                     Metrics.Contacts++;
+                    Economy.OnScrape();
                     // A scrape with a named crew is remembered.
                     Agent other = a.IsPlayer ? b : a;
                     if (other.Brain != null) RivalAI.ChangeGrudge(other.Brain, Tuning.Memory.GrudgeWhenCutOff, Tuning.Memory);

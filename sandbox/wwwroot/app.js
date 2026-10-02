@@ -4,7 +4,7 @@
 import * as THREE from './vendor/three-r170.module.js';
 
 const ASSEMBLY = 'TwentyTons.Sandbox';
-const KEY = { up: 1, down: 2, left: 4, right: 8, horn: 16, autopilot: 32, door: 64 };
+const KEY = { up: 1, down: 2, left: 4, right: 8, horn: 16, autopilot: 32, door: 64, pay: 128, refuse: 256 };
 
 // Colours per vehicle class, in the order of the C# VehicleClass enum.
 // Pedestrian, Rickshaw, Cng, Car, Truck, Bus. Flat, no textures: this is a grey box.
@@ -188,7 +188,7 @@ function bindInput() {
   const map = {
     KeyW: KEY.up, ArrowUp: KEY.up, KeyS: KEY.down, ArrowDown: KEY.down,
     KeyA: KEY.left, ArrowLeft: KEY.left, KeyD: KEY.right, ArrowRight: KEY.right,
-    KeyH: KEY.horn, Space: KEY.horn,
+    KeyH: KEY.horn, Space: KEY.horn, Digit1: KEY.pay, Digit2: KEY.refuse,
   };
   window.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') return;
@@ -223,6 +223,11 @@ function bindTouch() {
     t.classList.toggle('hidden', !t.classList.contains('open'));
   });
   document.getElementById('touch-door').addEventListener('click', () => { keys ^= KEY.door; });
+  // Card buttons: a one-frame key press.
+  const pulse = bit => { keys |= bit; setTimeout(() => { keys &= ~bit; }, 120); };
+  document.getElementById('pay').addEventListener('click', () => pulse(KEY.pay));
+  document.getElementById('refuse').addEventListener('click', () => pulse(KEY.refuse));
+  document.getElementById('next-day').addEventListener('click', () => { seed++; buildWorld(DotNet.invokeMethod(ASSEMBLY, 'Reset', seed)); });
   document.getElementById('touch-restart').addEventListener('click', () => {
     seed++; buildWorld(DotNet.invokeMethod(ASSEMBLY, 'Reset', seed));
   });
@@ -346,7 +351,31 @@ function updateHud(f, dt) {
   el('distance').textContent = (f.distanceMetres / 1000).toFixed(2) + ' km · ' + f.agentCount + ' agents';
   el('horn-indicator').classList.toggle('on', (keys & KEY.horn) !== 0);
   el('autopilot').hidden = !f.autopilot;
-  el('overlay').classList.toggle('on', f.personHit);
+  el('clock').textContent = f.clock + ' · trip ' + f.trips;
+  el('paidOut').textContent = 'paid out Tk ' + f.paidOutTk.toFixed(0);
+
+  // The sergeant's card.
+  const sc = el('sergeant');
+  sc.classList.toggle('on', f.sergeantActive);
+  if (f.sergeantActive) {
+    el('sergeant-text').textContent = f.sergeantText;
+    el('sergeant-wait').textContent = f.sergeantDecided ? 'Papers: ' + Math.ceil(f.sergeantWaitLeft) + ' s' : '';
+    el('sergeant-choice').hidden = f.sergeantDecided;
+  }
+
+  // The end of the day.
+  const ov = el('overlay');
+  ov.classList.toggle('on', f.dayOver);
+  if (f.dayOver && ov.dataset.shown !== f.clock) {
+    ov.dataset.shown = f.clock;
+    const L = f.ledger;
+    el('day-headline').textContent = L.arrested ? 'You hit a person.' : 'End of the shift, ' + f.clock + '.';
+    el('day-sub').textContent = L.arrested ? 'The crowd gathers. The police take the bus and the day\'s money. A case follows.' : f.trips + ' trips. The owner gets the zoma whatever happened.';
+    const rows = [['Fares', L.fares], ['Zoma (the deposit)', -L.zoma], ['Fuel', -L.fuel], ['Lineman', -L.lineman], ['Party man', -L.partyMan], ['Sergeant', -L.sergeant], ['Cases', -L.cases], ['Repairs', -L.repairs]];
+    el('ledger').innerHTML = rows.filter(r => r[1] !== 0).map(r => '<div class="lrow"><span>' + r[0] + '</span><span>' + (r[1] < 0 ? '−' : '') + 'Tk ' + Math.abs(r[1]).toFixed(0) + '</span></div>').join('')
+      + '<div class="lrow total"><span>What the crew eats</span><span class="' + (L.crewNet < 0 ? 'danger' : 'ok') + '">' + (L.crewNet < 0 ? '−' : '') + 'Tk ' + Math.abs(L.crewNet).toFixed(0) + '</span></div>';
+    el('events').innerHTML = f.events.slice(-8).map(e => '<div>' + e + '</div>').join('');
+  }
 
   frames++; fpsTime += dt;
   if (fpsTime >= 1) { el('fps').textContent = frames + ' fps'; frames = 0; fpsTime = 0; }

@@ -24,6 +24,7 @@ namespace TwentyTons.Sandbox
         public static void Apply(TrafficSim sim)
         {
             Agent bus = sim.Player;
+            if (sim.Economy.Sergeant.Active) { sim.Economy.AnswerSergeant(true); return; }   // the careful driver pays
             float h = sim.Metrics.HeadwayAheadSeconds, g = sim.Metrics.GapAheadMetres, v = bus.Speed * 3.6f;
             bool closing = h < 2f || g < 12f;
 

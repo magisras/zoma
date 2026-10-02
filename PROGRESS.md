@@ -61,6 +61,26 @@ in the headless runner and in the browser. Entries below are appended as steps l
   behind. In a 5-minute headless shift Jamal sits behind the careful autopilot and ends at grudge 6.
 - Tests: 44.
 
+**Step 4 — the daily ledger, the clock, the roadside** (done)
+
+- `Economy` on the sim: fuel per km at the pump price, a trip counted (and the lineman paid) each
+  time the stand is passed, the party man paid at his stand, scrapes charged as repairs, the
+  zoma fixed before the day starts, a day length with a clock that maps onto a 06:00–20:00 shift,
+  the day ending on time or on a pedestrian hit (arrested: the day's fares are gone and a case
+  follows). `Ledger` holds the equation and an event log.
+- The sergeant: after a junction he may step out, far more likely if you ran the cane. The bus is
+  held (the pedals are overridden) until you answer: pay, or take a case and sit through the
+  paperwork. Keys 1/2 or the card's buttons; the autopilot pays.
+- Money scale: every Tk amount except fares and fuel is multiplied by `MoneyScale` (0.1) so a
+  15-minute sandbox day keeps the real ratios. Real figures stay in the table. Sliders for day
+  length and zoma.
+- Sandbox: clock and paid-out rows, the sergeant card, the end-of-day ledger card with "what the
+  crew eats" and the day's events, "Next day" restarts.
+- Headless full day, careful driver: fares Tk 120 against a scaled zoma of Tk 300, fuel 58,
+  repairs 180 (18 scrapes, mostly rivals rear-ending the slow bus): the crew eats −Tk 451. The
+  reckless crew took Tk 165 of fares in the same day. That is the mirror moment, in numbers.
+- Tests: 51.
+
 ## Session 2 — 2 Oct 2026 — Simulation core and browser sandbox
 
 **Shipped**

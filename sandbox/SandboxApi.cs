@@ -22,6 +22,21 @@ namespace TwentyTons.Sandbox
         public string[] ZoneNames { get; set; }
     }
 
+    /// <summary>The day's equation, for the end-of-day card.</summary>
+    public sealed class LedgerDto
+    {
+        public float Fares { get; set; }
+        public float Zoma { get; set; }
+        public float Fuel { get; set; }
+        public float Lineman { get; set; }
+        public float PartyMan { get; set; }
+        public float Sergeant { get; set; }
+        public float Cases { get; set; }
+        public float Repairs { get; set; }
+        public float CrewNet { get; set; }
+        public bool Arrested { get; set; }
+    }
+
     /// <summary>One named crew, every frame.</summary>
     public sealed class RivalDto
     {
@@ -81,6 +96,17 @@ namespace TwentyTons.Sandbox
         public int StopsLost { get; set; }
         public List<RivalDto> Rivals { get; set; }
         public string HelperGap { get; set; }     // the helper's call: who is ahead and behind, how far
+        public string Clock { get; set; }         // "06:42"
+        public float PaidOutTk { get; set; }
+        public int Trips { get; set; }
+        public bool SergeantActive { get; set; }
+        public string SergeantText { get; set; }
+        public bool SergeantDecided { get; set; } // refused: waiting out the paperwork
+        public float SergeantWaitLeft { get; set; }
+        public bool DayOver { get; set; }
+        public string DayOverReason { get; set; }
+        public LedgerDto Ledger { get; set; }
+        public string[] Events { get; set; }
         public List<JunctionDto> Junctions { get; set; }
     }
 
@@ -90,7 +116,7 @@ namespace TwentyTons.Sandbox
     /// </summary>
     public static class SandboxApi
     {
-        private const int KeyUp = 1, KeyDown = 2, KeyLeft = 4, KeyRight = 8, KeyHorn = 16, KeyAutopilot = 32, KeyDoor = 64;
+        private const int KeyUp = 1, KeyDown = 2, KeyLeft = 4, KeyRight = 8, KeyHorn = 16, KeyAutopilot = 32, KeyDoor = 64, KeyPay = 128, KeyRefuse = 256;
         private const float FixedStep = 1f / 60f;
 
         private static TrafficSim _sim;
@@ -167,6 +193,8 @@ namespace TwentyTons.Sandbox
             bool autopilot = (keys & KeyAutopilot) != 0;
             _autopilot = autopilot;
             _sim.SetDoor((keys & KeyDoor) != 0);
+            if ((keys & KeyPay) != 0) _sim.Economy.AnswerSergeant(true);
+            if ((keys & KeyRefuse) != 0) _sim.Economy.AnswerSergeant(false);
 
             _accumulator += Mathf.Min(dt, 0.1f);           // a hidden tab must not fast-forward the world
             while (_accumulator >= FixedStep)
@@ -195,6 +223,8 @@ namespace TwentyTons.Sandbox
                 case "pedestrians": _tuning.Spawn.PedestriansAround = (int)value; break;
                 case "brakeWear": _sim.Bus.BrakeWear = value; break;
                 case "passengers": _sim.SetPassengerCount(_sim.Player, (int)value); break;
+                case "dayLength": _tuning.Economy.DayLengthSeconds = value; break;
+                case "zoma": _tuning.Economy.ZomaTk = value; _sim.Economy.Ledger.ZomaTk = value * _tuning.Economy.MoneyScale; break;
                 default: throw new ArgumentException("Unknown tuning parameter: " + name);
             }
             _tuning.Gap.Clamp();
@@ -254,9 +284,31 @@ namespace TwentyTons.Sandbox
             string helper = (ahead != null ? ahead.Brain.CrewName + " " + Mathf.RoundToInt(aheadM) + " m ahead" : "nobody ahead")
                           + " · " + (behind != null ? behind.Brain.CrewName + " " + Mathf.RoundToInt(behindM) + " m behind" : "nobody behind");
 
+            Economy eco = _sim.Economy;
+            Ledger ledger = eco.Ledger;
+            float hours = eco.ClockHours;
+            string clock = ((int)hours).ToString("00") + ":" + ((int)((hours - (int)hours) * 60f)).ToString("00");
+            var events = ledger.Events.ToArray();
+
             SimMetrics m = _sim.Metrics;
             return new FrameDto
             {
+                Clock = clock,
+                PaidOutTk = ledger.PaidOutTk,
+                Trips = ledger.Trips,
+                SergeantActive = eco.Sergeant.Active,
+                SergeantText = eco.Sergeant.Active ? "Sergeant: " + eco.Sergeant.Reason + ". Tk " + eco.Sergeant.DemandTk.ToString("0") + " now, or a case." : null,
+                SergeantDecided = eco.Sergeant.Active && eco.Sergeant.ReleaseAt >= 0f,
+                SergeantWaitLeft = eco.Sergeant.ReleaseAt >= 0f ? Mathf.Max(0f, eco.Sergeant.ReleaseAt - m.Time) : 0f,
+                DayOver = eco.DayOver,
+                DayOverReason = eco.DayOverReason,
+                Ledger = new LedgerDto
+                {
+                    Fares = ledger.FaresTk, Zoma = ledger.ZomaTk, Fuel = ledger.FuelTk, Lineman = ledger.LinemanTk,
+                    PartyMan = ledger.PartyManTk, Sergeant = ledger.SergeantTk, Cases = ledger.CaseTk, Repairs = ledger.RepairsTk,
+                    CrewNet = ledger.CrewNetTk, Arrested = ledger.Arrested,
+                },
+                Events = events,
                 StopsLost = m.StopsLost,
                 Rivals = rivals,
                 HelperGap = helper,

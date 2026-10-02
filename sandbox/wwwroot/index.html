@@ -22,7 +22,8 @@
     <div class="row"><span class="label">zone</span><span id="zone">—</span></div>
     <div class="row"><span class="label">door (E)</span><span id="door">shut</span></div>
     <div class="row"><span class="label">passengers</span><span id="passengers">0</span></div>
-    <div class="row"><span class="label">fares</span><span id="fares">Tk 0</span></div>
+    <div class="row"><span class="label">fares</span><span id="fares">Tk 0</span><span class="dim" id="paidOut"></span></div>
+    <div class="row"><span class="label">clock</span><span id="clock">06:00</span></div>
     <div class="row secondary"><span class="label">missed stops</span><span id="missed">0</span></div>
     <div class="row"><span class="label">stops lost</span><span id="stopsLost">0</span></div>
     <div class="row"><span class="label">helper</span><span id="helper">—</span></div>
@@ -47,11 +48,13 @@
     <label>pedestrians <input type="range" data-param="pedestrians" min="0" max="60" step="2" value="14"><output>14</output></label>
     <label>brake wear <input type="range" data-param="brakeWear" min="0" max="1" step="0.05" value="0.5"><output>0.50</output></label>
     <label>passengers <input type="range" data-param="passengers" min="0" max="90" step="5" value="30"><output>30</output></label>
+    <label>day length s <input type="range" data-param="dayLength" min="60" max="1800" step="30" value="900"><output>900</output></label>
+    <label>zoma Tk <input type="range" data-param="zoma" min="0" max="6000" step="100" value="3000"><output>3000</output></label>
   </div>
 
   <div id="help">
     <b>W/↑</b> throttle · <b>S/↓</b> brake · <b>A D / ← →</b> steer · <b>H</b> or <b>space</b> horn (hold = blast) ·
-    <b>E</b> door · <b>C</b> camera · <b>T</b> tuning · <b>P</b> autopilot · <b>R</b> restart
+    <b>E</b> door · <b>1</b>/<b>2</b> pay / refuse · <b>C</b> camera · <b>T</b> tuning · <b>P</b> autopilot · <b>R</b> restart
   </div>
 
   <!-- Touch controls: shown only on coarse-pointer devices (phones, tablets). Same key bits as the keyboard. -->
@@ -73,11 +76,25 @@
     </div>
   </div>
 
-  <div id="overlay">
+  <div id="sergeant" class="modal">
     <div class="card">
-      <div class="headline">You hit a person.</div>
-      <div>The crowd gathers. The day is over, and so is the money in it.</div>
-      <div class="dim">Press R.</div>
+      <div class="headline">A hand goes up.</div>
+      <div id="sergeant-text"></div>
+      <div id="sergeant-choice" class="choices">
+        <button id="pay" class="cbtn">Pay <span class="dim">(1)</span></button>
+        <button id="refuse" class="cbtn">Take the case <span class="dim">(2)</span></button>
+      </div>
+      <div id="sergeant-wait" class="dim"></div>
+    </div>
+  </div>
+
+  <div id="overlay" class="modal">
+    <div class="card">
+      <div class="headline" id="day-headline">End of the shift.</div>
+      <div id="day-sub"></div>
+      <div id="ledger" class="ledger"></div>
+      <div id="events" class="events dim"></div>
+      <div class="choices"><button id="next-day" class="cbtn">Next day <span class="dim">(R)</span></button></div>
     </div>
   </div>
 

@@ -40,6 +40,9 @@ namespace TwentyTons.Tuning
         [Header("Traffic population")]
         public SpawnSettings Spawn = new SpawnSettings();
 
+        [Header("Money and the clock")]
+        public EconomySettings Economy = new EconomySettings();
+
         [Header("Decision layer (rival buses)")]
         public UtilitySettings Utility = new UtilitySettings();
         public MemorySettings Memory = new MemorySettings();
@@ -425,6 +428,75 @@ namespace TwentyTons.Tuning
 
         [Tooltip("How far a pedestrian stands from the road edge while waiting, metres. placeholder")]
         public float KerbOffsetMetres = 1.0f;
+    }
+
+    /// <summary>
+    /// Money and the clock (RESEARCH.md: pay system, bribes and extortion, police). Real figures where
+    /// the research has them; per-day fixed costs are scaled to the sandbox's short day.
+    /// </summary>
+    [Serializable]
+    public sealed class EconomySettings
+    {
+        [Header("The day")]
+        [Tooltip("How long a shift lasts in the sandbox, seconds. A real shift is 12–17 h; this is the prototype's day. placeholder")]
+        public float DayLengthSeconds = 900f;
+
+        [Tooltip("Shift hours the sandbox day stands for, for the clock. RESEARCH: 12–14 h routine.")]
+        public float ShiftHours = 14f;
+
+        [Tooltip("Clock hour the shift starts at. RESEARCH: Khurshid drives 6 am to 11 pm.")]
+        public float ShiftStartHour = 6f;
+
+        [Tooltip("Every Tk amount except fares and fuel (zoma, roadside payments, cases, repairs, food, bed) is " +
+                 "multiplied by this, so a short sandbox day stays a fair fight. Fares are per passenger and fuel " +
+                 "per km, so they scale with the day on their own. 1 = the real day. placeholder")]
+        public float MoneyScale = 0.1f;
+
+        [Header("The owner")]
+        [Tooltip("The daily deposit, Tk. RESEARCH: Tk 3,000–5,000 depending on route; city bus ~3,000.")]
+        public float ZomaTk = 3000f;
+
+        [Header("Fuel")]
+        [Tooltip("Diesel, Tk per litre. placeholder (2026 pump price to confirm)")]
+        public float DieselTkPerLitre = 105f;
+
+        [Tooltip("City bus fuel economy, km per litre. placeholder")]
+        public float BusKmPerLitre = 3.5f;
+
+        [Header("Roadside payments (RESEARCH: 8–10 points per route; lineman, sergeant, party man)")]
+        [Tooltip("The lineman at the stand, per trip, Tk. placeholder")]
+        public float LinemanTkPerTrip = 50f;
+        [Tooltip("Which zone is the stand (the trip point). 0 = the first zone.")]
+        public int LinemanZoneIndex = 0;
+
+        [Tooltip("The party man at his stand, per trip, Tk. placeholder")]
+        public float PartyManTkPerTrip = 30f;
+        [Tooltip("Which zone the party man works.")]
+        public int PartyManZoneIndex = 3;
+
+        [Tooltip("What the sergeant asks for, Tk. Negotiable in the full game. placeholder")]
+        public float SergeantDemandTk = 300f;
+        [Tooltip("Chance the sergeant steps out after you ran a cane. placeholder")]
+        [Range(0f, 1f)] public float SergeantChanceAfterCaneRun = 0.6f;
+        [Tooltip("Officer.SergeantStopChance is per shift; per junction pass it is multiplied by this. placeholder")]
+        [Range(0f, 1f)] public float SergeantChancePerPassFactor = 0.25f;
+
+        [Tooltip("A case when you refuse, Tk. RESEARCH: wrong-side driving Tk 3,000 per case.")]
+        public float CaseTk = 3000f;
+        [Tooltip("How long the paperwork holds the bus after a case, seconds. placeholder")]
+        public float CaseDelaySeconds = 120f;
+
+        [Header("Damage and the one hard rule")]
+        [Tooltip("What a scrape costs the crew, Tk. placeholder")]
+        public float ScrapeRepairTk = 100f;
+        [Tooltip("The case after hitting a person, Tk. RESEARCH: non-bailable; the day's money is gone too. placeholder")]
+        public float PersonHitCaseTk = 20000f;
+
+        [Header("The household")]
+        [Tooltip("What the crew spends on food per day, Tk. placeholder")]
+        public float FoodTkPerDay = 300f;
+        [Tooltip("A bed for the night, Tk; the bus floor is free. placeholder")]
+        public float BedTk = 200f;
     }
 
     // ------------------------------------------------------------------------------------------
