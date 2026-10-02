@@ -95,6 +95,7 @@ public static class Headless
         }
         tuning.Passengers.BaseRatePerMinute *= RateScale;
         for (int i = 0; i < SandboxWorld.ZoneS.Length; i++) sim.AddZone(SandboxWorld.ZoneNames[i], SandboxWorld.ZoneS[i], SandboxWorld.ZoneHot[i]);
+        for (int i = 0; i < SandboxWorld.CheckpointS.Length; i++) sim.AddCheckpoint(SandboxWorld.CheckpointNames[i], SandboxWorld.CheckpointS[i]);
         sim.SpawnPlayerBus(30f, -2f);
         sim.SpawnRivalBus("Rafiq", DriverPersonality.Reckless(), 180f, -2f);
         sim.SpawnRivalBus("Jamal", DriverPersonality.Spiteful(), corridor.Length - 160f, -2f);
@@ -109,7 +110,14 @@ public static class Headless
         Ledger l = sim.Economy.Ledger;
         Console.WriteLine($"seed {seed} ({ScriptedDriver.Current}): {seconds:0}s  dist {m.DistanceMetres / 1000f:0.00} km  nearMisses {m.NearMisses} ({m.NearMissesPerMinute:0.0}/min)  minHeadway {m.MinHeadwaySeconds:0.00}s  scrapes {m.Contacts} ({m.HardContacts} hard)  caneRuns {m.CaneRuns}  horn {m.HornPresses} moved {m.YieldsToHorn}  agents {sim.Agents.Count}");
         Console.WriteLine($"  aboard {load.Count}  boarded {load.Boarded}  alighted {load.Alighted}  missed {load.MissedAlights}  stumbles {load.Stumbles}  hurt {load.Injuries}  fares Tk {load.FaresTk:0}  stopsLost {m.StopsLost}");
-        Console.WriteLine($"  ledger: fares {l.FaresTk:0}  zoma {l.ZomaTk:0}  fuel {l.FuelTk:0}  lineman {l.LinemanTk:0}  party {l.PartyManTk:0}  sergeant {l.SergeantTk:0}  cases {l.CaseTk:0}  repairs {l.RepairsTk:0}  => crew {l.CrewNetTk:0} Tk  ({l.Trips} trips, day over: {sim.Economy.DayOver} {sim.Economy.DayOverReason})");
+        Console.WriteLine($"  ledger: fares {l.FaresTk:0}  zoma {l.ZomaTk:0}  fuel {l.FuelTk:0}  lineman {l.LinemanTk:0}  party {l.PartyManTk:0}  sergeant {l.SergeantTk:0}  cases {l.CaseTk:0}  camera {l.CameraTk:0}  repairs {l.RepairsTk:0}  => crew {l.CrewNetTk:0} Tk  ({l.Trips} trips, day over: {sim.Economy.DayOver} {sim.Economy.DayOverReason})");
+        Console.WriteLine($"  street: {(sim.Economy.DriveDay ? "DRIVE DAY" : "ordinary day")}  boxes manned {sim.Checkpoints.FindAll(c => c.SergeantOnDuty).Count}/{sim.Checkpoints.Count}  seized {sim.Economy.Seized}");
+        foreach (Junction j in sim.Junctions)
+        {
+            int crossNear = 0;
+            foreach (Agent a in sim.Agents) if (a.Corridor == j.Cross && !a.IsPedestrian && Math.Abs(j.Cross.DeltaS(j.CrossS, a.S)) < 40f) crossNear++;
+            Console.WriteLine($"  junction S={j.MainS:0} {(j.Mirror != null ? "(mirror)" : "        ")} open={j.Open} timer={j.Timer:0}s roped={j.Roped} camera={j.Camera} inBox main={j.MainInBox} cross={j.CrossInBox} crossNear={crossNear} leakers={j.LeakersLeft}");
+        }
         foreach (string e in l.Events) Console.WriteLine("    " + e);
         Console.WriteLine($"  wrong side {m.WrongSideSeconds:0} s");
         if (sim.Rollover.Count > 0) Console.WriteLine($"  ROLLOVER x{sim.Rollover.Count}: {sim.Rollover.Cause}, {sim.Rollover.HurtPassengers} hurt");

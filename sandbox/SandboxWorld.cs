@@ -22,6 +22,9 @@ namespace TwentyTons.Sandbox
 
         /// <summary>Main-road S positions of the cross streets. Chosen on the long straights.</summary>
         public static readonly float[] JunctionS = { 260f, 1010f };
+        /// <summary>Police boxes (docs/STREET_CONTROL.md §3): just past the first junction, and before Kazipara.</summary>
+        public static readonly float[] CheckpointS = { 300f, 960f };
+        public static readonly string[] CheckpointNames = { "Mirpur 10 box", "Kazipara box" };
 
         /// <summary>Where people wait, with fictional names. Hot ones sit just before the junctions.</summary>
         public static readonly string[] ZoneNames = { "Stand", "Block 11", "Roundabout", "Market", "Kazipara", "School" };

@@ -22,6 +22,9 @@ namespace TwentyTons.Sandbox
         /// <summary>Per zone: x, z, yaw, side. Names in ZoneNames.</summary>
         public float[] Zones { get; set; }
         public string[] ZoneNames { get; set; }
+        /// <summary>Per police box: x, z, yaw, sergeant on duty (1/0). Decided once per day.</summary>
+        public float[] Checkpoints { get; set; }
+        public string[] CheckpointNames { get; set; }
     }
 
     /// <summary>The day's equation, for the end-of-day card.</summary>
@@ -35,6 +38,7 @@ namespace TwentyTons.Sandbox
         public float Sergeant { get; set; }
         public float Cases { get; set; }
         public float Repairs { get; set; }
+        public float Camera { get; set; }
         public float CrewNet { get; set; }
         public bool Arrested { get; set; }
     }
@@ -58,6 +62,9 @@ namespace TwentyTons.Sandbox
         public float MainYaw { get; set; }
         public bool MainOpen { get; set; }
         public float Timer { get; set; }
+        public int Signal { get; set; }           // SignalMode: 0 dark, 1 manual, 2 timer. Scenery.
+        public bool Camera { get; set; }
+        public bool Roped { get; set; }
     }
 
     /// <summary>What the page needs every frame.</summary>
@@ -137,6 +144,12 @@ namespace TwentyTons.Sandbox
         public string Subtitle { get; set; }      // "Helper: ..." or null
         public float SubtitleAge { get; set; }
         public List<JunctionDto> Junctions { get; set; }
+        /// <summary>Per rope across a closed approach: x, z, yaw, width.</summary>
+        public float[] Ropes { get; set; }
+        public bool HeldByRope { get; set; }
+        public bool DriveDay { get; set; }
+        public bool Seized { get; set; }
+        public int YardDays { get; set; }         // days the bus will sit in the yard, when seized
     }
 
     /// <summary>
@@ -192,9 +205,15 @@ namespace TwentyTons.Sandbox
             {
                 _sim.AddZone(SandboxWorld.ZoneNames[i], SandboxWorld.ZoneS[i], SandboxWorld.ZoneHot[i]);
             }
+            for (int i = 0; i < SandboxWorld.CheckpointS.Length; i++)
+            {
+                _sim.AddCheckpoint(SandboxWorld.CheckpointNames[i], SandboxWorld.CheckpointS[i]);
+            }
             ScriptedDriver.Reset();
             _sim.Condition = _household.Bus;                 // the same bus every day
             _sim.Day = _household.Day;
+            // The story hook: one morning there is a camera on the first pole (docs/STREET_CONTROL.md §4).
+            if (_tuning.Economy.CameraFromDay > 0 && _sim.Day >= _tuning.Economy.CameraFromDay) _sim.Junctions[0].Camera = true;
             bool continuing = _household.Days.Count > 0;
             float wearCarried = _household.Bus.BrakeWear;
             _sim.SpawnPlayerBus(30f, -2f);                   // sets the prototype's starting wear...
@@ -216,7 +235,23 @@ namespace TwentyTons.Sandbox
                 OncomingRightEdge = SandboxWorld.RoadEdge(oncoming, oncoming.HalfWidth),
                 Zones = ZoneGeometry(),
                 ZoneNames = SandboxWorld.ZoneNames,
+                Checkpoints = CheckpointGeometry(corridor),
+                CheckpointNames = SandboxWorld.CheckpointNames,
             };
+        }
+
+        /// <summary>Police boxes stand on the pavement (the kerb side, away from the median).</summary>
+        private static float[] CheckpointGeometry(Corridor corridor)
+        {
+            var data = new float[_sim.Checkpoints.Count * 4];
+            for (int i = 0; i < _sim.Checkpoints.Count; i++)
+            {
+                Checkpoint cp = _sim.Checkpoints[i];
+                Vector3 p = corridor.PositionAt(cp.S, -(corridor.HalfWidth + SandboxWorld.PavementMetres * 0.6f));
+                data[i * 4] = p.x; data[i * 4 + 1] = p.z;
+                data[i * 4 + 2] = corridor.YawAt(cp.S); data[i * 4 + 3] = cp.SergeantOnDuty ? 1f : 0f;
+            }
+            return data;
         }
 
         private static string SpeakerName(VoiceLine line)
@@ -314,7 +349,10 @@ namespace TwentyTons.Sandbox
         {
             if (!_sleptChosen) Sleep(false);
             if (_sim.Rollover.Count > 0) _household.NoteRollover(_sim.Economy.WalkedAway, _tuning.Economy);
-            if (!work) _household.RestDay(_tuning.Fatigue, _tuning.Economy);   // the day off is a day of its own
+            if (_sim.Economy.Seized) _household.NoteSeizure(_tuning.Economy);
+            // The yard: days without a bus pass before anyone can work again. Not a choice.
+            while (_household.BusInYardDays > 0) _household.YardDay(_tuning.Fatigue, _tuning.Economy);
+            if (!work && !_sim.Economy.Seized) _household.RestDay(_tuning.Fatigue, _tuning.Economy);   // the day off is a day of its own
             _household.StartNextWorkDay();
             _dayClosed = false;
             _sleptChosen = false;
@@ -386,7 +424,18 @@ namespace TwentyTons.Sandbox
                 {
                     X = j.Centre.x, Z = j.Centre.z, MainYaw = _sim.Corridor.YawAt(j.MainS),
                     MainOpen = j.Open == JunctionFlow.Main, Timer = j.Timer,
+                    Signal = (int)j.Signal, Camera = j.Camera, Roped = j.Roped,
                 });
+            }
+            // A rope across every closed approach the constable roped, mirrors included (one per carriageway).
+            var ropes = new List<float>();
+            foreach (Junction j in _sim.Junctions)
+            {
+                if (!j.Roped) continue;
+                Corridor closed = j.Open == JunctionFlow.Main ? j.Cross : j.Main;
+                float lineS = j.StopLineOn(closed, _tuning.Officer.StopLineSetbackMetres);
+                Vector3 p = closed.PositionAt(lineS, 0f);
+                ropes.Add(p.x); ropes.Add(p.z); ropes.Add(closed.YawAt(lineS)); ropes.Add(closed.Width);
             }
 
             BusLoad load = _sim.Player.Load;
@@ -434,8 +483,13 @@ namespace TwentyTons.Sandbox
                 {
                     Fares = ledger.FaresTk, Zoma = ledger.ZomaTk, Fuel = ledger.FuelTk, Lineman = ledger.LinemanTk,
                     PartyMan = ledger.PartyManTk, Sergeant = ledger.SergeantTk, Cases = ledger.CaseTk, Repairs = ledger.RepairsTk + ledger.RopesTk,
-                    CrewNet = ledger.CrewNetTk, Arrested = ledger.Arrested,
+                    Camera = ledger.CameraTk, CrewNet = ledger.CrewNetTk, Arrested = ledger.Arrested,
                 },
+                Ropes = ropes.ToArray(),
+                HeldByRope = _sim.Bus.HeldByRope,
+                DriveDay = eco.DriveDay,
+                Seized = eco.Seized,
+                YardDays = eco.Seized ? _tuning.Economy.DumpingDays : 0,
                 Events = events,
                 Fatigue = _sim.Fatigue.Level,
                 Tunnel = _sim.Fatigue.Tunnel(_tuning.Fatigue),

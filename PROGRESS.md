@@ -201,10 +201,34 @@ in the headless runner and in the browser. Entries below are appended as steps l
 - Fixed: the Dhaka autopilot's horn was being reset by the key handler every step, so a blast
   counted as sixty presses a second.
 
+**Step 15 — the street's control: signals, the rope, police boxes, drive days, the yard, cameras** (done)
+
+- Asked: traffic lights, policemen on roads, crossings, active checking and stopping: how is it
+  really done? Researched and written up in `docs/STREET_CONTROL.md` with sources: the signals are
+  dark and the officer's cane runs the junction (central-spine pilots aside); constables rope
+  closed approaches; sergeants at police boxes have targets and special drive days; refusing with
+  bad papers can put the bus in the dumping yard for days; AI cameras went live on 7 May 2026 at
+  8 junctions and SMS the owner; the road is the crossing, zebras and overbridges are scenery.
+- In the core, each as a rule the world enforces, never a UI: `Junction.Signal` (scenery, three
+  modes), `Junction.Roped` (no leakers; the player's bus brakes for it whatever the pedal says and
+  its nose is held at the line), `Checkpoint` police boxes with a sergeant on duty by chance (the
+  'papers' stop moves there from the junction), `Economy.DriveDay` (×2.5 stops, ×1.5 price, the
+  conductor says so), seizure on a refusal without papers (`Household.YardDay`), `Junction.Camera`
+  from day 6 on the first junction (an SMS case on the night's ledger), and pedestrians clustering
+  near stands and junctions. Eight tests in `StreetControlTests`, 89 in all.
+- Sandbox: signal poles (dark), a camera on its pole from day 6, ropes with a constable at the kerb
+  end, blue police huts with a sergeant beside the manned ones, a 'street' HUD row, the seized
+  day's card and the days in the yard. Headless prints junction states and the day's street.
+- Checked: the Dhaka autopilot still covers ~1.2 km in 10 minutes with ropes and clusters on;
+  the first four minutes are a start-of-day queue at the first junction either way.
+- Found and fixed on the way: `.gitignore`'s Unity `*.csproj` rule had swallowed
+  `sandbox/TwentyTons.Sandbox.csproj`, so a fresh clone could not run `make sandbox`.
+
 **Where this leaves the project**
 
 Everything in README milestones 3–6 now exists as engine-free C# with tests, runs in the browser
-sandbox and in the headless runner. Not yet done: the Unity side (project settings, scene, OSM
+sandbox and in the headless runner, and the street's own control (the cane, the rope, the box, the
+camera) is in. Not yet done: the Unity side (project settings, scene, OSM
 import, real bus physics, 3D assets), the Bangla column of `VoiceLines` and the recordings, the
 mirror-moment scripting across days, and the tuning pass the thesis report asks for. All numbers are placeholders until the owner
 plays; the headless runner gives repeatable metrics for that tuning.

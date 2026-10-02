@@ -39,6 +39,14 @@ rate): careful −154 with fares 228 and 8 scrapes, Dhaka −650 with fares 81 a
 Dhaka's fares fell: its brakes fade over the day and it overshoots zones it would have worked.
 A policy that knows its brakes are going would slow in earlier. The verdict stands.
 
+## After the street's control (2 Oct 2026, 6 seeds × 900 s)
+
+With ropes, police boxes, drive days and cameras in (`docs/STREET_CONTROL.md`): careful −175 with
+fares 268 and 13.8 scrapes a day, Dhaka −287 with fares 146 and 21.8 scrapes. No sergeant took
+money in six days at the default chances and no camera was on yet (day 1). The rope changes the
+queue at the first junction, not the day: over ten minutes the Dhaka driver covers 1.2 km with or
+without it. **Verdict unchanged: polite driving still wins.**
+
 ## Why, and what to tune
 
 The numbers say the aggressive policy loses money three ways, none of them the way the research

@@ -107,6 +107,25 @@ function buildWorld(sceneDto) {
     zoneMarkers.push({ x, z, yaw, side, name: sceneDto.zoneNames[i / 4], boxes: [] });
   }
 
+  // Police boxes on the pavement; a sergeant stands beside the manned ones. No label says which:
+  // the figure by the hut is the only tell, as on the street.
+  const C = sceneDto.checkpoints || [];
+  for (let i = 0; i < C.length; i += 4) {
+    const [x, z, yaw, onDuty] = C.slice(i, i + 4);
+    const hut = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0x3b5b8a }));
+    hut.scale.set(2.4, 2.6, 2.4); hut.position.set(x, 1.3, z); hut.rotation.y = yaw;
+    sceneRoot.add(hut);
+    const roof = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0xe8e8e0 }));
+    roof.scale.set(2.8, 0.15, 2.8); roof.position.set(x, 2.68, z); roof.rotation.y = yaw;
+    sceneRoot.add(roof);
+    if (onDuty) {
+      const rx = Math.cos(yaw), rz = -Math.sin(yaw);                 // right of travel: towards the road
+      const sgt = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0x2f4f8f }));
+      sgt.scale.set(0.55, 1.8, 0.55); sgt.position.set(x + rx * 2.2, 0.9, z + rz * 2.2); sgt.rotation.y = yaw;
+      sceneRoot.add(sgt);
+    }
+  }
+
   const B = sceneDto.buildings;
   const box = new THREE.BoxGeometry(1, 1, 1);
   for (let i = 0; i < B.length; i += 6) {
@@ -166,6 +185,7 @@ function updateCrowds(counts) {
 }
 
 // Officers: a thin tall box at the junction centre, a cane (bar) pointing along the open flow.
+// Beside each: a signal pole (dark on our corridor, as in Mirpur) and, when the day comes, a camera.
 const officers = [];
 function updateJunctions(list) {
   while (officers.length < list.length) {
@@ -173,8 +193,16 @@ function updateJunctions(list) {
     body.scale.set(0.6, 1.8, 0.6);
     const cane = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0xf0e68c }));
     cane.scale.set(0.15, 0.15, 3.0);
-    scene.add(body); scene.add(cane);
-    officers.push({ body, cane });
+    const pole = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0x3a3a3a }));
+    pole.scale.set(0.2, 4.5, 0.2);
+    const lamp = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0x2a2a2a }));
+    lamp.scale.set(0.5, 1.2, 0.4);
+    const camPole = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0x3a3a3a }));
+    camPole.scale.set(0.15, 6, 0.15);
+    const camHead = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0xf2f2f2 }));
+    camHead.scale.set(0.5, 0.3, 0.9);
+    scene.add(body); scene.add(cane); scene.add(pole); scene.add(lamp); scene.add(camPole); scene.add(camHead);
+    officers.push({ body, cane, pole, lamp, camPole, camHead });
   }
   list.forEach((j, i) => {
     const o = officers[i];
@@ -184,6 +212,46 @@ function updateJunctions(list) {
     o.cane.position.set(j.x, 1.6, j.z);
     o.cane.rotation.y = j.mainOpen ? j.mainYaw : j.mainYaw + Math.PI / 2;
     o.cane.material.color.setHex(j.mainOpen ? 0x7fb069 : 0xd9534f);
+    // The pole stands on the near-left corner of the box (kerb side, before the cross street).
+    const fx = Math.sin(j.mainYaw), fz = Math.cos(j.mainYaw);
+    const rx = Math.cos(j.mainYaw), rz = -Math.sin(j.mainYaw);
+    const px = j.x - fx * 6 - rx * 6.5, pz = j.z - fz * 6 - rz * 6.5;
+    o.pole.position.set(px, 2.25, pz);
+    o.lamp.position.set(px, 4.4, pz);
+    o.lamp.rotation.y = j.mainYaw;
+    // Dark unless the junction has a working signal; then it agrees with the cane. Either way, scenery.
+    o.lamp.material.color.setHex(j.signal === 0 ? 0x2a2a2a : j.mainOpen ? 0x5fcf5f : 0xe04848);
+    // The camera on the far-right corner (median side), looking back at the stop line.
+    const cx = j.x + fx * 6 + rx * 6.5, cz = j.z + fz * 6 + rz * 6.5;
+    o.camPole.position.set(cx, 3, cz);
+    o.camHead.position.set(cx, 6.1, cz);
+    o.camHead.rotation.y = j.mainYaw;
+    o.camPole.visible = o.camHead.visible = !!j.camera;
+  });
+}
+
+// Ropes: a bar across a closed approach, a constable at the kerb end. Nothing drives through it.
+const ropes = [];
+function updateRopes(data) {
+  const want = data.length / 4;
+  while (ropes.length < want) {
+    const bar = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0xe8d9a0 }));
+    const man = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0x2f4f8f }));
+    man.scale.set(0.55, 1.7, 0.55);
+    scene.add(bar); scene.add(man);
+    ropes.push({ bar, man });
+  }
+  ropes.forEach((r, i) => {
+    const on = i < want;
+    r.bar.visible = r.man.visible = on;
+    if (!on) return;
+    const [x, z, yaw, width] = data.slice(i * 4, i * 4 + 4);
+    r.bar.scale.set(width, 0.08, 0.08);
+    r.bar.position.set(x, 0.9, z);
+    r.bar.rotation.y = yaw;
+    const rx = Math.cos(yaw), rz = -Math.sin(yaw);
+    r.man.position.set(x - rx * (width / 2 + 0.5), 0.85, z - rz * (width / 2 + 0.5));
+    r.man.rotation.y = yaw;
   });
 }
 
@@ -271,6 +339,7 @@ function loop(now) {
   const frame = DotNet.invokeMethod(ASSEMBLY, 'Tick', dt, keys);
   updateAgents(frame.agents);
   updateJunctions(frame.junctions);
+  updateRopes(frame.ropes || []);
   updateCrowds(frame.zoneCrowds);
   window.twentyTons = { lateral: frame.lateral, yawErrorDeg: frame.yawErrorDeg, speedKmh: frame.speedKmh };   // for scripted drivers
 
@@ -353,6 +422,11 @@ function updateHud(f, dt) {
   el('nearMissRate').textContent = f.time > 10 ? f.nearMissesPerMinute.toFixed(1) + ' / min' : '';
   el('contacts').textContent = f.contacts + (f.hardContacts ? ' (' + f.hardContacts + ' cost)' : '');
   el('caneRuns').textContent = f.caneRuns;
+  const street = [];
+  if (f.driveDay) street.push('drive day');
+  if (f.junctions.some(j => j.camera)) street.push('camera at the first junction');
+  if (f.heldByRope) street.push('rope ahead');
+  el('street').textContent = street.length ? street.join(' · ') : '—';
   const ws = el('wrongSide');
   ws.textContent = f.wrongSideSeconds.toFixed(0) + ' s';
   ws.className = f.wrongSideNow ? 'warn' : '';
@@ -405,9 +479,11 @@ function updateHud(f, dt) {
   if (f.dayOver && ov.dataset.shown !== f.clock) {
     ov.dataset.shown = f.clock;
     const L = f.ledger;
-    el('day-headline').textContent = L.arrested ? 'You hit a person.' : 'End of the shift, ' + f.clock + '.';
-    el('day-sub').textContent = L.arrested ? 'The crowd gathers. The police take the bus and the day\'s money. A case follows.' : f.trips + ' trips. The owner gets the zoma whatever happened.';
-    const rows = [['Fares', L.fares], ['Zoma (the deposit)', -L.zoma], ['Fuel', -L.fuel], ['Lineman', -L.lineman], ['Party man', -L.partyMan], ['Sergeant', -L.sergeant], ['Cases', -L.cases], ['Repairs', -L.repairs]];
+    el('day-headline').textContent = L.arrested ? 'You hit a person.' : f.seized ? 'The bus is gone.' : 'End of the shift, ' + f.clock + '.';
+    el('day-sub').textContent = L.arrested ? 'The crowd gathers. The police take the bus and the day\'s money. A case follows.'
+      : f.seized ? 'No papers, no payment. The wrecker took it to the dumping yard for ' + f.yardDays + ' days. Food still costs; nothing comes in.'
+      : f.trips + ' trips. The owner gets the zoma whatever happened.';
+    const rows = [['Fares', L.fares], ['Zoma (the deposit)', -L.zoma], ['Fuel', -L.fuel], ['Lineman', -L.lineman], ['Party man', -L.partyMan], ['Sergeant', -L.sergeant], ['Cases', -L.cases], ['Camera cases', -L.camera], ['Repairs', -L.repairs]];
     el('ledger').innerHTML = rows.filter(r => r[1] !== 0).map(r => '<div class="lrow"><span>' + r[0] + '</span><span>' + (r[1] < 0 ? '−' : '') + 'Tk ' + Math.abs(r[1]).toFixed(0) + '</span></div>').join('')
       + '<div class="lrow total"><span>What the crew eats</span><span class="' + (L.crewNet < 0 ? 'danger' : 'ok') + '">' + (L.crewNet < 0 ? '−' : '') + 'Tk ' + Math.abs(L.crewNet).toFixed(0) + '</span></div>';
     el('events').innerHTML = f.events.slice(-8).map(e => '<div>' + e + '</div>').join('');
@@ -422,6 +498,8 @@ function updateHud(f, dt) {
     el('buy-papers').textContent = 'Buy a fitness certificate (Tk ' + f.fitnessTk.toFixed(0) + ')';
     el('buy-papers').disabled = f.papersValid;
     el('repairs').hidden = f.sleptChosen;
+    el('next-work').textContent = f.seized ? 'Back on the road in ' + f.yardDays + ' days' : 'Work tomorrow';
+    el('next-rest').hidden = f.seized;
   }
 
   // Subtitles: the crew's voices, for a few seconds each.

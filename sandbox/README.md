@@ -42,11 +42,18 @@ A day lasts 15 minutes (slider). At the end: the ledger, where to sleep, work or
 - Pedestrians (tall thin boxes) step out in front of cars with a hand up and hesitate for buses.
   Hit one and the day is over.
 - Officers at the two cross streets: green cane along the road = you may go. Nobody stops you
-  running it; cross traffic in the box does.
+  running it; cross traffic in the box does. Unless the constable has the rope out across your
+  approach: then nobody leaks, and your bus brakes for it whatever you press. The signal pole
+  beside him is dark, as at Mirpur 10; from day 6 a camera appears on the first junction and a
+  cane run there is an SMS to the owner, on your ledger that night.
+- Police boxes (blue huts on the pavement): a sergeant standing beside one is on duty today and may
+  step out for your papers. On a drive day (the conductor says so) he stops more and asks more.
 - Zones: tall thin boxes waiting on the kerb; stop slow, open the door (E), they board one by one.
   The two darker-gold buses are your own company's crews; the HUD shows what they are doing.
-- The sergeant after a junction: pay, or take the case and sit. Fatigue arrives late in the day
-  as slow hands, a narrowing view and the screen going dark for a moment.
+- The sergeant after a cane run, the wrong side or at a box: pay, or take the case and sit.
+  Refuse with no papers and the bus can go to the dumping yard: the day ends and days pass without
+  a bus. Fatigue arrives late in the day as slow hands, a narrowing view and the screen going dark
+  for a moment.
 - Subtitles are the crew. They are the manual.
 - The tuning panel edits the live `TuningTable` numbers. "Feels random" means nerve too high or
   gaps too small; "polite driving still wins" means rivals too timid (RESEARCH.md, Tuning).
