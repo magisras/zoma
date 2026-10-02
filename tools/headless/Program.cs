@@ -25,6 +25,8 @@ public static class Headless
         }
         for (int i = 0; i < SandboxWorld.ZoneS.Length; i++) sim.AddZone(SandboxWorld.ZoneNames[i], SandboxWorld.ZoneS[i], SandboxWorld.ZoneHot[i]);
         Agent bus = sim.SpawnPlayerBus(30f, -2f);
+        sim.SpawnRivalBus("Rafiq", DriverPersonality.Reckless(), 180f, -2f);
+        sim.SpawnRivalBus("Jamal", DriverPersonality.Spiteful(), corridor.Length - 160f, -2f);
 
         bool verbose = args.Length > 3 && args[3] == "-v";
         bool doorWas = false;
@@ -61,7 +63,12 @@ public static class Headless
         SimMetrics m = sim.Metrics;
         BusLoad load = bus.Load;
         Console.WriteLine($"seed {seed}: {seconds:0}s  dist {m.DistanceMetres / 1000f:0.00} km  nearMisses {m.NearMisses} ({m.NearMissesPerMinute:0.0}/min)  minHeadway {m.MinHeadwaySeconds:0.00}s  scrapes {m.Contacts}  caneRuns {m.CaneRuns}  horn {m.HornPresses} moved {m.YieldsToHorn}  agents {sim.Agents.Count}");
-        Console.WriteLine($"  aboard {load.Count}  boarded {load.Boarded}  alighted {load.Alighted}  missed {load.MissedAlights}  fares Tk {load.FaresTk:0}");
+        Console.WriteLine($"  aboard {load.Count}  boarded {load.Boarded}  alighted {load.Alighted}  missed {load.MissedAlights}  fares Tk {load.FaresTk:0}  stopsLost {m.StopsLost}");
+        foreach (Agent a in sim.Agents)
+        {
+            if (a.Brain == null) continue;
+            Console.WriteLine($"  crew {a.Brain.CrewName,-6} {a.Brain.Personality.Name,-9} gap {corridor.DeltaS(bus.S, a.S),6:0} m  {a.Brain.Action,-16} aboard {a.Load.Count,2}  boarded {a.Load.Boarded,2}  fares Tk {a.Load.FaresTk,4:0}  grudge {a.Brain.Grudge}");
+        }
         return 0;
     }
 

@@ -192,6 +192,7 @@ namespace TwentyTons.Core
             // The target may sit up to a metre onto the pavement: a vehicle shoved there by a bus
             // stays put until it picks a new target, instead of fighting its way back into the bus.
             // Targets chosen by SeekGap and Yield are always on the road.
+            if (!float.IsNaN(a.LateralOverride)) a.TargetLateral = a.LateralOverride;   // the decision layer owns it
             float target = Mathf.Clamp(a.TargetLateral, -edge - 1f, edge + 1f);
             float before = a.Lateral;
             a.Lateral = Mathf.MoveTowards(a.Lateral, target, lateralRate * dt);

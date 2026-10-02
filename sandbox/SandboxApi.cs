@@ -22,6 +22,17 @@ namespace TwentyTons.Sandbox
         public string[] ZoneNames { get; set; }
     }
 
+    /// <summary>One named crew, every frame.</summary>
+    public sealed class RivalDto
+    {
+        public string Name { get; set; }
+        public float GapMetres { get; set; }      // + ahead of the player, − behind
+        public string Action { get; set; }
+        public int Grudge { get; set; }
+        public int Aboard { get; set; }
+        public bool DoorOpen { get; set; }
+    }
+
     /// <summary>One junction, every frame: where the officer stands and which way the cane points.</summary>
     public sealed class JunctionDto
     {
@@ -67,6 +78,9 @@ namespace TwentyTons.Sandbox
         public int ZoneWaiting { get; set; }
         public string AtDoor { get; set; }        // who is on the step: "on: Student" / "off: Regular" / null
         public int[] ZoneCrowds { get; set; }     // waiting count per zone, for drawing
+        public int StopsLost { get; set; }
+        public List<RivalDto> Rivals { get; set; }
+        public string HelperGap { get; set; }     // the helper's call: who is ahead and behind, how far
         public List<JunctionDto> Junctions { get; set; }
     }
 
@@ -110,6 +124,9 @@ namespace TwentyTons.Sandbox
                 _sim.AddZone(SandboxWorld.ZoneNames[i], SandboxWorld.ZoneS[i], SandboxWorld.ZoneHot[i]);
             }
             _sim.SpawnPlayerBus(30f, -2f);
+            // The two crews of the player's own company: one ahead, one behind, as the research describes.
+            _sim.SpawnRivalBus("Rafiq", DriverPersonality.Reckless(), 180f, -2f);
+            _sim.SpawnRivalBus("Jamal", DriverPersonality.Spiteful(), corridor.Length - 160f, -2f);
             _accumulator = 0f;
 
             return new SceneDto
@@ -192,7 +209,8 @@ namespace TwentyTons.Sandbox
             {
                 Agent a = agents[i];
                 int flags = (a.IsPlayer ? 1 : 0) | (a.IsHorning ? 2 : 0) | (a.IsYielding ? 4 : 0)
-                          | (a.PedState == PedestrianState.Crossing ? 8 : 0) | (a.BluffTimer > 0f ? 16 : 0);
+                          | (a.PedState == PedestrianState.Crossing ? 8 : 0) | (a.BluffTimer > 0f ? 16 : 0)
+                          | (a.Brain != null && a.Brain.OwnCompany ? 32 : 0) | (a.Load != null && a.Load.DoorOpen ? 64 : 0);
                 data[k++] = a.Id;
                 data[k++] = (int)a.Class;
                 data[k++] = a.Position.x;
@@ -221,9 +239,27 @@ namespace TwentyTons.Sandbox
             for (int i = 0; i < crowds.Length; i++) crowds[i] = _sim.Zones[i].Waiting.Count;
             string atDoor = load.AtDoor == null ? null : (load.AtDoorIsAlighting ? "off: " : "on: ") + load.AtDoor.Kind;
 
+            var rivals = new List<RivalDto>();
+            foreach (Agent a in _sim.Agents)
+            {
+                if (a.Brain == null) continue;
+                rivals.Add(new RivalDto
+                {
+                    Name = a.Brain.CrewName, GapMetres = _sim.Corridor.DeltaS(_sim.Player.S, a.S),
+                    Action = a.Brain.Action.ToString(), Grudge = a.Brain.Grudge, Aboard = a.Load.Count, DoorOpen = a.Load.DoorOpen,
+                });
+            }
+            Agent ahead = _sim.OwnBusAhead(out float aheadM);
+            Agent behind = _sim.OwnBusBehind(out float behindM);
+            string helper = (ahead != null ? ahead.Brain.CrewName + " " + Mathf.RoundToInt(aheadM) + " m ahead" : "nobody ahead")
+                          + " · " + (behind != null ? behind.Brain.CrewName + " " + Mathf.RoundToInt(behindM) + " m behind" : "nobody behind");
+
             SimMetrics m = _sim.Metrics;
             return new FrameDto
             {
+                StopsLost = m.StopsLost,
+                Rivals = rivals,
+                HelperGap = helper,
                 DoorOpen = load.DoorOpen,
                 Seats = _tuning.Bus.Seats,
                 FaresTk = load.FaresTk,

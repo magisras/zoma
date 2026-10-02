@@ -548,6 +548,33 @@ namespace TwentyTons.Tuning
         [Tooltip("Score when the gap ahead is below this driver's critical gap. placeholder")]
         public float BackOffDangerousGapBonus = 1f;
 
+        [Header("Carrying the actions out")]
+        [Tooltip("Seconds between decisions. RESEARCH: 'Every second, score each action'.")]
+        public float DecisionIntervalSeconds = 1f;
+        [Tooltip("Desired speed as a factor of cruise while racing. placeholder")]
+        public float RaceSpeedFactor = 1.3f;
+        [Tooltip("Nerve added while racing or blocking. placeholder")]
+        public float RaceNerveBoost = 0.2f;
+        [Tooltip("Desired speed factor while skipping a stop. placeholder")]
+        public float SkipSpeedFactor = 1.1f;
+        [Tooltip("Desired speed factor while backing off. placeholder")]
+        public float BackOffSpeedFactor = 0.7f;
+        [Tooltip("Nerve removed while backing off. placeholder")]
+        public float BackOffNerveDrop = 0.3f;
+        [Tooltip("Longest a racing bus stays at a stop: grab and go, seconds. placeholder")]
+        public float RaceDwellSeconds = 8f;
+        [Tooltip("Longest a 'wait and fill' bus stays, seconds. RESEARCH: drivers deliberately wait at early stops. placeholder")]
+        public float WaitDwellSeconds = 40f;
+        [Tooltip("Comfortable braking when pulling into a stop, m/s². placeholder")]
+        public float StopDecelMs2 = 1.5f;
+
+        [Tooltip("Distance before a zone at which a bus that will stop starts pulling to the kerb, metres. placeholder")]
+        public float ApproachMetres = 60f;
+        [Tooltip("Other-company buses race when another bus is within this distance, metres. placeholder")]
+        public float RaceWhenNearMetres = 60f;
+        [Tooltip("...by this factor on their cruise speed. placeholder")]
+        public float RaceWhenNearFactor = 1.25f;
+
         [Header("Personalities")]
         [Tooltip("Archetypes a named crew member can be assigned. Edit the multipliers here, not in code.")]
         public DriverPersonality[] Personalities =
@@ -581,6 +608,15 @@ namespace TwentyTons.Tuning
 
         [Tooltip("Grudge moves this many points toward zero at the end of each shift. placeholder")]
         public int GrudgeDecayPerShift = 1;
+
+        [Tooltip("The player within this distance ahead, in the same band, is 'in the way', metres. placeholder")]
+        public float BlockRangeMetres = 25f;
+
+        [Tooltip("Seconds of being held up before it counts as a cut-off. placeholder")]
+        public float BlockedSecondsForGrudge = 3f;
+
+        [Tooltip("Seconds before the same driver can take another grudge point. placeholder")]
+        public float GrudgeCooldownSeconds = 10f;
     }
 
     // ------------------------------------------------------------------------------------------

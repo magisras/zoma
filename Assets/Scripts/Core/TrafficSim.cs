@@ -18,6 +18,7 @@ namespace TwentyTons.Core
         public int Contacts;                     // player scrapes
         public int NpcPersonHits;                // NPCs hitting pedestrians (it happens; counted, not fatal)
         public int CaneRuns;                     // times the player crossed a closed stop line
+        public int StopsLost;                    // a rival took a crowd the player was about to reach
         public bool PersonHit;                   // the player hit a person: the day is over
         public float GapAheadMetres = 999f;      // live: bumper to bumper
         public float HeadwayAheadSeconds = 99f;  // live: gap / speed
@@ -121,6 +122,27 @@ namespace TwentyTons.Core
             return NewVehicle(Corridor, vehicleClass, s, lateral, nerve);
         }
 
+        /// <summary>
+        /// A named crew of the player's own company: persistent, full decision layer with memory.
+        /// RESEARCH.md: "Own company (2 buses): persistent named crews, same livery as the player's."
+        /// </summary>
+        public Agent SpawnRivalBus(string crewName, DriverPersonality personality, float s, float lateral, bool ownCompany = true)
+        {
+            Agent bus = NewVehicle(Corridor, VehicleClass.Bus, s, lateral, personality.Nerve);
+            bus.Persistent = true;
+            bus.Load = new BusLoad();
+            bus.Brain = new RivalBrain
+            {
+                CrewName = crewName,
+                Personality = personality,
+                OwnCompany = ownCompany,
+                BaseNerve = personality.Nerve,
+                BaseCruise = bus.Shape.CruiseSpeed,
+            };
+            bus.DesiredSpeed = bus.Shape.CruiseSpeed;
+            return bus;
+        }
+
         public Agent SpawnVehicle(Corridor corridor, VehicleClass vehicleClass, float s, float lateral, float nerve)
         {
             return NewVehicle(corridor, vehicleClass, s, lateral, nerve);
@@ -197,9 +219,12 @@ namespace TwentyTons.Core
             {
                 Agent a = Agents[i];
                 if (a.IsPlayer) continue;
-                if (a.IsPedestrian) Pedestrians.Step(this, a, dt);
-                else Steering.Drive(this, a, dt);
+                if (a.IsPedestrian) { Pedestrians.Step(this, a, dt); continue; }
+                if (a.Brain != null) RivalAI.Step(this, a, dt);
+                else if (a.Class == VehicleClass.Bus) RaceWhenNear(a);
+                Steering.Drive(this, a, dt);
             }
+            WatchStopsLost();
 
             for (int i = 0; i < Agents.Count; i++)
             {
@@ -209,6 +234,79 @@ namespace TwentyTons.Core
             ResolveContacts();
             if (Player != null) UpdatePlayerMetrics(dt);
             MaintainPopulation();
+        }
+
+        /// <summary>
+        /// Other-company buses have no memory and no plan: they just speed up when another bus is
+        /// near (RESEARCH.md, "simple race-when-near logic").
+        /// </summary>
+        private void RaceWhenNear(Agent bus)
+        {
+            float range = Tuning.Utility.RaceWhenNearMetres;
+            bool near = false;
+            for (int i = 0; i < Agents.Count && !near; i++)
+            {
+                Agent other = Agents[i];
+                if (other == bus || other.Class != VehicleClass.Bus || other.Corridor != bus.Corridor) continue;
+                near = Mathf.Abs(Corridor.DeltaS(bus.S, other.S)) < range;
+            }
+            bus.DesiredSpeed = bus.Shape.CruiseSpeed * (near ? Tuning.Utility.RaceWhenNearFactor : 1f);
+        }
+
+        private readonly System.Collections.Generic.Dictionary<DemandZone, float> _rivalTookAt = new System.Collections.Generic.Dictionary<DemandZone, float>();
+
+        /// <summary>
+        /// "Arriving second at a stop earns almost nothing." When a rival's door takes people at a zone
+        /// the player is approaching from close behind, that stop is lost. Counted once per zone visit.
+        /// </summary>
+        private void WatchStopsLost()
+        {
+            if (Player == null) return;
+            for (int i = 0; i < Agents.Count; i++)
+            {
+                Agent rival = Agents[i];
+                if (rival.Brain == null || rival.Load == null || rival.Load.AtDoor == null || rival.Load.AtDoorIsAlighting) continue;
+                DemandZone zone = Boarding.ZoneInReach(this, rival);
+                if (zone == null) continue;
+                float ds = Corridor.DeltaS(Player.S, zone.S);
+                if (ds > 0f && ds < Tuning.Utility.RivalCloseMetres)
+                {
+                    float last;
+                    if (!_rivalTookAt.TryGetValue(zone, out last) || Metrics.Time - last > 60f)
+                    {
+                        Metrics.StopsLost++;
+                    }
+                    _rivalTookAt[zone] = Metrics.Time;
+                }
+            }
+        }
+
+        /// <summary>The nearest own-company bus ahead and behind, for the helper's gap report. Null if none.</summary>
+        public Agent OwnBusAhead(out float metres)
+        {
+            return OwnBus(true, out metres);
+        }
+
+        public Agent OwnBusBehind(out float metres)
+        {
+            return OwnBus(false, out metres);
+        }
+
+        private Agent OwnBus(bool ahead, out float metres)
+        {
+            Agent best = null;
+            metres = float.MaxValue;
+            if (Player == null) return null;
+            for (int i = 0; i < Agents.Count; i++)
+            {
+                Agent a = Agents[i];
+                if (a.Brain == null || !a.Brain.OwnCompany || a.Corridor != Player.Corridor) continue;
+                float ds = Corridor.DeltaS(Player.S, a.S);
+                if (ahead ? ds <= 0f : ds >= 0f) continue;
+                float d = Mathf.Abs(ds);
+                if (d < metres) { metres = d; best = a; }
+            }
+            return best;
         }
 
         /// <summary>Open or close the player's door (the helper's job). Opening stamps the time: first door wins the crowd.</summary>
@@ -450,7 +548,13 @@ namespace TwentyTons.Core
             // Count once per pair per couple of seconds.
             if (Metrics.Time - a.LastContactTime > 2f || Metrics.Time - b.LastContactTime > 2f)
             {
-                if (a.IsPlayer || b.IsPlayer) Metrics.Contacts++;
+                if (a.IsPlayer || b.IsPlayer)
+                {
+                    Metrics.Contacts++;
+                    // A scrape with a named crew is remembered.
+                    Agent other = a.IsPlayer ? b : a;
+                    if (other.Brain != null) RivalAI.ChangeGrudge(other.Brain, Tuning.Memory.GrudgeWhenCutOff, Tuning.Memory);
+                }
             }
             a.LastContactTime = b.LastContactTime = Metrics.Time;
         }
@@ -491,7 +595,7 @@ namespace TwentyTons.Core
             for (int i = Agents.Count - 1; i >= 0; i--)
             {
                 Agent a = Agents[i];
-                if (a.IsPlayer) continue;
+                if (a.IsPlayer || a.Persistent) continue;
                 bool gone;
                 if (a.Corridor != Corridor)
                 {

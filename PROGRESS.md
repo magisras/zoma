@@ -41,6 +41,26 @@ in the headless runner and in the browser. Entries below are appended as steps l
 - Tests: 34. Headless 5-minute shift: ~0.6–0.9 km, 2–7 scrapes, Tk 55–90 of fares. Slow and
   cheap, as the research says a careful driver's day is.
 
+**Step 3 — rival buses: utility AI, personalities, grudge memory** (done)
+
+- `RivalBrain` (crew name, personality, own company, grudge, fatigue, money, current action and
+  scores) on a bus agent; `RivalAI` scores the five actions every second from the situation
+  (crowd at next zone, empty seats, rival close behind, nearly full, early in route, player about
+  to overtake, fatigue, dangerous gap), multiplies by the personality and acts: racing raises
+  desired speed and nerve, skipping passes the zone, waiting fills at a stop, blocking mirrors the
+  player's lateral, backing off slows and loses nerve. Stopping pulls to the kerb, slows in
+  gently, opens the door, leaves when done, after the dwell (8 s racing, 40 s waiting) or if passed.
+- Memory: cut-off is an event (player enters the band right in front, +1), being held up behind
+  the player for 3 s is +1, the player moving aside while ahead is −1, a scrape with the player
+  is +1. Capped; cooldown between points.
+- Other-company buses: race-when-near only.
+- `StopsLost`: a crew's door takes people at a zone the player is approaching from within 150 m.
+  Helper gap report ("Rafiq 255 m ahead · Jamal 20 m behind") in the HUD; crews row with action,
+  load and grudge. Own-company livery a darker shade of the player's; door open = white.
+- Two named crews in the sandbox and headless runner: Rafiq (reckless) ahead, Jamal (spiteful)
+  behind. In a 5-minute headless shift Jamal sits behind the careful autopilot and ends at grudge 6.
+- Tests: 44.
+
 ## Session 2 — 2 Oct 2026 — Simulation core and browser sandbox
 
 **Shipped**

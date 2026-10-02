@@ -47,6 +47,9 @@ namespace TwentyTons.Core
         public float LastContactTime = -999f;
         public Junction LeakingThrough;  // a closed junction this driver decided to run anyway
         public BusLoad Load;             // passengers and door; null unless this is a bus that carries people
+        public RivalBrain Brain;         // decision layer; null for generic traffic and the player
+        public bool Persistent;          // never recycled by the population keeper (named crews)
+        public float LateralOverride = float.NaN;   // set by the decision layer to own the lateral this step
 
         // Pedestrians only.
         public PedestrianState PedState = PedestrianState.Waiting;

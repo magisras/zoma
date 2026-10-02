@@ -10,6 +10,7 @@ const KEY = { up: 1, down: 2, left: 4, right: 8, horn: 16, autopilot: 32, door: 
 // Pedestrian, Rickshaw, Cng, Car, Truck, Bus. Flat, no textures: this is a grey box.
 const CLASS_COLOURS = [0xe6cfa7, 0x4f6fa8, 0x3f8f4f, 0xc9c9c9, 0x7d6f5c, 0x6c8aa0];
 const PLAYER_COLOUR = 0xd9a441;
+const OWN_COMPANY_COLOUR = 0xb8862e;
 const YIELD_TINT = 0x9ad0ff;
 const BLUFF_TINT = 0xff8a7a;
 
@@ -268,7 +269,9 @@ function updateAgents(data) {
 
     let m = meshes.get(id);
     if (!m) {
-      m = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: isPlayer ? PLAYER_COLOUR : CLASS_COLOURS[cls] }));
+      const ownCompany = (flags & 32) !== 0;           // same livery as the player, a shade darker
+      const colour = isPlayer ? PLAYER_COLOUR : ownCompany ? OWN_COMPANY_COLOUR : CLASS_COLOURS[cls];
+      m = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: colour }));
       m.scale.set(wid, hgt, len);                     // x across, y up, z along travel
       m.userData.base = m.material.color.getHex();
       meshes.set(id, m);
@@ -279,6 +282,7 @@ function updateAgents(data) {
 
     // State tints: a horn flashes, a yielder goes pale blue, a bluffer goes red.
     let colour = m.userData.base;
+    if (flags & 64) colour = 0xffffff;              // door open: white while loading
     if (flags & 2) colour = 0xfff2b0;
     else if (flags & 16) colour = BLUFF_TINT;
     else if (flags & 4) colour = YIELD_TINT;
@@ -333,6 +337,9 @@ function updateHud(f, dt) {
   el('door').className = f.doorOpen ? 'warn' : '';
   el('zone').textContent = f.zoneName ? f.zoneName + ' · ' + f.zoneWaiting + ' waiting' : '—';
   el('missed').textContent = f.missedAlights;
+  el('stopsLost').textContent = f.stopsLost;
+  el('helper').textContent = f.helperGap;
+  el('rivals').textContent = f.rivals.map(r => r.name + ' ' + (r.gapMetres >= 0 ? '+' : '') + r.gapMetres.toFixed(0) + ' m · ' + r.action.replace(/([A-Z])/g, ' $1').trim().toLowerCase() + ' · ' + r.aboard + ' aboard · grudge ' + r.grudge).join('\n');
   el('brakeWear').textContent = (f.brakeWear * 100).toFixed(0) + '%';
   const mins = Math.floor(f.time / 60), secs = Math.floor(f.time % 60);
   el('time').textContent = mins + ':' + String(secs).padStart(2, '0');
