@@ -43,3 +43,6 @@ Thumbs.db
 # Blender working files live outside the Unity project (see docs/OSM_IMPORT_PLAN.md)
 *.blend1
 *.osm
+
+# Local compile/test cache (tools/check.sh)
+tools/.cache/

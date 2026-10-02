@@ -34,6 +34,11 @@ crew and the ledger make the player feel it.
   Unity Splines, NavMesh, blosm base version).
 - OpenStreetMap data is ODbL: keep "© OpenStreetMap contributors" in the credits and in
   `docs/OSM_IMPORT_PLAN.md`.
+- Run `./tools/check.sh` before every commit that touches C#. It compiles `Assets/Scripts` and
+  `Assets/Tests` with Mono against a UnityEngine stub and runs the tests with NUnitLite, so logic is
+  verified without opening Unity. Keep simulation logic free of UnityEngine types where you can
+  (pure C# in `Assets/Scripts/Core/`), so it stays testable this way; Unity-only code (MonoBehaviours,
+  physics, rendering) is thin and lives beside it.
 - At the end of every session: update `PROGRESS.md` (what shipped, what's next, open questions),
   commit, push. Summarise the same in the final message.
 
@@ -41,12 +46,13 @@ crew and the ledger make the player feel it.
 
 ```
 Assets/
-  Scripts/      C# by feature (Tuning/, later Steering/, Decision/, Bus/, World/)
+  Scripts/      C# by feature (Tuning/, later Core/ for engine-free simulation, Unity/ for adapters)
   Scenes/       one scene per corridor chunk or test bed
   Prefabs/      vehicles, props, grey-box blocks
   Data/         ScriptableObject instances (TuningTable.asset lives here)
   Tests/        EditMode tests (NUnit via Unity Test Framework)
 docs/           plans and notes that are not research (OSM import, scene budget)
+tools/          check.sh (compile + test without Unity), UnityEngine stub, NUnitLite entry point
 ```
 
 ## Naming

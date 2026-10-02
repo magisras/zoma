@@ -20,6 +20,8 @@ One entry per session. The next session reads this first.
 - `Assets/Tests/EditMode/TuningTableTests.cs`: five sanity tests that pin the research figures.
 - `docs/OSM_IMPORT_PLAN.md`: the Blender blosm → FBX → Unity plan for the first 2–3 km
   (Mirpur 12 → Mirpur 10 → Kazipara), with bbox, tool versions, budgets and a centreline export script.
+- `tools/check.sh`: compiles all scripts with Mono against `tools/unity-stubs/` and runs the tests with
+  NUnitLite. Verified here: 5/5 pass. This is how logic gets tested in cloud sessions without Unity.
 - `.gitignore`, `.gitattributes` (LFS lines commented until git-lfs is installed), `.editorconfig`.
 
 **Not done, by design**
