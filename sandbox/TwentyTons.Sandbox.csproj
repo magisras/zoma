@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <!--
+    The browser sandbox: the SAME simulation C# that Unity compiles (Assets/Scripts) is compiled
+    here to WebAssembly and drawn with three.js as grey boxes. Nothing is duplicated: the files are
+    included from Assets/ by path, together with the UnityEngine stub from tools/. If Unity needs a
+    type the stub lacks, the build fails here and tells you which one to add.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>TwentyTons.Sandbox</RootNamespace>
+    <AssemblyName>TwentyTons.Sandbox</AssemblyName>
+    <!-- No culture data: smaller download, and the game never formats dates in the browser. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Plain files only; simple static servers do not negotiate brotli/gzip anyway. -->
+    <CompressionEnabled>false</CompressionEnabled>
+    <BlazorEnableCompression>false</BlazorEnableCompression>
+    <!-- One warning-free build: the stub has unused parameters by design. -->
+    <NoWarn>CS0169;CS0649;CS0414</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.31" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="8.0.31" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="../Assets/Scripts/**/*.cs" Link="Game/%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="../tools/unity-stubs/*.cs" Link="UnityStub/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

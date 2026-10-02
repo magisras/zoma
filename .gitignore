@@ -13,7 +13,9 @@
 .vs/
 .vscode/
 .idea/
+# Unity regenerates these; the sandbox's hand-written project file is the one exception.
 *.csproj
+!sandbox/*.csproj
 *.sln
 *.suo
 *.user
