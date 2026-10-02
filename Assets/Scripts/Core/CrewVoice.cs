@@ -12,6 +12,7 @@ namespace TwentyTons.Core
         public Speaker Speaker;
         public string Text;        // the subtitle (English for now; Bangla lines come with the voice recordings)
         public string Who;         // a crew name for Speaker.Crew
+        public string Id;          // which line in VoiceLines
         public float Time;
     }
 
@@ -50,10 +51,10 @@ namespace TwentyTons.Core
             // ---- The helper: the gap, the crowd, the horn, the door.
             Agent behind = _sim.OwnBusBehind(out float behindM);
             if (behind != null && behindM < v.BusBehindCloseMetres)
-                Say("gap-behind", v.GapCooldownSeconds, Speaker.Helper, behind.Brain.CrewName + " is " + Mathf.RoundToInt(behindM) + " metres behind! Go, go!");
+                Say("gap-behind", v.GapCooldownSeconds, behind.Brain.CrewName, Mathf.RoundToInt(behindM));
             Agent ahead = _sim.OwnBusAhead(out float aheadM);
             if (ahead != null && aheadM > v.BusAheadFarMetres && (behind == null || behindM > v.BusBehindCloseMetres * 2f))
-                Say("gap-ahead", v.GapCooldownSeconds * 2f, Speaker.Helper, ahead.Brain.CrewName + " is far ahead. Easy. Let them fill us up.");
+                Say("gap-ahead", v.GapCooldownSeconds * 2f, ahead.Brain.CrewName);
 
             DemandZone next = RivalAI.NextZone(_sim, bus);
             if (next != null && next != _calledZone)
@@ -62,7 +63,7 @@ namespace TwentyTons.Core
                 if (ds > 0f && ds < v.CrowdCallMetres && next.Waiting.Count >= v.CrowdCallMinimum)
                 {
                     _calledZone = next;
-                    Say("crowd", 0f, Speaker.Helper, next.Name + "! " + next.Waiting.Count + " people! Stop here, stop here!");
+                    Say("crowd", 0f, next.Name, next.Waiting.Count);
                 }
             }
             if (next != _calledZone && _calledZone != null && Mathf.Abs(_sim.Corridor.DeltaS(bus.S, _calledZone.S)) > v.CrowdCallMetres) _calledZone = null;
@@ -71,14 +72,14 @@ namespace TwentyTons.Core
             else _silence += dt;
             Steering.FindAhead(_sim.Agents, bus, bus.Lateral, 40f, out float gap);
             if (_silence > _sim.Tuning.Horn.SilenceComplaintSeconds && gap < 30f && bus.Speed > 2f)
-                Say("silence", v.SilenceCooldownSeconds, Speaker.Helper, "Why aren't you honking? Nobody moves for a quiet bus!");
+                Say("silence", v.SilenceCooldownSeconds);
 
             if (load.DoorOpen && bus.Speed > _sim.Tuning.Passengers.JumpSpeedMs)
-                Say("door", v.DoorCooldownSeconds, Speaker.Helper, "Door's open and we're flying. Nobody can get on like this!");
+                Say("door", v.DoorCooldownSeconds);
             if (load.LastFallTime > _fallSeen)
             {
                 _fallSeen = load.LastFallTime;
-                Say("fall", 0f, Speaker.Helper, load.LastFallWasInjury ? "He's down! He's down! Stop the bus, stop!" : "She slipped. Slow down, ostad, slow down.");
+                Say(load.LastFallWasInjury ? "fall-injury" : "fall-stumble", 0f);
             }
 
             if (_sim.PlayerGhost != null && m.WrongSideNow)
@@ -87,37 +88,37 @@ namespace TwentyTons.Core
                 // On their road, "ahead" of the ghost in its own direction is behind us; what we meet comes from the other way.
                 Agent coming = Steering.FindHeavierBehind(_sim.Agents, _sim.PlayerGhost, 70f);
                 if (coming != null || (oncoming != null && oncoming.Mass >= _sim.Tuning.Mass.Truck))
-                    Say("headon", 6f, Speaker.Helper, "Bus! Bus coming! Back, back, come back!");
+                    Say("headon", 6f);
             }
             if (_sim.Condition.BrakeWear > _sim.Tuning.Bus.SoftBrakesAbove && bus.Speed > 5f)
-                Say("brakes", 600f, Speaker.Helper, "Brakes are soft, ostad. Leave room. Tell the owner, for all the good it does.");
+                Say("brakes", 600f);
             if (_sim.Rollover.Count > _rolloversSeen)
             {
                 _rolloversSeen = _sim.Rollover.Count;
-                Say("rollover", 0f, Speaker.Conductor, "Get them out! Get them out through the windows!");
+                Say("rollover", 0f);
             }
-            if (_sim.Fatigue.MicroSleeps > _sleepsSeen) { _sleepsSeen = _sim.Fatigue.MicroSleeps; Say("sleep", 5f, Speaker.Helper, "Ostad! Ostad! Wake up!"); }
+            if (_sim.Fatigue.MicroSleeps > _sleepsSeen) { _sleepsSeen = _sim.Fatigue.MicroSleeps; Say("sleep", 5f); }
 
             // ---- The conductor: the sergeant, the arguers, the count.
             if (_sim.Economy.Sergeant.Active && _sim.Economy.Sergeant.ReleaseAt < 0f)
-                Say("sergeant", 30f, Speaker.Conductor, "Sergeant. I'm hiding the cash. Pay him, it's cheaper than the case.");
+                Say("sergeant", 30f);
             if (load.AtDoor != null && load.AtDoor.Kind == PassengerKind.Arguer)
-                Say("arguer", 20f, Speaker.Conductor, "Half fare? Show me the card. No card, full fare.");
-            if (load.Boarded >= _boardedSeen + 10) { _boardedSeen = load.Boarded; Say("count", 0f, Speaker.Conductor, load.Count + " aboard. Tk " + load.FaresTk.ToString("0") + " so far."); }
+                Say("arguer", 20f);
+            if (load.Boarded >= _boardedSeen + 10) { _boardedSeen = load.Boarded; Say("count", 0f, load.Count, load.FaresTk.ToString("0")); }
 
             // ---- Passengers: faster, stop here, overtake him.
-            if (load.MissedAlights > _missedSeen) { _missedSeen = load.MissedAlights; Say("missed", 0f, Speaker.Passenger, "Stop! Stop! I'm getting off here!"); }
+            if (load.MissedAlights > _missedSeen) { _missedSeen = load.MissedAlights; Say("missed", 0f); }
 
             bool clear = gap > 35f;
             _slowWithClearRoad = clear && bus.Speed < v.SlowKmh / 3.6f && !load.DoorOpen ? _slowWithClearRoad + dt : 0f;
             if (_slowWithClearRoad > v.SlowSecondsBeforeComplaint && load.Count > 5)
-                Say("faster", v.PassengerCooldownSeconds, Speaker.Passenger, "Driver! Faster! We're not on a picnic!");
+                Say("faster", v.PassengerCooldownSeconds);
 
             _stuckBehind = !clear && gap < 15f && bus.Speed < 4f && bus.Speed > 0.2f ? _stuckBehind + dt : 0f;
             if (_stuckBehind > v.SlowSecondsBeforeComplaint && load.Count > 5)
-                Say("overtake", v.PassengerCooldownSeconds, Speaker.Passenger, "Go round him! Take the other side!");
+                Say("overtake", v.PassengerCooldownSeconds);
             if (_stuckBehind > v.SlowSecondsBeforeComplaint * 0.7f && _sim.Oncoming != null && !m.WrongSideNow)
-                Say("wrongside", v.PassengerCooldownSeconds, Speaker.Conductor, "Other side's empty. Cross over, we'll come back before the sergeant.");
+                Say("wrongside", v.PassengerCooldownSeconds);
         }
 
         /// <summary>
@@ -126,24 +127,23 @@ namespace TwentyTons.Core
         /// </summary>
         public string TerminalLine(RivalBrain crew, Ledger ledger)
         {
-            if (crew.Grudge > _sim.Tuning.Memory.ColdLinesAbove)
-                return crew.CrewName + " walks past without a word.";
-            if (crew.Grudge > 1)
-                return crew.CrewName + ": \"You cut me twice today. Tomorrow I won't let you.\"";
-            if (ledger.CrewNetTk < 0f)
-                return crew.CrewName + ": \"Nothing left after the deposit again. Same for us. Tea?\"";
-            if (crew.Grudge < 0)
-                return crew.CrewName + ": \"Thanks for the room at Block 11. See you at six.\"";
-            return crew.CrewName + ": \"Long day. Sleep in the bus or go home?\"";
+            string id = crew.Grudge > _sim.Tuning.Memory.ColdLinesAbove ? "terminal-cold"
+                      : crew.Grudge > 1 ? "terminal-sore"
+                      : ledger.CrewNetTk < 0f ? "terminal-badday"
+                      : crew.Grudge < 0 ? "terminal-thanks"
+                      : "terminal-plain";
+            return VoiceLines.Text(id, crew.CrewName);
         }
 
-        private void Say(string trigger, float cooldown, Speaker speaker, string text, string who = null)
+        /// <summary>Say the line with this id, unless it was said within its cooldown. Values fill the {0} {1} slots.</summary>
+        private void Say(string id, float cooldown, params object[] values)
         {
             float now = _sim.Metrics.Time;
             float last;
-            if (_lastSaid.TryGetValue(trigger, out last) && now - last < cooldown) return;
-            _lastSaid[trigger] = now;
-            Lines.Add(new VoiceLine { Speaker = speaker, Text = text, Who = who, Time = now });
+            if (_lastSaid.TryGetValue(id, out last) && now - last < cooldown) return;
+            _lastSaid[id] = now;
+            VoiceLineText line = VoiceLines.Get(id);
+            Lines.Add(new VoiceLine { Speaker = line.Speaker, Text = VoiceLines.Text(id, values), Id = id, Time = now });
             if (Lines.Count > 60) Lines.RemoveAt(0);
         }
     }

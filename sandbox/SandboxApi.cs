@@ -274,8 +274,9 @@ namespace TwentyTons.Sandbox
             {
                 if (autopilot)
                 {
-                    ScriptedDriver.Apply(_sim);              // the "drive properly" baseline, for demos and scripts
-                    _sim.HornInput(input.Horn, FixedStep);
+                    ScriptedDriver.Apply(_sim);              // the careful baseline, the Dhaka driver, or the ostad
+                    // The Dhaka policy honks for itself; feeding it the key as well would end its press every step.
+                    if (ScriptedDriver.Current != Policy.Dhaka) _sim.HornInput(input.Horn, FixedStep);
                 }
                 else
                 {

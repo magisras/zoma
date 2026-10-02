@@ -193,12 +193,20 @@ in the headless runner and in the browser. Entries below are appended as steps l
 - Verified in the browser: a scripted helper called Block 11, the ostad pulled in, Tk 125 of
   fares in two minutes with the ostad doing the driving.
 
+**Step 14 — the voice lines as data** (done)
+
+- `Core/VoiceLines.cs`: every line the helper, conductor, passengers and crews say, keyed by id,
+  with the English subtitle, an empty Bangla column and a note for the writer saying when it is
+  said and what it must do. `CrewVoice` refers to ids only. In Unity the table becomes an asset.
+- Fixed: the Dhaka autopilot's horn was being reset by the key handler every step, so a blast
+  counted as sixty presses a second.
+
 **Where this leaves the project**
 
 Everything in README milestones 3–6 now exists as engine-free C# with tests, runs in the browser
 sandbox and in the headless runner. Not yet done: the Unity side (project settings, scene, OSM
-import, real bus physics, 3D assets), the mirror-moment scripting (Act 1 as helper), Bangla
-lines and audio, and the tuning pass the thesis report asks for. All numbers are placeholders until the owner
+import, real bus physics, 3D assets), the Bangla column of `VoiceLines` and the recordings, the
+mirror-moment scripting across days, and the tuning pass the thesis report asks for. All numbers are placeholders until the owner
 plays; the headless runner gives repeatable metrics for that tuning.
 
 **How to try it**: `make sandbox` (or the artifact link), P for the careful autopilot to watch,
