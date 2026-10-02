@@ -15,7 +15,8 @@ namespace TwentyTons.Core
         public int HornPresses;
         public int YieldsToHorn;                 // agents that moved for the player's horn
         public int NearMisses;
-        public int Contacts;                     // player scrapes
+        public int Contacts;                     // player scrapes, light and hard
+        public int HardContacts;                 // the ones that cost money
         public int NpcPersonHits;                // NPCs hitting pedestrians (it happens; counted, not fatal)
         public int CaneRuns;                     // times the player crossed a closed stop line
         public int StopsLost;                    // a rival took a crowd the player was about to reach
@@ -697,7 +698,9 @@ namespace TwentyTons.Core
                 if (a.IsPlayerOrGhost || b.IsPlayerOrGhost)
                 {
                     Metrics.Contacts++;
-                    Economy.OnScrape();
+                    // How hard: the speed difference along the road (a head-on ghost has a negative speed, so it adds up).
+                    float relative = a.Corridor == b.Corridor ? Mathf.Abs(a.Speed - b.Speed) : Mathf.Abs(a.Speed) + Mathf.Abs(b.Speed);
+                    if (Economy.OnScrape(relative)) Metrics.HardContacts++;
                     Condition.Dents++;
                     // A scrape with a named crew is remembered.
                     Agent other = a.IsPlayerOrGhost ? b : a;

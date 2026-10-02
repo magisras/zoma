@@ -349,7 +349,7 @@ function updateHud(f, dt) {
   el('minHeadway').textContent = f.minHeadwaySeconds > 50 ? '—' : f.minHeadwaySeconds.toFixed(2) + ' s';
   el('nearMisses').textContent = f.nearMisses;
   el('nearMissRate').textContent = f.time > 10 ? f.nearMissesPerMinute.toFixed(1) + ' / min' : '';
-  el('contacts').textContent = f.contacts;
+  el('contacts').textContent = f.contacts + (f.hardContacts ? ' (' + f.hardContacts + ' cost)' : '');
   el('caneRuns').textContent = f.caneRuns;
   const ws = el('wrongSide');
   ws.textContent = f.wrongSideSeconds.toFixed(0) + ' s';

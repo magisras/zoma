@@ -526,7 +526,11 @@ namespace TwentyTons.Tuning
         public float CaseDelaySeconds = 120f;
 
         [Header("Damage and the one hard rule")]
-        [Tooltip("What a scrape costs the crew, Tk. placeholder")]
+        [Tooltip("Contact slower than this (relative speed, m/s) is paint and mirrors: a dent, no bill. " +
+                 "RESEARCH: light contact is common and cosmetic. placeholder")]
+        public float CosmeticContactMs = 1.5f;
+
+        [Tooltip("What a harder scrape costs the crew, Tk. placeholder")]
         public float ScrapeRepairTk = 100f;
         [Tooltip("What a passenger hurt at the door costs the crew on the spot, Tk. placeholder")]
         public float InjuryCompensationTk = 2000f;

@@ -132,10 +132,15 @@ namespace TwentyTons.Core
 
         public bool WalkedAway;
 
-        /// <summary>Repairs come out of the crew's day (RESEARCH.md: damage comes out of the crew's day).</summary>
-        public void OnScrape()
+        /// <summary>
+        /// Repairs come out of the crew's day (RESEARCH.md: damage comes out of the crew's day), but a
+        /// touch at walking pace is paint, not a bill. Returns true when it cost something.
+        /// </summary>
+        public bool OnScrape(float relativeSpeed)
         {
+            if (relativeSpeed < _e.CosmeticContactMs) return false;
             Ledger.RepairsTk += _e.ScrapeRepairTk * _e.MoneyScale;
+            return true;
         }
 
         /// <summary>The player's answer to the sergeant: pay, or take the case.</summary>

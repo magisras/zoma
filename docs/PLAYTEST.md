@@ -34,6 +34,11 @@ After step 9 (people get on while others get off; the moving door): careful −2
 Dhaka −784 with fares 146 and 23.5 scrapes a day. Loading in parallel lifted both drivers by
 Tk 80–90; the scrapes still decide it.
 
+After step 12 (contact under 1.5 m/s relative is cosmetic; brake wear now grows at a real day's
+rate): careful −154 with fares 228 and 8 scrapes, Dhaka −650 with fares 81 and 10.8 scrapes.
+Dhaka's fares fell: its brakes fade over the day and it overshoots zones it would have worked.
+A policy that knows its brakes are going would slow in earlier. The verdict stands.
+
 ## Why, and what to tune
 
 The numbers say the aggressive policy loses money three ways, none of them the way the research

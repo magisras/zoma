@@ -72,6 +72,7 @@ namespace TwentyTons.Sandbox
         public int NearMisses { get; set; }
         public float NearMissesPerMinute { get; set; }
         public int Contacts { get; set; }
+        public int HardContacts { get; set; }
         public int HornPresses { get; set; }
         public int YieldsToHorn { get; set; }
         public int Passengers { get; set; }
@@ -475,6 +476,7 @@ namespace TwentyTons.Sandbox
                 NearMisses = m.NearMisses,
                 NearMissesPerMinute = m.NearMissesPerMinute,
                 Contacts = m.Contacts,
+                HardContacts = m.HardContacts,
                 HornPresses = m.HornPresses,
                 YieldsToHorn = m.YieldsToHorn,
                 Passengers = load.Count,

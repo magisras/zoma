@@ -175,6 +175,14 @@ in the headless runner and in the browser. Entries below are appended as steps l
 - The crew carries the injuries for two shifts: slower hands and a tired start. Conductor line.
 - Tests: 81.
 
+**Step 12 — light contact is cosmetic** (done)
+
+- Contact under 1.5 m/s of relative speed leaves a dent and no bill (RESEARCH: paint and mirrors
+  are the norm); harder contact costs as before. `HardContacts` beside `Contacts` in the metrics,
+  HUD and headless. Thesis batch: careful −154, Dhaka −650; see `docs/PLAYTEST.md`.
+- Fixed: hidden HUD rows (the autopilot label) showed anyway because the flex rule beat the
+  `hidden` attribute.
+
 **Where this leaves the project**
 
 Everything in README milestones 3–6 now exists as engine-free C# with tests, runs in the browser

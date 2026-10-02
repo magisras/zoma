@@ -80,7 +80,19 @@ namespace TwentyTons.Tests
             rickshaw.DesiredSpeed = 0.5f; rickshaw.Speed = 0.5f;
             Run(sim, 4f);
             Assert.GreaterOrEqual(sim.Metrics.Contacts, 1);
-            Assert.AreEqual(sim.Metrics.Contacts * sim.Tuning.Economy.ScrapeRepairTk * sim.Tuning.Economy.MoneyScale, sim.Economy.Ledger.RepairsTk, 1e-3f);
+            Assert.GreaterOrEqual(sim.Metrics.HardContacts, 1, "8 m/s into a crawling rickshaw is not cosmetic");
+            Assert.AreEqual(sim.Metrics.HardContacts * sim.Tuning.Economy.ScrapeRepairTk * sim.Tuning.Economy.MoneyScale, sim.Economy.Ledger.RepairsTk, 1e-3f);
+
+            // A nudge at walking pace: a dent, no bill.
+            var slow = Ring();
+            Agent bus2 = slow.SpawnPlayerBus(100f, 0f);
+            bus2.Speed = 1f; slow.Bus.Throttle = 0.1f;
+            Agent r2 = slow.SpawnVehicle(VehicleClass.Rickshaw, 108f, 0f, 0f);
+            r2.DesiredSpeed = 0f; r2.Speed = 0f;
+            Run(slow, 6f);
+            Assert.GreaterOrEqual(slow.Metrics.Contacts, 1);
+            Assert.AreEqual(0f, slow.Economy.Ledger.RepairsTk, "cosmetic");
+            Assert.GreaterOrEqual(slow.Condition.Dents, 1);
         }
 
         private static TrafficSim WithSergeantAfterCane(out Junction j)

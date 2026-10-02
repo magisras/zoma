@@ -6,6 +6,7 @@
   --danger: #d9534f;
   --ok: #7fb069;
 }
+[hidden] { display: none !important; }   /* flex rows must still honour hidden */
 html, body { margin: 0; height: 100%; overflow: hidden; background: #202226; color: var(--ink); touch-action: none;
   -webkit-user-select: none; user-select: none;
   font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
