@@ -1,0 +1,489 @@
+using System;
+using UnityEngine;
+
+namespace TwentyTons.Tuning
+{
+    /// <summary>
+    /// The one table that holds every gameplay number.
+    ///
+    /// RESEARCH.md ("Traffic and character AI (method)" > Tuning) asks for exactly this: one place
+    /// for mass, nerve, critical gap, horn strength, officer timing and action weights, so that
+    /// playtesting means editing numbers in the Inspector, not hunting through code.
+    ///
+    /// How to use it:
+    ///   1. Right-click in Assets/Data  >  Create  >  Twenty Tons  >  Tuning Table.
+    ///   2. The new asset starts with the defaults written below (they are the research figures).
+    ///   3. Behaviour code receives a TuningTable reference and reads from it. It never hardcodes
+    ///      a number of its own. If you need a new number, add a field here with a Tooltip that
+    ///      names the RESEARCH.md line it comes from.
+    ///
+    /// A ScriptableObject is a plain data asset that lives in the project, not in a scene, so one
+    /// table can be shared by every vehicle and tweaked while the game runs in the editor.
+    ///
+    /// Fields marked "placeholder" are not in RESEARCH.md. They exist because the method needs a
+    /// number there; playtesting will set them.
+    /// </summary>
+    [CreateAssetMenu(fileName = "TuningTable", menuName = "Twenty Tons/Tuning Table")]
+    public sealed class TuningTable : ScriptableObject
+    {
+        [Header("Steering layer")]
+        public MassSettings Mass = new MassSettings();
+        public NerveSettings Nerve = new NerveSettings();
+        public GapSettings Gap = new GapSettings();
+        public HornSettings Horn = new HornSettings();
+        public OfficerSettings Officer = new OfficerSettings();
+        public PedestrianSettings Pedestrians = new PedestrianSettings();
+
+        [Header("Decision layer (rival buses)")]
+        public UtilitySettings Utility = new UtilitySettings();
+        public MemorySettings Memory = new MemorySettings();
+
+        [Header("Passengers")]
+        public PassengerSettings Passengers = new PassengerSettings();
+
+        [Header("Performance")]
+        public PerformanceSettings Performance = new PerformanceSettings();
+
+        /// <summary>
+        /// Unity calls this in the editor whenever a value changes. We use it to keep the table
+        /// self-consistent (a minimum can never exceed its maximum) so behaviour code can trust it.
+        /// </summary>
+        private void OnValidate()
+        {
+            Gap.Clamp();
+            Officer.Clamp();
+            Passengers.Clamp();
+            Performance.Clamp();
+        }
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Steering layer: how a vehicle moves.
+    // ------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Yield by mass (RESEARCH.md: "mass (bus 20, truck 15, car 3, CNG 1.5, rickshaw 1,
+    /// pedestrian 0.3); smaller yields unless nerve calls the bluff").
+    ///
+    /// These are not kilograms. They are relative weights that say who pushes whom. A bus really is
+    /// about 20 tons, which is where the game's title and this scale come from.
+    /// </summary>
+    [Serializable]
+    public sealed class MassSettings
+    {
+        [Tooltip("Bus. The player's own vehicle and the top of the hierarchy. RESEARCH: 20")]
+        public float Bus = 20f;
+
+        [Tooltip("Truck. Yields only to buses, and not always. RESEARCH: 15")]
+        public float Truck = 15f;
+
+        [Tooltip("Private car. Yields to buses and trucks; pushes everything smaller. RESEARCH: 3")]
+        public float Car = 3f;
+
+        [Tooltip("CNG auto-rickshaw. RESEARCH: 1.5")]
+        public float Cng = 1.5f;
+
+        [Tooltip("Cycle rickshaw. Fills every gap you leave. RESEARCH: 1")]
+        public float Rickshaw = 1f;
+
+        [Tooltip("Pedestrian. Lightest, but hitting one is the only real punishment. RESEARCH: 0.3")]
+        public float Pedestrian = 0.3f;
+
+        /// <summary>Look up the mass for a class so steering code never switches on the enum itself.</summary>
+        public float Of(VehicleClass vehicleClass)
+        {
+            switch (vehicleClass)
+            {
+                case VehicleClass.Bus: return Bus;
+                case VehicleClass.Truck: return Truck;
+                case VehicleClass.Car: return Car;
+                case VehicleClass.Cng: return Cng;
+                case VehicleClass.Rickshaw: return Rickshaw;
+                case VehicleClass.Pedestrian: return Pedestrian;
+                default: throw new ArgumentOutOfRangeException(nameof(vehicleClass), vehicleClass, null);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Nerve is a 0..1 number per driver. High nerve accepts smaller gaps and refuses to yield to
+    /// something heavier ("calls the bluff"). Personality is the numbers; nerve is the first one.
+    /// </summary>
+    [Serializable]
+    public sealed class NerveSettings
+    {
+        [Tooltip("Nerve given to a freshly spawned generic driver when no personality is set. placeholder")]
+        [Range(0f, 1f)] public float DefaultNerve = 0.5f;
+
+        [Tooltip("Spread around DefaultNerve for generic traffic so not every car behaves the same. placeholder")]
+        [Range(0f, 0.5f)] public float RandomSpread = 0.2f;
+
+        [Tooltip("Probability (at nerve = 1) that a lighter vehicle refuses to yield to a heavier one. " +
+                 "At nerve = 0 it always yields. RESEARCH: 'smaller yields unless nerve calls the bluff'. placeholder")]
+        [Range(0f, 1f)] public float BluffChanceAtFullNerve = 0.35f;
+    }
+
+    /// <summary>
+    /// Critical gap: the shortest time gap (seconds) a driver accepts before pulling into traffic.
+    /// RESEARCH.md: "Critical gap 0.5–1.5 s scaled by nerve (Western sims use 4–6 s)".
+    /// This single pair of numbers is most of what makes the road feel like Dhaka and not Munich.
+    /// </summary>
+    [Serializable]
+    public sealed class GapSettings
+    {
+        [Tooltip("Gap accepted by a driver with nerve = 1. RESEARCH: 0.5 s")]
+        public float CriticalGapMinSeconds = 0.5f;
+
+        [Tooltip("Gap accepted by a driver with nerve = 0. RESEARCH: 1.5 s")]
+        public float CriticalGapMaxSeconds = 1.5f;
+
+        [Tooltip("Speed-scaled minimum following distance in metres per m/s of own speed. " +
+                 "At 10 m/s (36 km/h) a value of 0.4 gives 4 m. RESEARCH: 'speed-scaled minimum distance'. placeholder")]
+        public float FollowDistancePerMetrePerSecond = 0.4f;
+
+        [Tooltip("Hard floor for following distance when stopped, in metres. Buses stop centimetres short " +
+                 "because damage comes out of the crew's day. placeholder")]
+        public float FollowDistanceFloorMetres = 0.5f;
+
+        /// <summary>
+        /// The gap a given driver accepts. Nerve 0 gives the cautious maximum, nerve 1 the brave
+        /// minimum. Linear for now; playtesting may want a curve.
+        /// </summary>
+        public float CriticalGapSeconds(float nerve)
+        {
+            return Mathf.Lerp(CriticalGapMaxSeconds, CriticalGapMinSeconds, Mathf.Clamp01(nerve));
+        }
+
+        public void Clamp()
+        {
+            CriticalGapMinSeconds = Mathf.Max(0.05f, CriticalGapMinSeconds);
+            CriticalGapMaxSeconds = Mathf.Max(CriticalGapMinSeconds, CriticalGapMaxSeconds);
+            FollowDistancePerMetrePerSecond = Mathf.Max(0f, FollowDistancePerMetrePerSecond);
+            FollowDistanceFloorMetres = Mathf.Max(0f, FollowDistanceFloorMetres);
+        }
+    }
+
+    /// <summary>
+    /// The horn is language. RESEARCH.md: "broadcast in a cone with strength; raises yield
+    /// probability of agents inside, weighted by relative mass; silence moves nothing".
+    /// Short taps clear a path; a long blast warns the rickshaw ahead.
+    /// </summary>
+    [Serializable]
+    public sealed class HornSettings
+    {
+        [Tooltip("How far a horn is heard, in metres. placeholder")]
+        public float RangeMetres = 40f;
+
+        [Tooltip("Half-angle of the cone in front of the vehicle, in degrees. 45 means a 90° wedge. placeholder")]
+        [Range(5f, 90f)] public float ConeHalfAngleDegrees = 45f;
+
+        [Tooltip("Yield-probability boost from one short tap, before mass weighting. 0..1. placeholder")]
+        [Range(0f, 1f)] public float TapStrength = 0.25f;
+
+        [Tooltip("Yield-probability boost from a sustained blast, before mass weighting. 0..1. placeholder")]
+        [Range(0f, 1f)] public float BlastStrength = 0.6f;
+
+        [Tooltip("Seconds a press must last to count as a blast rather than a tap. placeholder")]
+        public float BlastThresholdSeconds = 0.6f;
+
+        [Tooltip("How strongly relative mass scales the effect. 1 = a bus horn moves a rickshaw 20× more " +
+                 "than a rickshaw horn moves a bus. RESEARCH: 'weighted by relative mass'. placeholder")]
+        [Range(0f, 2f)] public float MassWeighting = 1f;
+
+        [Tooltip("Seconds of silence after which the helper and passengers start asking 'why are you " +
+                 "not honking?'. RESEARCH: 'A quiet bus has lost its nerve'. placeholder")]
+        public float SilenceComplaintSeconds = 20f;
+
+        /// <summary>
+        /// The yield boost one listener receives. Heavier horn vs lighter listener → stronger effect;
+        /// a rickshaw honking at a bus achieves next to nothing. Result is clamped to 0..1.
+        /// </summary>
+        public float YieldBoost(float strength, float hornerMass, float listenerMass)
+        {
+            // Ratio above 1 means the honker is heavier. Raise it to MassWeighting so the designer
+            // can soften (0.5) or sharpen (1.5) how much the hierarchy matters.
+            float ratio = Mathf.Pow(hornerMass / Mathf.Max(0.01f, listenerMass), MassWeighting);
+            return Mathf.Clamp01(strength * ratio);
+        }
+    }
+
+    /// <summary>
+    /// The police hand is the traffic light. RESEARCH.md: "an officer object opens one direction at
+    /// a time with variable timing; a few agents 'leak' across until blocked".
+    /// </summary>
+    [Serializable]
+    public sealed class OfficerSettings
+    {
+        [Tooltip("Shortest time one direction stays open, seconds. placeholder")]
+        public float OpenMinSeconds = 20f;
+
+        [Tooltip("Longest time one direction stays open, seconds. placeholder")]
+        public float OpenMaxSeconds = 90f;
+
+        [Tooltip("How many vehicles from a closed direction get across before the opposing flow physically " +
+                 "blocks them. RESEARCH: 'a few agents leak'. placeholder")]
+        public int LeakersPerCycle = 3;
+
+        [Tooltip("Distance at which drivers read the officer's cane and start reacting, metres. placeholder")]
+        public float CaneReadDistanceMetres = 30f;
+
+        [Tooltip("Probability per shift that a sergeant appears at a given junction and takes the cash. " +
+                 "Lowered by a fit bus with clean papers (Milestone 5). placeholder")]
+        [Range(0f, 1f)] public float SergeantStopChance = 0.3f;
+
+        public void Clamp()
+        {
+            OpenMinSeconds = Mathf.Max(1f, OpenMinSeconds);
+            OpenMaxSeconds = Mathf.Max(OpenMinSeconds, OpenMaxSeconds);
+            LeakersPerCycle = Mathf.Max(0, LeakersPerCycle);
+        }
+    }
+
+    /// <summary>
+    /// RESEARCH.md: pedestrians "cross on estimated gap; 'hand' confidence makes them step out in
+    /// front of small vehicles and hesitate for buses". Hitting one is the game's one hard rule.
+    /// </summary>
+    [Serializable]
+    public sealed class PedestrianSettings
+    {
+        [Tooltip("Vehicles with mass at or below this are stepped in front of with one hand raised. " +
+                 "Default = car. placeholder")]
+        public float StepOutBelowMass = 3f;
+
+        [Tooltip("Vehicles with mass at or above this make pedestrians hesitate. Default = truck. placeholder")]
+        public float HesitateAboveMass = 15f;
+
+        [Tooltip("Extra seconds of gap a pedestrian wants before crossing in front of a heavy vehicle. placeholder")]
+        public float HesitationSeconds = 1.0f;
+
+        [Tooltip("Base crossing gap a pedestrian accepts in front of a small vehicle, seconds. placeholder")]
+        public float CrossingGapSeconds = 1.0f;
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Decision layer: what a rival bus wants. Built in Milestone 4; the numbers live here now.
+    // ------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// The five actions a rival bus scores every second (RESEARCH.md, utility AI table).
+    /// Kept as an enum so weights can be stored per action in arrays and personalities.
+    /// </summary>
+    public enum BusAction
+    {
+        RaceForNextStop = 0,
+        SkipTheStop = 1,
+        WaitAndFill = 2,
+        BlockThePlayer = 3,
+        BackOff = 4
+    }
+
+    /// <summary>
+    /// A named set of per-action multipliers. RESEARCH.md: "reckless: race ×1.5, back off ×0.5;
+    /// cautious: reverse; spiteful: block ×2 plus memory of who cut him off".
+    /// Personality is the numbers; this is where a named crew member gets his.
+    /// </summary>
+    [Serializable]
+    public sealed class DriverPersonality
+    {
+        public string Name = "Default";
+
+        [Tooltip("Base nerve of this personality, 0..1.")]
+        [Range(0f, 1f)] public float Nerve = 0.5f;
+
+        [Tooltip("Multiplier on 'race for next stop'.")]
+        public float Race = 1f;
+
+        [Tooltip("Multiplier on 'skip the stop'.")]
+        public float Skip = 1f;
+
+        [Tooltip("Multiplier on 'wait and fill'.")]
+        public float Wait = 1f;
+
+        [Tooltip("Multiplier on 'block the player'.")]
+        public float Block = 1f;
+
+        [Tooltip("Multiplier on 'back off'.")]
+        public float BackOff = 1f;
+
+        public float MultiplierFor(BusAction action)
+        {
+            switch (action)
+            {
+                case BusAction.RaceForNextStop: return Race;
+                case BusAction.SkipTheStop: return Skip;
+                case BusAction.WaitAndFill: return Wait;
+                case BusAction.BlockThePlayer: return Block;
+                case BusAction.BackOff: return BackOff;
+                default: throw new ArgumentOutOfRangeException(nameof(action), action, null);
+            }
+        }
+
+        // The three archetypes named in RESEARCH.md, plus a neutral one for generic traffic.
+        public static DriverPersonality Default() => new DriverPersonality();
+
+        public static DriverPersonality Reckless() => new DriverPersonality
+        {
+            Name = "Reckless", Nerve = 0.85f, Race = 1.5f, BackOff = 0.5f
+        };
+
+        public static DriverPersonality Cautious() => new DriverPersonality
+        {
+            Name = "Cautious", Nerve = 0.25f, Race = 0.5f, BackOff = 1.5f
+        };
+
+        public static DriverPersonality Spiteful() => new DriverPersonality
+        {
+            Name = "Spiteful", Nerve = 0.7f, Block = 2f
+        };
+    }
+
+    /// <summary>
+    /// Base weights for each action's score, before a personality multiplies them. The *inputs*
+    /// (crowd size ahead, own load, rival distance, fatigue) are measured at runtime in Milestone 4;
+    /// these weights say how much each input is worth.
+    /// </summary>
+    [Serializable]
+    public sealed class UtilitySettings
+    {
+        [Header("Race for next stop: 'big crowd ahead, bus half empty, rival close behind'")]
+        [Tooltip("Score per waiting passenger at the next stop. placeholder")]
+        public float RacePerWaitingPassenger = 0.05f;
+        [Tooltip("Score per empty seat on board. placeholder")]
+        public float RacePerEmptySeat = 0.02f;
+        [Tooltip("Score when a rival is within RivalCloseMetres behind. placeholder")]
+        public float RaceRivalCloseBonus = 0.5f;
+        [Tooltip("What counts as 'close behind', metres. placeholder")]
+        public float RivalCloseMetres = 150f;
+
+        [Header("Skip the stop: 'nearly full, small crowd'")]
+        [Tooltip("Load fraction (0..1) above which the bus counts as nearly full. RESEARCH: the full/empty dial. placeholder")]
+        [Range(0f, 1f)] public float NearlyFullLoad = 0.9f;
+        [Tooltip("Crowd size at or below which a stop is not worth it. placeholder")]
+        public int SmallCrowd = 2;
+        [Tooltip("Score for skipping when both conditions hold. placeholder")]
+        public float SkipBonus = 0.8f;
+
+        [Header("Wait and fill: 'early in route, no rival near'")]
+        [Tooltip("Fraction of the route (0..1) that counts as 'early'. RESEARCH: ~70% of waiting happens before the halfway mark.")]
+        [Range(0f, 1f)] public float EarlyRouteFraction = 0.5f;
+        [Tooltip("Score for waiting when early with no rival near. placeholder")]
+        public float WaitBonus = 0.6f;
+
+        [Header("Block the player: 'player about to overtake, driver's spite high'")]
+        [Tooltip("Score when the player is overtaking, multiplied by grudge. placeholder")]
+        public float BlockPerGrudgePoint = 0.2f;
+
+        [Header("Back off: 'fatigue high, dangerous gap ahead'")]
+        [Tooltip("Fatigue (0..1) above which backing off starts scoring. placeholder")]
+        [Range(0f, 1f)] public float FatigueThreshold = 0.7f;
+        [Tooltip("Score per unit of fatigue above the threshold. placeholder")]
+        public float BackOffPerFatigue = 2f;
+        [Tooltip("Score when the gap ahead is below this driver's critical gap. placeholder")]
+        public float BackOffDangerousGapBonus = 1f;
+
+        [Header("Personalities")]
+        [Tooltip("Archetypes a named crew member can be assigned. Edit the multipliers here, not in code.")]
+        public DriverPersonality[] Personalities =
+        {
+            DriverPersonality.Default(),
+            DriverPersonality.Reckless(),
+            DriverPersonality.Cautious(),
+            DriverPersonality.Spiteful()
+        };
+    }
+
+    /// <summary>
+    /// Per-character memory. RESEARCH.md: "grudge toward player, trust, fatigue, money today.
+    /// Events move them (player cuts him off: grudge +1; lets him through: grudge −1) ... grudge > 3
+    /// picks cold lines".
+    /// </summary>
+    [Serializable]
+    public sealed class MemorySettings
+    {
+        [Tooltip("Grudge change when the player cuts this driver off. RESEARCH: +1")]
+        public int GrudgeWhenCutOff = 1;
+
+        [Tooltip("Grudge change when the player lets this driver through. RESEARCH: −1")]
+        public int GrudgeWhenLetThrough = -1;
+
+        [Tooltip("Grudge above which terminal dialogue picks cold lines. RESEARCH: > 3")]
+        public int ColdLinesAbove = 3;
+
+        [Tooltip("Grudge can't go beyond this in either direction. placeholder")]
+        public int GrudgeCap = 6;
+
+        [Tooltip("Grudge moves this many points toward zero at the end of each shift. placeholder")]
+        public int GrudgeDecayPerShift = 1;
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Passengers
+    // ------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// RESEARCH.md: "Boarding time 2 to 6 seconds per passenger, more with pushing ... student fast,
+    /// elderly with sack slow, half-fare arguer costs conductor attention."
+    /// </summary>
+    [Serializable]
+    public sealed class PassengerSettings
+    {
+        [Tooltip("Fastest boarding, seconds. RESEARCH: 2 s")]
+        public float BoardingMinSeconds = 2f;
+
+        [Tooltip("Slowest ordinary boarding, seconds. RESEARCH: 6 s")]
+        public float BoardingMaxSeconds = 6f;
+
+        [Tooltip("Boarding time of a student (the fast case), seconds. RESEARCH: 'student fast'. placeholder")]
+        public float StudentSeconds = 2f;
+
+        [Tooltip("Boarding time of an elderly passenger with a sack, seconds. RESEARCH: 'elderly with sack slow'. placeholder")]
+        public float ElderlyWithSackSeconds = 6f;
+
+        [Tooltip("Extra seconds added when people are pushing at the door. RESEARCH: 'more with pushing'. placeholder")]
+        public float PushingPenaltySeconds = 2f;
+
+        [Tooltip("Seconds of conductor attention one half-fare argument costs. placeholder")]
+        public float HalfFareArgumentSeconds = 15f;
+
+        [Tooltip("Load fraction (0..1) above which a waiting passenger refuses to board ('too full'). placeholder")]
+        [Range(0f, 1.5f)] public float TooFullLoad = 1.3f;
+
+        public void Clamp()
+        {
+            BoardingMinSeconds = Mathf.Max(0.1f, BoardingMinSeconds);
+            BoardingMaxSeconds = Mathf.Max(BoardingMinSeconds, BoardingMaxSeconds);
+        }
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Performance
+    // ------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// RESEARCH.md: "full behaviours within 100–150 m of player; kinematic corridor-following beyond".
+    /// These keep the prototype running on a MacBook Air.
+    /// </summary>
+    [Serializable]
+    public sealed class PerformanceSettings
+    {
+        [Tooltip("Within this distance of the player, vehicles run the full steering and decision layers. RESEARCH: 100–150 m")]
+        public float FullBehaviourRadiusMetres = 125f;
+
+        [Tooltip("Beyond this distance vehicles are despawned entirely. placeholder")]
+        public float DespawnRadiusMetres = 400f;
+
+        [Tooltip("Hard cap on simultaneously simulated vehicles. placeholder")]
+        public int MaxVehicles = 120;
+
+        [Tooltip("Hard cap on simultaneously simulated pedestrians. placeholder")]
+        public int MaxPedestrians = 200;
+
+        public void Clamp()
+        {
+            FullBehaviourRadiusMetres = Mathf.Max(10f, FullBehaviourRadiusMetres);
+            DespawnRadiusMetres = Mathf.Max(FullBehaviourRadiusMetres, DespawnRadiusMetres);
+            MaxVehicles = Mathf.Max(0, MaxVehicles);
+            MaxPedestrians = Mathf.Max(0, MaxPedestrians);
+        }
+    }
+}

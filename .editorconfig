@@ -1,0 +1,17 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.cs]
+indent_style = space
+indent_size = 4
+# Opening brace on its own line, Unity's house style
+csharp_new_line_before_open_brace = all
+
+[*.{md,json,asmdef}]
+indent_style = space
+indent_size = 2
