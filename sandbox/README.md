@@ -26,7 +26,7 @@ python3 -m http.server -d out/wwwroot 8080      # then http://localhost:8080
 W/↑ throttle · S/↓ brake · A/D or ←/→ steer · H or space horn (hold for a blast) · E door ·
 1/2 pay or refuse the sergeant · C camera · T tuning panel · P autopilot (the careful driver) ·
 O be the helper (the ostad drives; E calls the stop, W hurry, S easy) · R restart with a new seed.
-On phones: on-screen buttons.
+On phones: on-screen buttons, and the HUD starts folded to the speed; tap it (or the hud button) to open it.
 
 A day lasts 15 minutes (slider). At the end: the ledger, where to sleep, work or rest tomorrow.
 

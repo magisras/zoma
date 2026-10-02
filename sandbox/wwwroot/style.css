@@ -16,6 +16,11 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #202226; col
   border-radius: 8px; min-width: 220px; backdrop-filter: blur(4px); }
 #hud .row { display: flex; gap: 8px; align-items: baseline; }
 #hud .big { font-size: 34px; font-weight: 300; letter-spacing: -1px; }
+/* Collapsed: the speed alone. Phones start this way; a tap on the panel (or the hud button) expands it. */
+#hud .more { display: none; font-size: 11px; margin-left: 6px; }
+#hud.collapsed { min-width: 0; padding: 6px 12px; }
+#hud.collapsed .row:not(.keep) { display: none; }
+#hud.collapsed .more { display: inline; }
 #hud .unit { color: var(--dim); }
 #hud .label { color: var(--dim); min-width: 100px; }
 .dim { color: var(--dim); }
@@ -76,6 +81,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #202226; col
 
 @media (pointer: coarse) {
   #touch { display: block; }
+  #hud { cursor: pointer; }
   #help { display: none; }
   #tuning { top: calc(60px + env(safe-area-inset-top, 0px)); }
   #tuning:not(.open) { display: none; }
@@ -90,6 +96,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #202226; col
 }
 @media (max-width: 480px) {
   .tbtn { width: 58px; height: 64px; font-size: 13px; letter-spacing: 0.5px; border-radius: 12px; }
+  /* Four pads on the right and two on the left must fit 390px without overlapping: the door goes above the horn. */
+  #touch .pad.right { flex-wrap: wrap; justify-content: flex-end; max-width: 210px; }
+  #touch .pad.right .small { order: -1; width: 100%; flex-basis: 100%; }
   #touch .pad { gap: 6px; }
   #touch .pad.left { left: 10px; }
   #touch .pad.right { right: 10px; }

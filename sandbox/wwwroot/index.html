@@ -11,7 +11,7 @@
   <canvas id="view"></canvas>
 
   <div id="hud">
-    <div class="row"><span class="big" id="speed">0</span><span class="unit">km/h</span></div>
+    <div class="row keep"><span class="big" id="speed">0</span><span class="unit">km/h</span><span class="dim more">tap for more</span></div>
     <div class="row"><span class="label">gap ahead</span><span id="gap">—</span></div>
     <div class="row"><span class="label">headway</span><span id="headway">—</span></div>
     <div class="row secondary"><span class="label">min headway</span><span id="minHeadway">—</span></div>
@@ -79,6 +79,7 @@
       <button class="tbtn go" data-key="1" aria-label="throttle">GO</button>
     </div>
     <div class="pad top">
+      <button class="tbtn small" id="touch-hud">hud</button>
       <button class="tbtn small" id="touch-role">role</button>
       <button class="tbtn small" id="touch-camera">cam</button>
       <button class="tbtn small" id="touch-tuning">tune</button>

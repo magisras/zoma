@@ -295,6 +295,12 @@ function bindTouch() {
     b.addEventListener('contextmenu', e => e.preventDefault());
   }
   document.getElementById('touch-camera').addEventListener('click', () => { topDown = !topDown; });
+  // The HUD is a debug instrument; on a phone it would cover the road, so it starts folded to the speed.
+  const hud = document.getElementById('hud');
+  const toggleHud = () => hud.classList.toggle('collapsed');
+  if (window.matchMedia('(pointer: coarse)').matches) hud.classList.add('collapsed');
+  hud.addEventListener('click', toggleHud);
+  document.getElementById('touch-hud').addEventListener('click', toggleHud);
   document.getElementById('touch-tuning').addEventListener('click', () => {
     const t = document.getElementById('tuning');
     t.classList.toggle('open');

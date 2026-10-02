@@ -238,6 +238,8 @@ in the headless runner and in the browser. Entries below are appended as steps l
 - The tuning panel starts hidden; T (or the phone's button) opens it. It is an instrument, not the game.
 - `docs/TESTING.md`: how a separate session tests what is on `main` without Unity, what to look at,
   how to report, and what not to push.
+- Phones: the HUD covered the road, so it now starts folded to the speed figure; a tap on it or the
+  hud button opens it. The door button no longer overlaps the steering pad at 390px.
 
 **Where this leaves the project**
 
