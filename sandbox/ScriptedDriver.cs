@@ -158,9 +158,9 @@ namespace TwentyTons.Sandbox
             if (_working == null) return false;
 
             // The dwell clock runs once the people getting off are done: that part is not a choice.
-            bool stillAlighting = (bus.Load.AtDoor != null && bus.Load.AtDoorIsAlighting) || AnyoneFor(bus, _working);
+            bool stillAlighting = bus.Load.Leaving != null || AnyoneFor(bus, _working);
             if (!stillAlighting) _dwell += 1f / 60f;
-            bool done = bus.Load.AtDoor == null && (_working.Waiting.Count == 0 || bus.Load.Count >= Boarding.TooFullCount(sim)) && !AnyoneFor(bus, _working);
+            bool done = bus.Load.AtDoor == null && bus.Load.Leaving == null && (_working.Waiting.Count == 0 || bus.Load.Count >= Boarding.TooFullCount(sim)) && !AnyoneFor(bus, _working);
             if (done || _dwell > maxDwell)
             {
                 sim.SetDoor(false);

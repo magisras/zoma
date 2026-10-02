@@ -30,6 +30,10 @@ Both scripted drivers live in `sandbox/ScriptedDriver.cs` and are also the sandb
 
 With crowds at half the rate: careful −282, Dhaka −1234. **Verdict: polite driving still wins.**
 
+After step 9 (people get on while others get off; the moving door): careful −218 with fares 216,
+Dhaka −784 with fares 146 and 23.5 scrapes a day. Loading in parallel lifted both drivers by
+Tk 80–90; the scrapes still decide it.
+
 ## Why, and what to tune
 
 The numbers say the aggressive policy loses money three ways, none of them the way the research

@@ -508,6 +508,15 @@ namespace TwentyTons.Tuning
         [Header("Damage and the one hard rule")]
         [Tooltip("What a scrape costs the crew, Tk. placeholder")]
         public float ScrapeRepairTk = 100f;
+        [Tooltip("What a passenger hurt at the door costs the crew on the spot, Tk. placeholder")]
+        public float InjuryCompensationTk = 2000f;
+
+        [Tooltip("How long the crowd holds the bus after an injury, seconds. placeholder")]
+        public float InjuryHoldSeconds = 60f;
+
+        [Tooltip("Injuries in one day before the police end it. RESEARCH: only injuries escalate. placeholder")]
+        public int InjuriesBeforeArrest = 2;
+
         [Tooltip("The case after hitting a person, Tk. RESEARCH: non-bailable; the day's money is gone too. placeholder")]
         public float PersonHitCaseTk = 20000f;
 
@@ -808,6 +817,21 @@ namespace TwentyTons.Tuning
         [Header("Doors and zones")]
         [Tooltip("Fastest the bus may roll while people get on or off, m/s. RESEARCH: picking up without stopping is common. placeholder")]
         public float DoorSpeedMs = 3f;
+
+        [Tooltip("Above the door speed and up to this, people still jump on and off, m/s. RESEARCH: forced off running buses. placeholder")]
+        public float JumpSpeedMs = 6f;
+
+        [Tooltip("Boarding and alighting time factor while rolling: the helper pulls, nobody dawdles. placeholder")]
+        [Range(0.2f, 1f)] public float MovingDoorTimeFactor = 0.7f;
+
+        [Tooltip("Chance of a fall per m/s above walking pace, per person. 0.05 → 20% at 5 m/s. placeholder")]
+        [Range(0f, 1f)] public float FallChancePerMs = 0.05f;
+
+        [Tooltip("Getting off is this many times as risky as getting on. placeholder")]
+        public float AlightFallFactor = 2f;
+
+        [Tooltip("A fall at or above this speed is an injury, below it a stumble, m/s. placeholder")]
+        public float InjurySpeedMs = 3f;
 
         [Tooltip("A bus within this distance of a zone's centre is working it, metres. placeholder")]
         public float ZoneHalfLengthMetres = 20f;

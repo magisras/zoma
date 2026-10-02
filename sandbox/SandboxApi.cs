@@ -94,6 +94,8 @@ namespace TwentyTons.Sandbox
         public int Boarded { get; set; }
         public int Alighted { get; set; }
         public int MissedAlights { get; set; }
+        public int Stumbles { get; set; }
+        public int Injuries { get; set; }
         public string ZoneName { get; set; }      // zone in reach, or null
         public int ZoneWaiting { get; set; }
         public string AtDoor { get; set; }        // who is on the step: "on: Student" / "off: Regular" / null
@@ -345,7 +347,9 @@ namespace TwentyTons.Sandbox
             DemandZone near = Boarding.ZoneInReach(_sim, _sim.Player);
             var crowds = new int[_sim.Zones.Count];
             for (int i = 0; i < crowds.Length; i++) crowds[i] = _sim.Zones[i].Waiting.Count;
-            string atDoor = load.AtDoor == null ? null : (load.AtDoorIsAlighting ? "off: " : "on: ") + load.AtDoor.Kind;
+            string atDoor = null;
+            if (load.AtDoor != null) atDoor = "on: " + load.AtDoor.Kind;
+            if (load.Leaving != null) atDoor = (atDoor == null ? "" : atDoor + " · ") + "off: " + load.Leaving.Kind;
 
             var rivals = new List<RivalDto>();
             foreach (Agent a in _sim.Agents)
@@ -405,6 +409,8 @@ namespace TwentyTons.Sandbox
                 Boarded = load.Boarded,
                 Alighted = load.Alighted,
                 MissedAlights = load.MissedAlights,
+                Stumbles = load.Stumbles,
+                Injuries = load.Injuries,
                 ZoneName = near == null ? null : near.Name,
                 ZoneWaiting = near == null ? 0 : near.Waiting.Count,
                 AtDoor = atDoor,

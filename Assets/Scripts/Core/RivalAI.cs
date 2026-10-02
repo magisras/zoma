@@ -160,7 +160,7 @@ namespace TwentyTons.Core
             {
                 brain.Dwell += dt;
                 float maxDwell = brain.Action == BusAction.WaitAndFill ? u.WaitDwellSeconds : u.RaceDwellSeconds;
-                bool done = load.AtDoor == null && (zone.Waiting.Count == 0 || load.Count >= Boarding.TooFullCount(sim)) && !AnyoneFor(load, zone);
+                bool done = load.AtDoor == null && load.Leaving == null && (zone.Waiting.Count == 0 || load.Count >= Boarding.TooFullCount(sim)) && !AnyoneFor(load, zone);
                 if (brain.Action == BusAction.WaitAndFill) done = done && load.Count >= sim.Tuning.Bus.Seats * u.NearlyFullLoad;
                 bool passed = sim.Corridor.DeltaS(zone.S, bus.S) > p.ZoneHalfLengthMetres;
                 if (done || brain.Dwell > maxDwell || passed)

@@ -79,6 +79,11 @@ namespace TwentyTons.Core
             Ledger.FuelTk += metres / 1000f / Mathf.Max(0.1f, _e.BusKmPerLitre) * _e.DieselTkPerLitre;
 
             WatchTripPoints(bus);
+            if (InjuryHoldUntil >= 0f)
+            {
+                if (_sim.Metrics.Time >= InjuryHoldUntil) { InjuryHoldUntil = -1f; if (!Sergeant.Active) _sim.Bus.Held = false; }
+                else _sim.Bus.Held = true;
+            }
             WatchSergeant(bus, dt);
 
             if (_sim.Metrics.PersonHit)
@@ -91,6 +96,29 @@ namespace TwentyTons.Core
             else if (ShiftSeconds >= _e.DayLengthSeconds)
             {
                 EndDay("shift over");
+            }
+        }
+
+        public int Injuries;
+        public float InjuryHoldUntil = -1f;
+
+        /// <summary>
+        /// Someone fell from the door at speed. The crowd holds the bus, the crew pays on the spot,
+        /// and the second time the police end the day (RESEARCH.md: only injuries escalate).
+        /// </summary>
+        public void OnInjury(bool alighting)
+        {
+            Injuries++;
+            float tk = _e.InjuryCompensationTk * _e.MoneyScale;
+            Ledger.CaseTk += tk;
+            Ledger.Log((alighting ? "A passenger fell getting off" : "A passenger fell at the door") + " at speed. The crowd. Tk " + tk.ToString("0") + " on the spot.");
+            InjuryHoldUntil = _sim.Metrics.Time + _e.InjuryHoldSeconds;
+            _sim.Bus.Held = true;
+            if (Injuries >= _e.InjuriesBeforeArrest)
+            {
+                Ledger.Arrested = true;
+                Ledger.Log("The second one. Police. The bus is seized and the day's money with it.");
+                EndDay("passenger injured twice");
             }
         }
 
@@ -219,7 +247,7 @@ namespace TwentyTons.Core
         {
             DayOver = true;
             DayOverReason = reason;
-            Ledger.FaresTk = _sim.Player.Load.FaresTk;
+            if (_sim.Player != null) Ledger.FaresTk = _sim.Player.Load.FaresTk;
             _sim.Bus.Held = true;
         }
 

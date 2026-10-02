@@ -357,6 +357,8 @@ function updateHud(f, dt) {
   el('door').className = f.doorOpen ? 'warn' : '';
   el('zone').textContent = f.zoneName ? f.zoneName + ' · ' + f.zoneWaiting + ' waiting' : '—';
   el('missed').textContent = f.missedAlights;
+  el('falls').textContent = f.stumbles + ' stumbles · ' + f.injuries + ' hurt';
+  el('falls').className = f.injuries ? 'danger' : f.stumbles ? 'warn' : '';
   el('stopsLost').textContent = f.stopsLost;
   el('helper').textContent = f.helperGap;
   el('rivals').textContent = f.rivals.map(r => r.name + ' ' + (r.gapMetres >= 0 ? '+' : '') + r.gapMetres.toFixed(0) + ' m · ' + r.action.replace(/([A-Z])/g, ' $1').trim().toLowerCase() + ' · ' + r.aboard + ' aboard · grudge ' + r.grudge).join('\n');

@@ -42,9 +42,15 @@ namespace TwentyTons.Core
         public readonly List<Passenger> Aboard = new List<Passenger>();
         public bool DoorOpen;
         public float DoorOpenedAt = -1f;       // sim time; earliest door at a zone gets the next passenger
-        public float BoardingTimer;            // seconds left on the person currently at the door
-        public Passenger AtDoor;               // who is on the step right now
-        public bool AtDoorIsAlighting;
+        public float BoardingTimer;            // seconds left on the person getting on
+        public Passenger AtDoor;               // who is getting on right now (the helper's hand on them)
+        public Passenger Leaving;              // who is getting off right now; both can happen at once
+        public float LeavingTimer;
+        public bool AtDoorIsAlighting => false; // kept for old callers: getting off is its own slot now
+        public int Stumbles;                   // fell at low speed: no harm, back to the kerb
+        public int Injuries;                   // fell at speed: the crowd, the money, maybe the day
+        public float LastFallTime = -999f;
+        public bool LastFallWasInjury;
         public float FaresTk;                  // fares taken today (before the conductor leaks any)
         public int Boarded, Alighted, MissedAlights;
         public DemandZone LastServed;          // the zone we last worked, so one stop isn't counted twice

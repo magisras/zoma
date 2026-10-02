@@ -31,6 +31,7 @@ namespace TwentyTons.Core
         private float _slowWithClearRoad;  // seconds crawling for no reason
         private float _stuckBehind;        // seconds held behind a slower vehicle
         private int _hornsSeen, _missedSeen, _sleepsSeen, _boardedSeen;
+        private float _fallSeen = -999f;
         private DemandZone _calledZone;
 
         public CrewVoice(TrafficSim sim) { _sim = sim; }
@@ -71,8 +72,13 @@ namespace TwentyTons.Core
             if (_silence > _sim.Tuning.Horn.SilenceComplaintSeconds && gap < 30f && bus.Speed > 2f)
                 Say("silence", v.SilenceCooldownSeconds, Speaker.Helper, "Why aren't you honking? Nobody moves for a quiet bus!");
 
-            if (load.DoorOpen && bus.Speed > _sim.Tuning.Passengers.DoorSpeedMs + 2f)
-                Say("door", v.DoorCooldownSeconds, Speaker.Helper, "Door's open and we're flying. Someone will fall!");
+            if (load.DoorOpen && bus.Speed > _sim.Tuning.Passengers.JumpSpeedMs)
+                Say("door", v.DoorCooldownSeconds, Speaker.Helper, "Door's open and we're flying. Nobody can get on like this!");
+            if (load.LastFallTime > _fallSeen)
+            {
+                _fallSeen = load.LastFallTime;
+                Say("fall", 0f, Speaker.Helper, load.LastFallWasInjury ? "He's down! He's down! Stop the bus, stop!" : "She slipped. Slow down, ostad, slow down.");
+            }
 
             if (_sim.PlayerGhost != null && m.WrongSideNow)
             {
@@ -87,7 +93,7 @@ namespace TwentyTons.Core
             // ---- The conductor: the sergeant, the arguers, the count.
             if (_sim.Economy.Sergeant.Active && _sim.Economy.Sergeant.ReleaseAt < 0f)
                 Say("sergeant", 30f, Speaker.Conductor, "Sergeant. I'm hiding the cash. Pay him, it's cheaper than the case.");
-            if (load.AtDoor != null && !load.AtDoorIsAlighting && load.AtDoor.Kind == PassengerKind.Arguer)
+            if (load.AtDoor != null && load.AtDoor.Kind == PassengerKind.Arguer)
                 Say("arguer", 20f, Speaker.Conductor, "Half fare? Show me the card. No card, full fare.");
             if (load.Boarded >= _boardedSeen + 10) { _boardedSeen = load.Boarded; Say("count", 0f, Speaker.Conductor, load.Count + " aboard. Tk " + load.FaresTk.ToString("0") + " so far."); }
 

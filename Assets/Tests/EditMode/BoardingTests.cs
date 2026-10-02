@@ -96,6 +96,7 @@ namespace TwentyTons.Tests
             var sim = QuietWithZones();
             Agent bus = sim.SpawnPlayerBus(100f, -3.5f);
             sim.SetPassengerCount(bus, Boarding.TooFullCount(sim));
+            foreach (Passenger rider in bus.Load.Aboard) rider.DestinationZone = 2;   // nobody gets off here
             sim.Zones[0].Waiting.Add(new Passenger { BoardingSeconds = 1f, DestinationZone = 1 });
             sim.SetDoor(true);
             Run(sim, 5f);

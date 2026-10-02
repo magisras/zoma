@@ -348,7 +348,7 @@ namespace TwentyTons.Core
             for (int i = 0; i < Agents.Count; i++)
             {
                 Agent rival = Agents[i];
-                if (rival.Brain == null || rival.Load == null || rival.Load.AtDoor == null || rival.Load.AtDoorIsAlighting) continue;
+                if (rival.Brain == null || rival.Load == null || rival.Load.AtDoor == null) continue;
                 DemandZone zone = Boarding.ZoneInReach(this, rival);
                 if (zone == null) continue;
                 float ds = Corridor.DeltaS(Player.S, zone.S);

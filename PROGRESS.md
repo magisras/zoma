@@ -137,6 +137,19 @@ in the headless runner and in the browser. Entries below are appended as steps l
 - Found on the way: the Dhaka driver overshot every zone at 45 km/h (now slows in for a crowd),
   then spent its whole dwell unloading (dwell now counts from when boarding can begin).
 
+**Step 9 — the helper's door** (done)
+
+- One person gets off while another gets on: two slots at the door, each with its own clock.
+- Rolling faster than a crawl but under the jump speed (6 m/s), people still get on and off,
+  quicker (the helper pulls), with a fall chance per m/s above walking pace; getting off is twice
+  as risky. A fall below 3 m/s is a stumble (back to the kerb, shaken); at or above it an injury:
+  the crowd holds the bus for a minute and the crew pays on the spot; the second injury of the
+  day is the police and the end of the day. Helper lines for both.
+- HUD: both door slots and a falls row. Headless prints stumbles and injuries.
+- Thesis batch after this step: careful −218 (fares 216), Dhaka −784 (fares 146, 23 scrapes).
+  Loading in parallel lifted both; scrapes still decide it.
+- Tests: 72.
+
 **Where this leaves the project**
 
 Everything in README milestones 3–6 now exists as engine-free C# with tests, runs in the browser

@@ -5,12 +5,15 @@ namespace TwentyTons.Core
 {
     /// <summary>
     /// Demand zones filling up and buses working them. RESEARCH.md: "Boarding time 2 to 6 seconds
-    /// per passenger ... Each passenger boards the first bus unless it's too full ... the conductor
-    /// collects fares after departure so the door isn't blocked."
+    /// per passenger ... Each passenger boards the first bus unless it's too full ... Helpers
+    /// mostly shout, grab and pull; picking up without stopping is common. Alighting is the
+    /// dangerous part: passengers are forced off running buses."
     ///
-    /// A bus works a zone when it is within the zone's reach, slow enough, with its door open.
-    /// People get off first, then on, one at a time, each at their own pace. The crowd goes to
-    /// whichever bus opened its door first; a bus that is too full is skipped.
+    /// A bus works a zone when it is within reach with its door open. Stopped or crawling, people
+    /// get on and off at their own pace, one getting on and one getting off at the same time.
+    /// Rolling faster, up to the jump speed, they still can, quicker, with a chance of falling
+    /// that grows with speed. A fall at walking pace is a stumble. A fall at speed is an injury,
+    /// and the street's rule about injuring people applies.
     /// </summary>
     public static class Boarding
     {
@@ -38,60 +41,65 @@ namespace TwentyTons.Core
             PassengerSettings p = sim.Tuning.Passengers;
             if (load == null) return;
 
-            if (!load.DoorOpen)
+            // Door shut, or flying: nobody can get on or off. Whoever was on the step is still on it.
+            if (!load.DoorOpen || bus.Speed > p.JumpSpeedMs)
             {
-                load.AtDoor = null;
-                load.BoardingTimer = 0f;
                 return;
             }
 
-            // Too fast: nobody can get on or off. The helper hangs out and shouts; that's all.
-            if (bus.Speed > p.DoorSpeedMs)
-            {
-                load.AtDoor = null;
-                load.BoardingTimer = 0f;
-                return;
-            }
-
+            bool rolling = bus.Speed > p.DoorSpeedMs;        // faster than a crawl: the helper's trick
+            float pace = rolling ? p.MovingDoorTimeFactor : 1f;
             DemandZone zone = ZoneInReach(sim, bus);
 
-            // Someone already on the step: finish their boarding or alighting.
+            // ---- Getting off: finish the one on the step, then pick the next one for this zone.
+            if (load.Leaving != null)
+            {
+                load.LeavingTimer -= dt;
+                if (load.LeavingTimer <= 0f)
+                {
+                    load.Aboard.Remove(load.Leaving);
+                    load.Alighted++;
+                    RollFall(sim, bus, load.Leaving, true);
+                    load.Leaving = null;
+                }
+            }
+            else if (zone != null)
+            {
+                for (int i = 0; i < load.Aboard.Count; i++)
+                {
+                    if (load.Aboard[i].DestinationZone == zone.Index)
+                    {
+                        load.Leaving = load.Aboard[i];
+                        load.LeavingTimer = load.Leaving.BoardingSeconds * 0.7f * pace;   // getting off is quicker
+                        break;
+                    }
+                }
+            }
+
+            // ---- Getting on: finish the one on the step, then the first in the queue if we are first door.
             if (load.AtDoor != null)
             {
                 load.BoardingTimer -= dt;
-                if (load.BoardingTimer > 0f) return;
-                if (load.AtDoorIsAlighting)
+                if (load.BoardingTimer <= 0f)
                 {
-                    load.Aboard.Remove(load.AtDoor);
-                    load.Alighted++;
+                    Passenger boarded = load.AtDoor;
+                    load.AtDoor = null;
+                    if (RollFall(sim, bus, boarded, false))
+                    {
+                        if (zone != null) zone.Waiting.Insert(0, boarded);   // back on the kerb, shaken
+                    }
+                    else
+                    {
+                        load.Aboard.Add(boarded);
+                        load.Boarded++;
+                        load.FaresTk += boarded.FareTk;
+                    }
                 }
-                else
-                {
-                    load.Aboard.Add(load.AtDoor);
-                    load.Boarded++;
-                    load.FaresTk += load.AtDoor.FareTk;
-                }
-                load.AtDoor = null;
                 return;
             }
 
-            if (zone == null) return;
+            if (zone == null || zone.Waiting.Count == 0) return;
             load.LastServed = zone;
-
-            // 1. Off first: anyone whose destination is this zone.
-            for (int i = 0; i < load.Aboard.Count; i++)
-            {
-                if (load.Aboard[i].DestinationZone == zone.Index)
-                {
-                    load.AtDoor = load.Aboard[i];
-                    load.AtDoorIsAlighting = true;
-                    load.BoardingTimer = load.AtDoor.BoardingSeconds * 0.7f;    // getting off is quicker
-                    return;
-                }
-            }
-
-            // 2. Then on, if this bus is the first door and not too full.
-            if (zone.Waiting.Count == 0) return;
             if (load.Count >= TooFullCount(sim)) return;
             if (!IsFirstDoor(sim, bus, zone)) return;
 
@@ -99,10 +107,37 @@ namespace TwentyTons.Core
             zone.Waiting.RemoveAt(0);
             next.FareTk = Fare(sim, zone, next);
             load.AtDoor = next;
-            load.AtDoorIsAlighting = false;
             // Walking out to a bus stopped mid-road takes time too.
             float walk = Mathf.Abs(bus.Lateral - zone.Side * sim.Corridor.HalfWidth) * p.WalkToBusSecondsPerMetre;
-            load.BoardingTimer = next.BoardingSeconds + walk;
+            load.BoardingTimer = (next.BoardingSeconds + walk) * pace;
+        }
+
+        /// <summary>
+        /// Did this person fall? Chance grows with speed above walking pace; getting off is worse.
+        /// A fall below the injury speed is a stumble; above it, an injury the world answers.
+        /// Returns true on any fall.
+        /// </summary>
+        private static bool RollFall(TrafficSim sim, Agent bus, Passenger person, bool alighting)
+        {
+            PassengerSettings p = sim.Tuning.Passengers;
+            float speed = bus.Speed;
+            if (speed <= 1f) return false;
+            float chance = p.FallChancePerMs * (speed - 1f) * (alighting ? p.AlightFallFactor : 1f);
+            if (!sim.Random.Chance(chance)) return false;
+
+            BusLoad load = bus.Load;
+            load.LastFallTime = sim.Metrics.Time;
+            load.LastFallWasInjury = speed >= p.InjurySpeedMs;
+            if (load.LastFallWasInjury)
+            {
+                load.Injuries++;
+                if (bus.IsPlayer) sim.Economy.OnInjury(alighting);
+            }
+            else
+            {
+                load.Stumbles++;
+            }
+            return true;
         }
 
         /// <summary>Passengers who wanted this zone but the bus didn't slow: they ride on, unhappily.</summary>
@@ -145,7 +180,7 @@ namespace TwentyTons.Core
             {
                 Agent other = sim.Agents[i];
                 if (other == bus || other.Load == null || !other.Load.DoorOpen) continue;
-                if (other.Speed > sim.Tuning.Passengers.DoorSpeedMs) continue;
+                if (other.Speed > sim.Tuning.Passengers.JumpSpeedMs) continue;
                 if (other.Load.Count >= tooFull) continue;
                 if (Mathf.Abs(sim.Corridor.DeltaS(zone.S, other.S)) > reach) continue;
                 if (other.Load.DoorOpenedAt < bus.Load.DoorOpenedAt) return false;
