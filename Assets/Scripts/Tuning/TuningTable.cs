@@ -34,6 +34,12 @@ namespace TwentyTons.Tuning
         public OfficerSettings Officer = new OfficerSettings();
         public PedestrianSettings Pedestrians = new PedestrianSettings();
 
+        [Header("The player's bus")]
+        public BusSettings Bus = new BusSettings();
+
+        [Header("Traffic population")]
+        public SpawnSettings Spawn = new SpawnSettings();
+
         [Header("Decision layer (rival buses)")]
         public UtilitySettings Utility = new UtilitySettings();
         public MemorySettings Memory = new MemorySettings();
@@ -118,9 +124,23 @@ namespace TwentyTons.Tuning
         [Tooltip("Spread around DefaultNerve for generic traffic so not every car behaves the same. placeholder")]
         [Range(0f, 0.5f)] public float RandomSpread = 0.2f;
 
-        [Tooltip("Probability (at nerve = 1) that a lighter vehicle refuses to yield to a heavier one. " +
-                 "At nerve = 0 it always yields. RESEARCH: 'smaller yields unless nerve calls the bluff'. placeholder")]
+        [Tooltip("Chance per second (at nerve = 1) that a lighter vehicle refuses to yield to a heavier one " +
+                 "pressing from behind. At nerve = 0 it never bluffs. RESEARCH: 'smaller yields unless nerve " +
+                 "calls the bluff'. placeholder")]
         [Range(0f, 1f)] public float BluffChanceAtFullNerve = 0.35f;
+
+        [Tooltip("Chance per second that a lighter vehicle yields to a heavier one pressing from behind when " +
+                 "nobody honks. Kept low on purpose: RESEARCH says 'silence moves nothing'. placeholder")]
+        [Range(0f, 1f)] public float YieldChancePerSecondWithoutHorn = 0.15f;
+
+        [Tooltip("How far behind a driver notices a heavier vehicle closing in, metres. placeholder")]
+        public float YieldLookBehindMetres = 25f;
+
+        [Tooltip("How long a yield (moving aside) is held before the driver reconsiders, seconds. placeholder")]
+        public float YieldSeconds = 3f;
+
+        [Tooltip("How long a bluff (refusing to move) is held before the driver reconsiders, seconds. placeholder")]
+        public float BluffSeconds = 4f;
     }
 
     /// <summary>
@@ -131,22 +151,36 @@ namespace TwentyTons.Tuning
     [Serializable]
     public sealed class GapSettings
     {
-        [Tooltip("Gap accepted by a driver with nerve = 1. RESEARCH: 0.5 s")]
+        [Tooltip("Headway accepted by a driver with nerve = 1, seconds. RESEARCH: 0.5 s")]
         public float CriticalGapMinSeconds = 0.5f;
 
-        [Tooltip("Gap accepted by a driver with nerve = 0. RESEARCH: 1.5 s")]
+        [Tooltip("Headway accepted by a driver with nerve = 0, seconds. RESEARCH: 1.5 s")]
         public float CriticalGapMaxSeconds = 1.5f;
 
-        [Tooltip("Speed-scaled minimum following distance in metres per m/s of own speed. " +
-                 "At 10 m/s (36 km/h) a value of 0.4 gives 4 m. RESEARCH: 'speed-scaled minimum distance'. placeholder")]
-        public float FollowDistancePerMetrePerSecond = 0.4f;
-
-        [Tooltip("Hard floor for following distance when stopped, in metres. Buses stop centimetres short " +
+        [Tooltip("Bumper-to-bumper distance kept when stopped, metres. Buses stop centimetres short " +
                  "because damage comes out of the crew's day. placeholder")]
         public float FollowDistanceFloorMetres = 0.5f;
 
+        [Tooltip("How hard a driver corrects toward the allowed speed, per second. 1 = closes the whole " +
+                 "difference in a second if the vehicle can. placeholder")]
+        public float ClosingGain = 1.5f;
+
+        [Tooltip("How far ahead a driver looks for the next vehicle, metres. placeholder")]
+        public float LookAheadMetres = 80f;
+
+        [Tooltip("A driver counts as blocked when the vehicle ahead holds them below this fraction of " +
+                 "their desired speed; then they start looking for a gap beside it. placeholder")]
+        [Range(0f, 1f)] public float BlockedFraction = 0.6f;
+
+        [Tooltip("Extra free road (metres) a sideways move must offer before a nerve-0 driver takes it. " +
+                 "Nerve shrinks this; a nerve-1 driver moves for almost nothing. placeholder")]
+        public float SeekGapMinAdvantageMetres = 8f;
+
+        [Tooltip("Sideways step between the positions a driver considers, metres. placeholder")]
+        public float LateralStepMetres = 1.0f;
+
         /// <summary>
-        /// The gap a given driver accepts. Nerve 0 gives the cautious maximum, nerve 1 the brave
+        /// The headway a given driver accepts. Nerve 0 gives the cautious maximum, nerve 1 the brave
         /// minimum. Linear for now; playtesting may want a curve.
         /// </summary>
         public float CriticalGapSeconds(float nerve)
@@ -158,8 +192,9 @@ namespace TwentyTons.Tuning
         {
             CriticalGapMinSeconds = Mathf.Max(0.05f, CriticalGapMinSeconds);
             CriticalGapMaxSeconds = Mathf.Max(CriticalGapMinSeconds, CriticalGapMaxSeconds);
-            FollowDistancePerMetrePerSecond = Mathf.Max(0f, FollowDistancePerMetrePerSecond);
             FollowDistanceFloorMetres = Mathf.Max(0f, FollowDistanceFloorMetres);
+            LookAheadMetres = Mathf.Max(5f, LookAheadMetres);
+            LateralStepMetres = Mathf.Max(0.1f, LateralStepMetres);
         }
     }
 
@@ -189,6 +224,9 @@ namespace TwentyTons.Tuning
         [Tooltip("How strongly relative mass scales the effect. 1 = a bus horn moves a rickshaw 20× more " +
                  "than a rickshaw horn moves a bus. RESEARCH: 'weighted by relative mass'. placeholder")]
         [Range(0f, 2f)] public float MassWeighting = 1f;
+
+        [Tooltip("How long a vehicle that gave way to a horn keeps giving way, seconds. placeholder")]
+        public float YieldSeconds = 5f;
 
         [Tooltip("Seconds of silence after which the helper and passengers start asking 'why are you " +
                  "not honking?'. RESEARCH: 'A quiet bus has lost its nerve'. placeholder")]
@@ -256,8 +294,122 @@ namespace TwentyTons.Tuning
         [Tooltip("Extra seconds of gap a pedestrian wants before crossing in front of a heavy vehicle. placeholder")]
         public float HesitationSeconds = 1.0f;
 
-        [Tooltip("Base crossing gap a pedestrian accepts in front of a small vehicle, seconds. placeholder")]
-        public float CrossingGapSeconds = 1.0f;
+        [Tooltip("Base crossing gap a pedestrian accepts in front of a vehicle, seconds. placeholder")]
+        public float CrossingGapSeconds = 1.5f;
+
+        [Tooltip("The raised hand: the crossing gap is multiplied by this in front of small vehicles, " +
+                 "because the pedestrian expects them to stop. RESEARCH: 'hand confidence'. placeholder")]
+        [Range(0.1f, 1f)] public float HandConfidenceGapFactor = 0.6f;
+
+        [Tooltip("How far up the road a pedestrian looks for traffic before stepping out, metres. placeholder")]
+        public float LookMetres = 60f;
+
+        [Tooltip("Walking speed, m/s. placeholder")]
+        public float WalkSpeed = 1.3f;
+
+        [Tooltip("Shortest and longest pause on the kerb between crossings, seconds. placeholder")]
+        public float WaitMinSeconds = 3f;
+        public float WaitMaxSeconds = 12f;
+    }
+
+    /// <summary>
+    /// The player's bus as a character (RESEARCH.md): "A 20-ton vehicle with worn brakes and heavy
+    /// steering." Milestone 2 in Unity will drive these numbers into a real vehicle physics package;
+    /// the sandbox uses them in a simple bicycle model (Core/BusController.cs).
+    /// </summary>
+    [Serializable]
+    public sealed class BusSettings
+    {
+        [Tooltip("Empty weight, tonnes. With a crush load it reaches the twenty tons of the title. placeholder")]
+        public float TareTonnes = 12f;
+
+        [Tooltip("Weight per passenger, kg. placeholder")]
+        public float PassengerKg = 70f;
+
+        [Tooltip("Seats. RESEARCH: fares are set on a 52-seat basis.")]
+        public int Seats = 52;
+
+        [Tooltip("Most people the crew will pack in, standing included. RESEARCH: overloading is routine. placeholder")]
+        public int CrushCapacity = 90;
+
+        [Tooltip("Engine power, kW. Acceleration = power / (mass × speed), so a full bus is slow. placeholder")]
+        public float EnginePowerKw = 180f;
+
+        [Tooltip("Acceleration cap at low speed, m/s². placeholder")]
+        public float MaxAccelMs2 = 1.5f;
+
+        [Tooltip("Top speed, km/h. placeholder")]
+        public float MaxSpeedKmh = 80f;
+
+        [Tooltip("Braking with new brakes, m/s². placeholder")]
+        public float BrakeDecelNewMs2 = 5f;
+
+        [Tooltip("Fraction of braking lost at brake wear = 1. At 0.6, fully worn brakes keep 40%. placeholder")]
+        [Range(0f, 1f)] public float BrakeWearLoss = 0.6f;
+
+        [Tooltip("Rolling resistance, m/s² lost when coasting. placeholder")]
+        public float RollingDecelMs2 = 0.3f;
+
+        [Tooltip("Air drag, m/s² lost per (m/s)². placeholder")]
+        public float AirDragPerMs2 = 0.0015f;
+
+        [Tooltip("Distance between axles, metres. Longer = wider turns. placeholder")]
+        public float WheelbaseMetres = 6f;
+
+        [Tooltip("Full lock, degrees. placeholder")]
+        public float MaxSteerAngleDeg = 35f;
+
+        [Tooltip("How fast the wheel turns at a standstill, degrees per second. placeholder")]
+        public float SteerRateDegPerSec = 70f;
+
+        [Tooltip("Speed (m/s) at which the steering rate halves. Lower = heavier steering. placeholder")]
+        public float SteerHeavinessSpeed = 8f;
+
+        [Tooltip("Brake wear the bus starts the prototype with, 0..1. placeholder")]
+        [Range(0f, 1f)] public float StartingBrakeWear = 0.5f;
+
+        [Tooltip("Passengers aboard at the start of the prototype. placeholder")]
+        public int StartingPassengers = 30;
+
+        [Tooltip("Off the corridor (past the kerb by this many metres) the bus is in the market stalls and " +
+                 "loses speed fast. The world enforces, not the UI. placeholder")]
+        public float OffRoadToleranceMetres = 2f;
+        public float OffRoadDecelMs2 = 4f;
+    }
+
+    /// <summary>
+    /// How generic traffic is kept around the player. The "chaos actors" of the tech plan.
+    /// </summary>
+    [Serializable]
+    public sealed class SpawnSettings
+    {
+        [Tooltip("Vehicles kept alive around the player. placeholder")]
+        public int VehiclesAround = 40;
+
+        [Tooltip("Traffic is spawned up to this far ahead of the player, metres. placeholder")]
+        public float SpawnAheadMetres = 300f;
+
+        [Tooltip("...and up to this far behind, metres. placeholder")]
+        public float SpawnBehindMetres = 120f;
+
+        [Tooltip("Nothing spawns closer to the player than this, metres. placeholder")]
+        public float SpawnClearanceMetres = 50f;
+
+        [Header("Class mix (relative weights). RESEARCH: rickshaws fill every gap; buses ~1 in 4 crashes.")]
+        public float RickshawWeight = 40f;
+        public float CngWeight = 20f;
+        public float CarWeight = 25f;
+        public float BusWeight = 10f;
+        public float TruckWeight = 5f;
+
+        [Tooltip("Pedestrians kept on the kerbs around the player. placeholder")]
+        public int PedestriansAround = 14;
+
+        [Tooltip("Pedestrians are placed from this far behind to SpawnAheadMetres ahead. placeholder")]
+        public float PedestrianBehindMetres = 30f;
+
+        [Tooltip("How far a pedestrian stands from the road edge while waiting, metres. placeholder")]
+        public float KerbOffsetMetres = 1.0f;
     }
 
     // ------------------------------------------------------------------------------------------
