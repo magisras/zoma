@@ -224,6 +224,21 @@ in the headless runner and in the browser. Entries below are appended as steps l
 - Found and fixed on the way: `.gitignore`'s Unity `*.csproj` rule had swallowed
   `sandbox/TwentyTons.Sandbox.csproj`, so a fresh clone could not run `make sandbox`.
 
+**Step 16 — crews remember, cloud setup, a brief for testers** (done)
+
+- Jamal ended day 1 with "Tomorrow I won't let you" and woke up with no memory: `Reset` built new
+  brains. Now `Household.Crews` keeps each named crew's grudge with the day it was stored, like the
+  bus's wear; `TrafficSim.RememberCrews` writes it before the day's world is thrown away and
+  `RecallCrews` gives it back, cooled by `Memory.GrudgeDecayPerShift` (1) for every night since,
+  rest and yard days included, never past zero; trust cools the same way. R mid-day keeps it, as it
+  keeps the bus. Four tests in `CrewMemoryTests`, 93 in all.
+- Taken from a parallel session's branch (`claude/wizardly-sagan-dipemu`): the session start hook
+  that installs Mono in cloud containers; extended to install the .NET 8 SDK too, so the sandbox
+  publishes without setup. Its other finding (the ignored project file) was already fixed here.
+- The tuning panel starts hidden; T (or the phone's button) opens it. It is an instrument, not the game.
+- `docs/TESTING.md`: how a separate session tests what is on `main` without Unity, what to look at,
+  how to report, and what not to push.
+
 **Where this leaves the project**
 
 Everything in README milestones 3–6 now exists as engine-free C# with tests, runs in the browser

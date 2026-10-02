@@ -868,7 +868,8 @@ namespace TwentyTons.Tuning
         [Tooltip("Grudge can't go beyond this in either direction. placeholder")]
         public int GrudgeCap = 6;
 
-        [Tooltip("Grudge moves this many points toward zero at the end of each shift. placeholder")]
+        [Tooltip("Grudge moves this many points toward zero for every night that passes before the crews meet " +
+                 "again (rest days and yard days count). Trust (a negative grudge) cools the same way. placeholder")]
         public int GrudgeDecayPerShift = 1;
 
         [Tooltip("The player within this distance ahead, in the same band, is 'in the way', metres. placeholder")]

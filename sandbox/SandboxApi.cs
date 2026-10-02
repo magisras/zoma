@@ -179,6 +179,9 @@ namespace TwentyTons.Sandbox
         [JSInvokable]
         public static SceneDto Reset(int seed)
         {
+            // R mid-day: the crews keep what they feel, as the household keeps the bus. After a day
+            // over, NextDay already stored it with the right day.
+            if (_sim != null && !_sim.Economy.DayOver) _sim.RememberCrews(_household);
             var random = new SeededRandom(seed);
             Corridor corridor = SandboxWorld.BuildCorridor(random);
             _sim = new TrafficSim(corridor, _tuning, seed + 1);
@@ -221,6 +224,7 @@ namespace TwentyTons.Sandbox
             // The two crews of the player's own company: one ahead, one behind, as the research describes.
             _sim.SpawnRivalBus("Rafiq", DriverPersonality.Reckless(), 180f, -2f);
             _sim.SpawnRivalBus("Jamal", DriverPersonality.Spiteful(), corridor.Length - 160f, -2f);
+            _sim.RecallCrews(_household);                    // Jamal remembers yesterday, a little less each night
             _accumulator = 0f;
 
             return new SceneDto
@@ -348,6 +352,7 @@ namespace TwentyTons.Sandbox
         public static SceneDto NextDay(bool work, int seed)
         {
             if (!_sleptChosen) Sleep(false);
+            _sim.RememberCrews(_household);                  // before the day advances: today's grudge, dated today
             if (_sim.Rollover.Count > 0) _household.NoteRollover(_sim.Economy.WalkedAway, _tuning.Economy);
             if (_sim.Economy.Seized) _household.NoteSeizure(_tuning.Economy);
             // The yard: days without a bus pass before anyone can work again. Not a choice.

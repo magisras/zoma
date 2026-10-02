@@ -230,6 +230,29 @@ namespace TwentyTons.Core
             return NewVehicle(corridor, vehicleClass, s, lateral, nerve);
         }
 
+        /// <summary>
+        /// Write what the named crews feel into the household, where it outlives this sim. Call before
+        /// the day's world is thrown away (RESEARCH.md: own-company crews are persistent, with memory).
+        /// </summary>
+        public void RememberCrews(Household household)
+        {
+            for (int i = 0; i < Agents.Count; i++)
+            {
+                Agent a = Agents[i];
+                if (a.Brain != null) household.RememberCrew(a.Brain.CrewName, a.Brain.Grudge);
+            }
+        }
+
+        /// <summary>Give the named crews back what they felt, cooled by the nights since. Call after spawning them.</summary>
+        public void RecallCrews(Household household)
+        {
+            for (int i = 0; i < Agents.Count; i++)
+            {
+                Agent a = Agents[i];
+                if (a.Brain != null) a.Brain.Grudge = household.RecallCrew(a.Brain.CrewName, Tuning.Memory);
+            }
+        }
+
         /// <param name="side">−1 = left kerb, +1 = right kerb.</param>
         public Agent SpawnPedestrian(float s, int side)
         {

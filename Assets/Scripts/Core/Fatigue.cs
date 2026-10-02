@@ -86,6 +86,13 @@ namespace TwentyTons.Core
     }
 
     /// <summary>What one day left behind.</summary>
+    /// <summary>One crew's memory of the player, as stored by the household at the end of a day.</summary>
+    public sealed class CrewMemory
+    {
+        public int Grudge;
+        public int Day;
+    }
+
     public sealed class DaySummary
     {
         public int Day;
@@ -109,6 +116,8 @@ namespace TwentyTons.Core
         public readonly BusCondition Bus = new BusCondition();   // the same bus every day
         public int CrewInjuredDays;        // shifts still to drive hurt
         public int BusInYardDays;          // days the bus still sits in the dumping yard
+        /// <summary>What each named crew felt about the player when the day closed, and on which day.</summary>
+        public readonly Dictionary<string, CrewMemory> Crews = new Dictionary<string, CrewMemory>();
         public int WalkedAwayCount;        // buses left on their side
         public readonly List<DaySummary> Days = new List<DaySummary>();
 
@@ -177,6 +186,25 @@ namespace TwentyTons.Core
         {
             CrewInjuredDays = e.CrewInjuryDays + 1;   // counts down at the next start
             if (walkedAway) WalkedAwayCount++;
+        }
+
+        /// <summary>A named crew's feeling toward the player goes home with them, like the bus does.</summary>
+        public void RememberCrew(string crewName, int grudge)
+        {
+            Crews[crewName] = new CrewMemory { Grudge = grudge, Day = Day };
+        }
+
+        /// <summary>
+        /// What a crew still holds against the player today: the stored grudge, cooled toward zero by
+        /// GrudgeDecayPerShift for every night since. A crew never met before holds nothing.
+        /// </summary>
+        public int RecallCrew(string crewName, MemorySettings m)
+        {
+            CrewMemory memory;
+            if (!Crews.TryGetValue(crewName, out memory)) return 0;
+            int nights = System.Math.Max(0, Day - memory.Day);
+            int cooled = System.Math.Max(0, System.Math.Abs(memory.Grudge) - m.GrudgeDecayPerShift * nights);
+            return memory.Grudge < 0 ? -cooled : cooled;
         }
 
         /// <summary>The sergeant sent the bus to the dumping yard: no bus for a while.</summary>
