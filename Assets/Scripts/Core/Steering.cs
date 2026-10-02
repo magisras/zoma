@@ -6,16 +6,19 @@ namespace TwentyTons.Core
 {
     /// <summary>
     /// The steering layer for NPC vehicles: how a vehicle moves, never what it wants
-    /// (RESEARCH.md keeps those two layers apart). Four behaviours, in the order the research says
+    /// (RESEARCH.md keeps those two layers apart). The behaviours, in the order the research says
     /// gives most of the feel:
     ///   1. follow the corridor and keep a speed-scaled distance (critical gap by nerve)
-    ///   2. seek a gap sideways when blocked
-    ///   3. yield by mass, unless nerve calls the bluff
-    ///   4. react to horns (in HornSystem; it calls Yield() here)
+    ///   2. stop for the officer's cane, unless you are one of the leakers
+    ///   3. seek a gap sideways when blocked
+    ///   4. yield by mass, unless nerve calls the bluff
+    ///   5. react to horns (in HornSystem; it calls Yield() here)
     ///
     /// Everything is a plain static function over the agent list, so it reads top to bottom and can
     /// be unit-tested without a scene. The player's bus is not driven here (BusController), but every
     /// NPC sees it through the same functions because it is in the same list.
+    ///
+    /// All along-the-road distances go through Corridor.DeltaS so loops work.
     /// </summary>
     public static class Steering
     {
@@ -25,9 +28,9 @@ namespace TwentyTons.Core
         // ---------------------------------------------------------------- queries
 
         /// <summary>
-        /// The nearest agent ahead of <paramref name="self"/> whose body would be in the way if self
-        /// were at <paramref name="lateral"/>. Gap is bumper to bumper (negative = overlapping).
-        /// Returns null when the road is clear for <paramref name="lookAhead"/> metres.
+        /// The nearest agent ahead of <paramref name="self"/> on the same corridor whose body would be
+        /// in the way if self were at <paramref name="lateral"/>. Gap is bumper to bumper (negative =
+        /// overlapping). Returns null when the road is clear for <paramref name="lookAhead"/> metres.
         /// </summary>
         public static Agent FindAhead(List<Agent> agents, Agent self, float lateral, float lookAhead, out float gap)
         {
@@ -36,12 +39,12 @@ namespace TwentyTons.Core
             for (int i = 0; i < agents.Count; i++)
             {
                 Agent other = agents[i];
-                if (other == self) continue;
+                if (other == self || other.Corridor != self.Corridor) continue;
                 if (!self.WouldOverlapLaterally(lateral, other, LateralMargin)) continue;
 
-                float g = other.Rear - self.Front;
-                // "Ahead" means its rear is in front of my centre; allows a little overlap.
-                if (other.S <= self.S) continue;
+                float ds = self.Corridor.DeltaS(self.S, other.S);
+                if (ds <= 0f) continue;                                   // not ahead of my centre
+                float g = ds - self.HalfLength - other.HalfLength;
                 if (g < gap)
                 {
                     gap = g;
@@ -62,13 +65,14 @@ namespace TwentyTons.Core
             for (int i = 0; i < agents.Count; i++)
             {
                 Agent other = agents[i];
-                if (other == self || other.IsPedestrian) continue;
+                if (other == self || other.IsPedestrian || other.Corridor != self.Corridor) continue;
                 if (other.Mass < self.Mass * 1.5f) continue;            // not clearly heavier
-                if (other.S >= self.S) continue;                          // not behind
+                float ds = self.Corridor.DeltaS(self.S, other.S);
+                if (ds >= 0f) continue;                                   // not behind
                 if (other.Speed < self.Speed - 0.5f) continue;            // not closing in
                 if (!self.OverlapsLaterally(other, LateralMargin)) continue;
 
-                float g = self.Rear - other.Front;
+                float g = -ds - self.HalfLength - other.HalfLength;
                 if (g < best)
                 {
                     best = g;
@@ -88,11 +92,11 @@ namespace TwentyTons.Core
             for (int i = 0; i < agents.Count; i++)
             {
                 Agent other = agents[i];
-                if (other == self) continue;
+                if (other == self || other.Corridor != self.Corridor) continue;
                 if (!self.WouldOverlapLaterally(lateral, other, LateralMargin)) continue;
 
                 float alongside = self.HalfLength + other.HalfLength + 1.5f;
-                float ds = other.S - self.S;
+                float ds = self.Corridor.DeltaS(self.S, other.S);
                 if (Mathf.Abs(ds) < alongside) return true;
                 // Someone right behind in that band and faster than me: let them pass first.
                 if (ds < 0f && ds > -alongside - 8f && other.Speed > self.Speed + 1f) return true;
@@ -132,7 +136,7 @@ namespace TwentyTons.Core
         public static void Drive(TrafficSim sim, Agent a, float dt)
         {
             TuningTable tuning = sim.Tuning;
-            Corridor corridor = sim.Corridor;
+            Corridor corridor = a.Corridor;
             float edge = corridor.HalfWidth - a.HalfWidth;
 
             TickTimers(a, dt);
@@ -146,14 +150,21 @@ namespace TwentyTons.Core
                 allowed = Mathf.Min(allowed, AllowedSpeed(gap, headway, tuning.Gap.FollowDistanceFloorMetres));
             }
 
-            // 2. Seek gap: blocked by the vehicle ahead? Look for a band with more free road.
+            // 2. The officer: a closed stop line (or a box full of cross traffic) is an obstacle too.
+            float stopLine = sim.StopDistanceAhead(a, tuning.Gap.LookAheadMetres);
+            if (stopLine < tuning.Gap.LookAheadMetres)
+            {
+                allowed = Mathf.Min(allowed, AllowedSpeed(stopLine, headway, tuning.Gap.FollowDistanceFloorMetres));
+            }
+
+            // 3. Seek gap: blocked by the vehicle ahead? Look for a band with more free road.
             bool blocked = ahead != null && allowed < a.DesiredSpeed * tuning.Gap.BlockedFraction;
             if (blocked && !a.IsYielding)
             {
                 SeekGap(sim, a, gap, edge);
             }
 
-            // 3. Yield by mass: something clearly heavier pressing from behind?
+            // 4. Yield by mass: something clearly heavier pressing from behind?
             if (!a.IsYielding && a.BluffTimer <= 0f)
             {
                 Agent heavy = FindHeavierBehind(sim.Agents, a, tuning.Nerve.YieldLookBehindMetres);
@@ -171,10 +182,10 @@ namespace TwentyTons.Core
                 }
             }
 
-            // 4. Integrate speed toward the allowed speed, within what the vehicle can do.
+            // 5. Integrate speed toward the allowed speed, within what the vehicle can do.
             float accel = Mathf.Clamp((allowed - a.Speed) * tuning.Gap.ClosingGain, -a.Shape.Braking, a.Shape.Acceleration);
             a.Speed = Mathf.Max(0f, a.Speed + accel * dt);
-            a.S += a.Speed * dt;
+            a.S = corridor.Wrap(a.S + a.Speed * dt);
 
             // Sideways: you can't drift much when standing still.
             float lateralRate = Mathf.Min(a.Shape.LateralSpeed, 0.3f + a.Speed * 0.3f);
@@ -186,7 +197,7 @@ namespace TwentyTons.Core
             a.Lateral = Mathf.MoveTowards(a.Lateral, target, lateralRate * dt);
             float lateralVelocity = dt > 0f ? (a.Lateral - before) / dt : 0f;
 
-            // 5. World pose for rendering: on the corridor, nose slightly turned into the drift.
+            // 6. World pose for rendering: on the corridor, nose slightly turned into the drift.
             a.Position = corridor.PositionAt(a.S, a.Lateral);
             a.Yaw = corridor.YawAt(a.S) + Mathf.Atan2(lateralVelocity, Mathf.Max(a.Speed, 1f));
         }

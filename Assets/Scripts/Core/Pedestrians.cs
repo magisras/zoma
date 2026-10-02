@@ -69,19 +69,27 @@ namespace TwentyTons.Core
             for (int i = 0; i < sim.Agents.Count; i++)
             {
                 Agent v = sim.Agents[i];
-                if (v.IsPedestrian) continue;
-                if (v.Front >= p.S - 1f && v.Rear <= p.S + 1f)
+                if (v.IsPedestrian || v.Corridor != p.Corridor) continue;
+                float ds = p.Corridor.DeltaS(p.S, v.S);                  // negative = vehicle still coming
+                if (Mathf.Abs(ds) < v.HalfLength + 1f)
                 {
                     // Alongside the crossing point right now: its strip is a wall until it has passed.
                     if (StripIsAhead(p, v, direction) || Inside(p, v)) return Verdict.Stop;
                     continue;
                 }
-                if (v.Front >= p.S) continue;                             // already past
-                float distance = p.S - v.Front;
+                if (ds > 0f) continue;                                    // already past
+                float distance = -ds - v.HalfLength;
                 if (distance > tuning.LookMetres) continue;
-                if (v.Speed < 0.3f) continue;                             // parked or stuck: walk round it
+                // A vehicle standing still further away is parked: walk round it. One standing still
+                // close by might pull away any moment, so assume it will, at a walking-ish pace.
+                float speed = v.Speed;
+                if (speed < 0.3f)
+                {
+                    if (distance > tuning.PullAwayWatchMetres) continue;
+                    speed = tuning.PullAwayAssumedSpeed;
+                }
 
-                float secondsAway = distance / v.Speed;
+                float secondsAway = distance / speed;
 
                 if (Inside(p, v))
                 {

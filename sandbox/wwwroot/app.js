@@ -4,7 +4,7 @@
 import * as THREE from './vendor/three-r170.module.js';
 
 const ASSEMBLY = 'TwentyTons.Sandbox';
-const KEY = { up: 1, down: 2, left: 4, right: 8, horn: 16 };
+const KEY = { up: 1, down: 2, left: 4, right: 8, horn: 16, autopilot: 32 };
 
 // Colours per vehicle class, in the order of the C# VehicleClass enum.
 // Pedestrian, Rickshaw, Cng, Car, Truck, Bus. Flat, no textures: this is a grey box.
@@ -73,22 +73,7 @@ function buildWorld(sceneDto) {
   sceneRoot = new THREE.Group();
 
   const L = sceneDto.leftEdge, R = sceneDto.rightEdge;
-  const n = L.length / 2;
-  const verts = new Float32Array(n * 2 * 3);
-  const idx = [];
-  for (let i = 0; i < n; i++) {
-    verts.set([L[2 * i], 0, L[2 * i + 1]], i * 6);          // left vertex
-    verts.set([R[2 * i], 0, R[2 * i + 1]], i * 6 + 3);      // right vertex
-    if (i < n - 1) {
-      const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
-      idx.push(a, c, b, b, c, d);
-    }
-  }
-  const road = new THREE.BufferGeometry();
-  road.setAttribute('position', new THREE.BufferAttribute(verts, 3));
-  road.setIndex(idx);
-  road.computeVertexNormals();
-  sceneRoot.add(new THREE.Mesh(road, new THREE.MeshLambertMaterial({ color: 0x4a4a4c })));
+  sceneRoot.add(stripMesh(L, R, 0x4a4a4c));
 
   // Kerb lines help read the road edge from the chase camera.
   for (const edge of [L, R]) {
@@ -96,6 +81,12 @@ function buildWorld(sceneDto) {
     for (let i = 0; i < edge.length; i += 2) pts.push(new THREE.Vector3(edge[i], 0.02, edge[i + 1]));
     sceneRoot.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
       new THREE.LineBasicMaterial({ color: 0xa8a8a0 })));
+  }
+
+  // Cross streets: same strip construction, slightly different shade so junctions read.
+  for (let c = 0; c < sceneDto.crossEdges.length; c += 2) {
+    const CL = sceneDto.crossEdges[c], CR = sceneDto.crossEdges[c + 1];
+    sceneRoot.add(stripMesh(CL, CR, 0x47474a));
   }
 
   const B = sceneDto.buildings;
@@ -112,6 +103,48 @@ function buildWorld(sceneDto) {
   scene.add(sceneRoot);
 }
 
+// A road surface between two edge polylines (x,z pairs), as a triangle strip.
+function stripMesh(L, R, colour) {
+  const n = L.length / 2;
+  const verts = new Float32Array(n * 2 * 3);
+  const idx = [];
+  for (let i = 0; i < n; i++) {
+    verts.set([L[2 * i], 0, L[2 * i + 1]], i * 6);          // left vertex
+    verts.set([R[2 * i], 0, R[2 * i + 1]], i * 6 + 3);      // right vertex
+    if (i < n - 1) {
+      const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
+      idx.push(a, c, b, b, c, d);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  return new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: colour }));
+}
+
+// Officers: a thin tall box at the junction centre, a cane (bar) pointing along the open flow.
+const officers = [];
+function updateJunctions(list) {
+  while (officers.length < list.length) {
+    const body = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0x2f4f8f }));
+    body.scale.set(0.6, 1.8, 0.6);
+    const cane = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0xf0e68c }));
+    cane.scale.set(0.15, 0.15, 3.0);
+    scene.add(body); scene.add(cane);
+    officers.push({ body, cane });
+  }
+  list.forEach((j, i) => {
+    const o = officers[i];
+    o.body.position.set(j.x, 0.9, j.z);
+    o.body.rotation.y = j.mainYaw;
+    // Cane along the main road when main is open, across it when the cross street is open.
+    o.cane.position.set(j.x, 1.6, j.z);
+    o.cane.rotation.y = j.mainOpen ? j.mainYaw : j.mainYaw + Math.PI / 2;
+    o.cane.material.color.setHex(j.mainOpen ? 0x7fb069 : 0xd9534f);
+  });
+}
+
 // ---------------------------------------------------------------- input
 
 function bindInput() {
@@ -124,6 +157,7 @@ function bindInput() {
     if (e.target.tagName === 'INPUT') return;
     if (map[e.code]) { keys |= map[e.code]; e.preventDefault(); }
     if (e.code === 'KeyC') topDown = !topDown;
+    if (e.code === 'KeyP') keys ^= KEY.autopilot;              // toggle the careful autopilot
     if (e.code === 'KeyT') document.getElementById('tuning').classList.toggle('hidden');
     if (e.code === 'KeyR') { seed++; buildWorld(DotNet.invokeMethod(ASSEMBLY, 'Reset', seed)); }
   });
@@ -174,6 +208,9 @@ function loop(now) {
 
   const frame = DotNet.invokeMethod(ASSEMBLY, 'Tick', dt, keys);
   updateAgents(frame.agents);
+  updateJunctions(frame.junctions);
+  window.twentyTons = { lateral: frame.lateral, yawErrorDeg: frame.yawErrorDeg, speedKmh: frame.speedKmh };   // for scripted drivers
+
   updateHud(frame, dt);
   renderer.render(scene, camera);
   requestAnimationFrame(loop);
@@ -248,6 +285,7 @@ function updateHud(f, dt) {
   el('nearMisses').textContent = f.nearMisses;
   el('nearMissRate').textContent = f.time > 10 ? f.nearMissesPerMinute.toFixed(1) + ' / min' : '';
   el('contacts').textContent = f.contacts;
+  el('caneRuns').textContent = f.caneRuns;
   el('hornPresses').textContent = f.hornPresses;
   el('yields').textContent = f.yieldsToHorn + ' moved';
   el('passengers').textContent = f.passengers;
@@ -256,6 +294,7 @@ function updateHud(f, dt) {
   el('time').textContent = mins + ':' + String(secs).padStart(2, '0');
   el('distance').textContent = (f.distanceMetres / 1000).toFixed(2) + ' km · ' + f.agentCount + ' agents';
   el('horn-indicator').classList.toggle('on', (keys & KEY.horn) !== 0);
+  el('autopilot').hidden = !f.autopilot;
   el('overlay').classList.toggle('on', f.personHit);
 
   frames++; fpsTime += dt;

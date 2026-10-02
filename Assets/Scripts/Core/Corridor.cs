@@ -14,37 +14,69 @@ namespace TwentyTons.Core
     /// comparison of Lateral values, which is all the steering maths needs. World positions are
     /// derived from (S, Lateral) for rendering.
     ///
+    /// A corridor may be closed (a loop): then S wraps around and "ahead" is measured the short way
+    /// round, see <see cref="DeltaS"/>. Every piece of code that compares two S values must go
+    /// through DeltaS so loops and open roads behave the same.
+    ///
     /// Yaw follows Unity's convention: radians around the Y axis, forward = (sin yaw, 0, cos yaw).
     /// Later the Unity side will build one of these from a Unity Spline; the maths stays here.
     /// </summary>
     public sealed class Corridor
     {
+        public readonly string Name;
         public readonly List<Vector3> Points = new List<Vector3>();
         public readonly float Width;
+        public readonly bool Closed;
 
-        // _cumulative[i] = distance along the polyline at Points[i].
+        // _cumulative[i] = distance along the polyline at the start of segment i.
         private readonly float[] _cumulative;
+        private readonly int _segmentCount;
+        private readonly float _length;
 
-        public Corridor(IList<Vector3> points, float width)
+        public Corridor(IList<Vector3> points, float width, bool closed = false, string name = "road")
         {
             if (points.Count < 2) throw new System.ArgumentException("A corridor needs at least two points.");
+            Name = name;
             Width = width;
+            Closed = closed;
             Points.AddRange(points);
-            _cumulative = new float[Points.Count];
-            for (int i = 1; i < Points.Count; i++)
+            _segmentCount = closed ? Points.Count : Points.Count - 1;
+            _cumulative = new float[_segmentCount + 1];
+            for (int i = 0; i < _segmentCount; i++)
             {
-                _cumulative[i] = _cumulative[i - 1] + Vector3.Distance(Points[i - 1], Points[i]);
+                _cumulative[i + 1] = _cumulative[i] + Vector3.Distance(Points[i], Points[(i + 1) % Points.Count]);
             }
+            _length = _cumulative[_segmentCount];
         }
 
-        public float Length => _cumulative[_cumulative.Length - 1];
+        public float Length => _length;
         public float HalfWidth => Width * 0.5f;
+
+        /// <summary>S brought into range: wrapped on a loop, clamped on an open road.</summary>
+        public float Wrap(float s)
+        {
+            if (!Closed) return Mathf.Clamp(s, 0f, _length);
+            s = Mathf.Repeat(s, _length);
+            return s;
+        }
+
+        /// <summary>
+        /// Signed distance along the road from one S to another: positive when <paramref name="to"/>
+        /// is ahead. On a loop it is the short way round, in [−Length/2, Length/2).
+        /// </summary>
+        public float DeltaS(float from, float to)
+        {
+            float d = to - from;
+            if (!Closed) return d;
+            d = Mathf.Repeat(d + _length * 0.5f, _length) - _length * 0.5f;
+            return d;
+        }
 
         /// <summary>World position for corridor coordinates.</summary>
         public Vector3 PositionAt(float s, float lateral)
         {
             int i = SegmentAt(s, out float t);
-            Vector3 onLine = Vector3.Lerp(Points[i], Points[i + 1], t);
+            Vector3 onLine = Vector3.Lerp(Points[i], Points[(i + 1) % Points.Count], t);
             return onLine + RightOfSegment(i) * lateral;
         }
 
@@ -52,7 +84,7 @@ namespace TwentyTons.Core
         public Vector3 TangentAt(float s)
         {
             int i = SegmentAt(s, out _);
-            return (Points[i + 1] - Points[i]).normalized;
+            return TangentOfSegment(i);
         }
 
         /// <summary>Unit vector pointing to the right of the direction of travel at s.</summary>
@@ -79,10 +111,10 @@ namespace TwentyTons.Core
             float bestDistanceSq = float.MaxValue;
             s = 0f;
             lateral = 0f;
-            for (int i = 0; i < Points.Count - 1; i++)
+            for (int i = 0; i < _segmentCount; i++)
             {
                 Vector3 a = Points[i];
-                Vector3 ab = Points[i + 1] - a;
+                Vector3 ab = Points[(i + 1) % Points.Count] - a;
                 float lengthSq = ab.sqrMagnitude;
                 if (lengthSq < 1e-6f) continue;
 
@@ -99,29 +131,40 @@ namespace TwentyTons.Core
             }
         }
 
-        private Vector3 RightOfSegment(int i)
+        /// <summary>Distance from a world point to the centreline, for "which corridor am I on?".</summary>
+        public float DistanceTo(Vector3 world)
         {
-            Vector3 tangent = (Points[i + 1] - Points[i]).normalized;
-            // Cross(up, forward) gives right in a Y-up, left-handed frame like Unity's.
-            return Vector3.Cross(Vector3.up, tangent);
+            Project(world, out float s, out float lateral);
+            return Mathf.Abs(lateral);
         }
 
-        /// <summary>Segment index containing s, plus how far along it (0..1). Clamped to the ends.</summary>
+        private Vector3 TangentOfSegment(int i)
+        {
+            return (Points[(i + 1) % Points.Count] - Points[i]).normalized;
+        }
+
+        private Vector3 RightOfSegment(int i)
+        {
+            // Cross(up, forward) gives right in a Y-up, left-handed frame like Unity's.
+            return Vector3.Cross(Vector3.up, TangentOfSegment(i));
+        }
+
+        /// <summary>Segment index containing s, plus how far along it (0..1).</summary>
         private int SegmentAt(float s, out float t)
         {
-            s = Mathf.Clamp(s, 0f, Length);
+            s = Wrap(s);
             // Linear scan is fine: corridors have tens of points, not thousands.
-            for (int i = 0; i < _cumulative.Length - 1; i++)
+            for (int i = 0; i < _segmentCount; i++)
             {
-                if (s <= _cumulative[i + 1] || i == _cumulative.Length - 2)
+                if (s <= _cumulative[i + 1] || i == _segmentCount - 1)
                 {
                     float segmentLength = _cumulative[i + 1] - _cumulative[i];
-                    t = segmentLength > 1e-6f ? (s - _cumulative[i]) / segmentLength : 0f;
+                    t = segmentLength > 1e-6f ? Mathf.Clamp01((s - _cumulative[i]) / segmentLength) : 0f;
                     return i;
                 }
             }
             t = 1f;
-            return _cumulative.Length - 2;
+            return _segmentCount - 1;
         }
     }
 }

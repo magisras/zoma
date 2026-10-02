@@ -2,6 +2,29 @@
 
 One entry per session. The next session reads this first.
 
+## Session 3 — 2 Oct 2026 — Building the system in the sandbox (in progress)
+
+Working through README milestones 3–6 in the engine-free core, each step tested in `check.sh`,
+in the headless runner and in the browser. Entries below are appended as steps land.
+
+**Step 1 — loop corridor, officer junctions, cross traffic** (done)
+
+- `Corridor` supports closed loops: `Wrap`, `DeltaS` (short way round). All along-road maths goes
+  through it. Agents carry their corridor; queries only see the same corridor.
+- `Junction`: a cross street meeting the main road; an officer alternates the open direction
+  with random timing from `OfficerSettings`; stop lines before the box; a few leakers run the cane
+  when it drops; the box being physically occupied blocks the other stream whatever the cane says.
+- Cross traffic: each cross street keeps a stream of generic vehicles that queue and go.
+- Contacts across corridors (inside the box) use capsule distance in world space.
+- Sandbox world is now a ~1.5 km ring with two cross streets; the renderer draws them and the
+  officer with a coloured cane. HUD counts "cane runs" by the player.
+- `tools/headless.sh [seed] [seconds] [capKmh]`: runs the sandbox world without a browser with
+  the careful `ScriptedDriver` and prints the metrics; the same driver is the sandbox autopilot (P).
+- Found by driving: the follow controller was under-damped (ClosingGain 1.5 → 3), pedestrians
+  stepped out in front of stationary buses about to leave (now wary within 15 m), and a scripted
+  driver that doesn't steer drifts onto the pavement and runs over waiting pedestrians.
+- Tests: 27.
+
 ## Session 2 — 2 Oct 2026 — Simulation core and browser sandbox
 
 **Shipped**

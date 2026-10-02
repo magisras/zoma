@@ -161,9 +161,9 @@ namespace TwentyTons.Tuning
                  "because damage comes out of the crew's day. placeholder")]
         public float FollowDistanceFloorMetres = 0.5f;
 
-        [Tooltip("How hard a driver corrects toward the allowed speed, per second. 1 = closes the whole " +
-                 "difference in a second if the vehicle can. placeholder")]
-        public float ClosingGain = 1.5f;
+        [Tooltip("How hard a driver corrects toward the allowed speed, per second. Below ~2.5 the approach " +
+                 "to a stopped vehicle is under-damped and drivers overshoot into it. placeholder")]
+        public float ClosingGain = 3f;
 
         [Tooltip("How far ahead a driver looks for the next vehicle, metres. placeholder")]
         public float LookAheadMetres = 80f;
@@ -265,6 +265,12 @@ namespace TwentyTons.Tuning
         [Tooltip("Distance at which drivers read the officer's cane and start reacting, metres. placeholder")]
         public float CaneReadDistanceMetres = 30f;
 
+        [Tooltip("How far before the junction box the stop line sits, metres. placeholder")]
+        public float StopLineSetbackMetres = 2f;
+
+        [Tooltip("A driver this close to a stop line when the cane drops may still run it (if leakers remain), metres. placeholder")]
+        public float LeakZoneMetres = 14f;
+
         [Tooltip("Probability per shift that a sergeant appears at a given junction and takes the cash. " +
                  "Lowered by a fit bus with clean papers (Milestone 5). placeholder")]
         [Range(0f, 1f)] public float SergeantStopChance = 0.3f;
@@ -303,6 +309,12 @@ namespace TwentyTons.Tuning
 
         [Tooltip("How far up the road a pedestrian looks for traffic before stepping out, metres. placeholder")]
         public float LookMetres = 60f;
+
+        [Tooltip("A vehicle standing still within this distance is treated as about to pull away, metres. placeholder")]
+        public float PullAwayWatchMetres = 15f;
+
+        [Tooltip("...at this assumed speed, m/s. placeholder")]
+        public float PullAwayAssumedSpeed = 2f;
 
         [Tooltip("Walking speed, m/s. placeholder")]
         public float WalkSpeed = 1.3f;
@@ -401,6 +413,9 @@ namespace TwentyTons.Tuning
         public float CarWeight = 25f;
         public float BusWeight = 10f;
         public float TruckWeight = 5f;
+
+        [Tooltip("Vehicles kept queued or rolling on each cross street. placeholder")]
+        public int CrossVehiclesPerJunction = 5;
 
         [Tooltip("Pedestrians kept on the kerbs around the player. placeholder")]
         public int PedestriansAround = 14;

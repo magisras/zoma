@@ -17,6 +17,7 @@ namespace TwentyTons.Core
         public int NearMisses;
         public int Contacts;                     // player scrapes
         public int NpcPersonHits;                // NPCs hitting pedestrians (it happens; counted, not fatal)
+        public int CaneRuns;                     // times the player crossed a closed stop line
         public bool PersonHit;                   // the player hit a person: the day is over
         public float GapAheadMetres = 999f;      // live: bumper to bumper
         public float HeadwayAheadSeconds = 99f;  // live: gap / speed
@@ -26,13 +27,16 @@ namespace TwentyTons.Core
     }
 
     /// <summary>
-    /// The world: one corridor, one list of agents, one tuning table, one random stream. Steps the
-    /// player's bus, every NPC and every pedestrian, resolves contacts, keeps the population up and
-    /// records the metrics. Nothing here knows about rendering or input.
+    /// The world: corridors, junctions, one list of agents, one tuning table, one random stream.
+    /// Steps the player's bus, every NPC and every pedestrian, resolves contacts, keeps the
+    /// population up and records the metrics. Nothing here knows about rendering or input.
     /// </summary>
     public sealed class TrafficSim
     {
+        /// <summary>The main road: the player's corridor.</summary>
         public readonly Corridor Corridor;
+        public readonly List<Corridor> Corridors = new List<Corridor>();
+        public readonly List<Junction> Junctions = new List<Junction>();
         public readonly TuningTable Tuning;
         public readonly SeededRandom Random;
         public readonly List<Agent> Agents = new List<Agent>();
@@ -43,19 +47,31 @@ namespace TwentyTons.Core
         private int _nextId = 1;
         private float _nearMissCooldown;
         private float _hornHeld;              // how long the player's horn has been held this press
+        private Junction _playerRanCane;      // which closed junction the player is currently inside
 
         public TrafficSim(Corridor corridor, TuningTable tuning, int seed)
         {
             Corridor = corridor;
+            Corridors.Add(corridor);
             Tuning = tuning;
             Random = new SeededRandom(seed);
+        }
+
+        /// <summary>Add a cross street with an officer where it meets the main road.</summary>
+        public Junction AddJunction(float mainS, Corridor cross, float crossS)
+        {
+            var junction = new Junction(Corridor, mainS, cross, crossS);
+            junction.Timer = Random.Range(Tuning.Officer.OpenMinSeconds, Tuning.Officer.OpenMaxSeconds);
+            Junctions.Add(junction);
+            if (!Corridors.Contains(cross)) Corridors.Add(cross);
+            return junction;
         }
 
         // ---------------------------------------------------------------- spawning
 
         public Agent SpawnPlayerBus(float s, float lateral)
         {
-            Agent bus = NewVehicle(VehicleClass.Bus, s, lateral, 0.5f);
+            Agent bus = NewVehicle(Corridor, VehicleClass.Bus, s, lateral, 0.5f);
             bus.IsPlayer = true;
             bus.Speed = 0f;
             Bus.Passengers = Tuning.Bus.StartingPassengers;
@@ -66,7 +82,12 @@ namespace TwentyTons.Core
 
         public Agent SpawnVehicle(VehicleClass vehicleClass, float s, float lateral, float nerve)
         {
-            return NewVehicle(vehicleClass, s, lateral, nerve);
+            return NewVehicle(Corridor, vehicleClass, s, lateral, nerve);
+        }
+
+        public Agent SpawnVehicle(Corridor corridor, VehicleClass vehicleClass, float s, float lateral, float nerve)
+        {
+            return NewVehicle(corridor, vehicleClass, s, lateral, nerve);
         }
 
         /// <param name="side">−1 = left kerb, +1 = right kerb.</param>
@@ -75,11 +96,12 @@ namespace TwentyTons.Core
             Agent p = new Agent
             {
                 Id = _nextId++,
+                Corridor = Corridor,
                 Class = VehicleClass.Pedestrian,
                 Shape = VehicleShape.For(VehicleClass.Pedestrian),
                 Mass = Tuning.Mass.Pedestrian,
                 Nerve = Random.Value,
-                S = s,
+                S = Corridor.Wrap(s),
                 Lateral = (Corridor.HalfWidth + Tuning.Spawn.KerbOffsetMetres) * side,
                 WaitTimer = Random.Range(0f, Tuning.Pedestrians.WaitMaxSeconds),
             };
@@ -89,25 +111,26 @@ namespace TwentyTons.Core
             return p;
         }
 
-        private Agent NewVehicle(VehicleClass vehicleClass, float s, float lateral, float nerve)
+        private Agent NewVehicle(Corridor corridor, VehicleClass vehicleClass, float s, float lateral, float nerve)
         {
             VehicleShape shape = VehicleShape.For(vehicleClass);
             Agent a = new Agent
             {
                 Id = _nextId++,
+                Corridor = corridor,
                 Class = vehicleClass,
                 Shape = shape,
                 Mass = Tuning.Mass.Of(vehicleClass),
                 Nerve = Mathf.Clamp01(nerve),
-                S = s,
+                S = corridor.Wrap(s),
                 Lateral = lateral,
                 TargetLateral = lateral,
                 Speed = shape.CruiseSpeed * 0.8f,
                 // A wide spread: some dawdle, some race. That spread is what makes overtaking happen.
                 DesiredSpeed = shape.CruiseSpeed * Random.Range(0.6f, 1.25f),
             };
-            a.Position = Corridor.PositionAt(a.S, a.Lateral);
-            a.Yaw = Corridor.YawAt(a.S);
+            a.Position = corridor.PositionAt(a.S, a.Lateral);
+            a.Yaw = corridor.YawAt(a.S);
             Agents.Add(a);
             return a;
         }
@@ -119,11 +142,15 @@ namespace TwentyTons.Core
             if (Metrics.PersonHit) return;      // the day ended; nothing moves until a reset
             Metrics.Time += dt;
 
+            for (int i = 0; i < Junctions.Count; i++) Junctions[i].Tick(dt, Tuning.Officer, Random);
+            CountBoxes();
+
             if (Player != null)
             {
                 Bus.Step(Player, Corridor, Tuning.Bus, dt);
                 Metrics.DistanceMetres += Player.Speed * dt;
                 Player.HornTimer = Mathf.Max(0f, Player.HornTimer - dt);
+                WatchPlayerAtJunctions();
             }
 
             for (int i = 0; i < Agents.Count; i++)
@@ -172,11 +199,96 @@ namespace TwentyTons.Core
             }
         }
 
+        // ---------------------------------------------------------------- junctions
+
+        /// <summary>
+        /// Distance from this agent's front to the nearest stop line it must respect, or
+        /// <paramref name="lookAhead"/> if none. A line must be respected when the cane is against
+        /// you (unless you are one of this phase's leakers) or when the other stream is physically
+        /// in the box. Once past the line you are committed and nothing holds you.
+        /// </summary>
+        public float StopDistanceAhead(Agent a, float lookAhead)
+        {
+            float nearest = lookAhead;
+            OfficerSettings officer = Tuning.Officer;
+            for (int i = 0; i < Junctions.Count; i++)
+            {
+                Junction j = Junctions[i];
+                float lineS = j.StopLineOn(a.Corridor, officer.StopLineSetbackMetres);
+                if (float.IsNaN(lineS)) continue;
+
+                float ds = a.Corridor.DeltaS(a.S, lineS) - a.HalfLength;
+                if (ds > lookAhead) continue;
+                if (ds < -(officer.StopLineSetbackMetres + 0.5f))
+                {
+                    // Nose in the box: committed. Forget a leak once clear of the box.
+                    if (a.LeakingThrough == j && !j.InBox(a.Corridor, a.S, a.HalfLength)) a.LeakingThrough = null;
+                    continue;
+                }
+
+                bool caneAgainst = !j.IsOpenFor(a.Corridor);
+                bool boxFull = j.BoxBlockedFor(a.Corridor);
+                if (boxFull)
+                {
+                    nearest = Mathf.Min(nearest, ds);   // physics, not politeness
+                    continue;
+                }
+                if (!caneAgainst) continue;
+                if (a.LeakingThrough == j) continue;    // already decided to run it
+
+                // The cane just dropped and I'm nearly there: a few of us go anyway.
+                if (j.LeakersLeft > 0 && ds < officer.LeakZoneMetres && a.Speed > 1f)
+                {
+                    j.LeakersLeft--;
+                    a.LeakingThrough = j;
+                    continue;
+                }
+                nearest = Mathf.Min(nearest, ds);
+            }
+            return nearest;
+        }
+
+        private void CountBoxes()
+        {
+            for (int i = 0; i < Junctions.Count; i++)
+            {
+                Junction j = Junctions[i];
+                j.MainInBox = 0;
+                j.CrossInBox = 0;
+                for (int k = 0; k < Agents.Count; k++)
+                {
+                    Agent a = Agents[k];
+                    if (a.IsPedestrian) continue;
+                    if (a.Corridor == j.Main && j.InBox(j.Main, a.S, a.HalfLength)) j.MainInBox++;
+                    else if (a.Corridor == j.Cross && j.InBox(j.Cross, a.S, a.HalfLength)) j.CrossInBox++;
+                }
+            }
+        }
+
+        /// <summary>Count the player crossing a closed stop line (the sergeant will care later).</summary>
+        private void WatchPlayerAtJunctions()
+        {
+            for (int i = 0; i < Junctions.Count; i++)
+            {
+                Junction j = Junctions[i];
+                if (j.Main != Player.Corridor) continue;
+                bool inBox = j.InBox(j.Main, Player.S, Player.HalfLength);
+                if (inBox && _playerRanCane == null && !j.IsOpenFor(Player.Corridor))
+                {
+                    Metrics.CaneRuns++;
+                    _playerRanCane = j;
+                }
+                if (!inBox && _playerRanCane == j) _playerRanCane = null;
+            }
+        }
+
         // ---------------------------------------------------------------- contacts
 
         /// <summary>
-        /// Boxes overlapping in corridor coordinates. Vehicle on vehicle is a scrape: counted, the one
-        /// behind loses speed, the lighter one is pushed aside. Vehicle on person is the one hard rule.
+        /// Same corridor: boxes overlapping in corridor coordinates. Different corridors (only
+        /// possible inside a junction): capsules in world space. Vehicle on vehicle is a scrape:
+        /// counted, the one behind loses speed, the lighter one is pushed clear. Vehicle on person
+        /// is the one hard rule.
         /// </summary>
         private void ResolveContacts()
         {
@@ -187,56 +299,91 @@ namespace TwentyTons.Core
                 {
                     Agent b = Agents[j];
                     if (a.IsPedestrian && b.IsPedestrian) continue;
-
-                    float ds = b.S - a.S;
-                    float dLat = b.Lateral - a.Lateral;
-                    float overlapS = a.HalfLength + b.HalfLength - Mathf.Abs(ds);
-                    float overlapLat = a.HalfWidth + b.HalfWidth - Mathf.Abs(dLat);
-                    if (overlapS <= 0f || overlapLat <= 0f) continue;
-
-                    if (a.IsPedestrian || b.IsPedestrian)
-                    {
-                        Agent vehicle = a.IsPedestrian ? b : a;
-                        if (vehicle.Speed < 0.5f) continue;            // nudged at walking pace: nothing
-                        if (vehicle.IsPlayer) Metrics.PersonHit = true;
-                        else Metrics.NpcPersonHits++;
-                        continue;
-                    }
-
-                    // Count once per pair per couple of seconds.
-                    if (Metrics.Time - a.LastContactTime > 2f || Metrics.Time - b.LastContactTime > 2f)
-                    {
-                        if (a.IsPlayer || b.IsPlayer) Metrics.Contacts++;
-                    }
-                    a.LastContactTime = b.LastContactTime = Metrics.Time;
-
-                    // The one behind can't go faster than the one in front.
-                    Agent behind = ds > 0f ? a : b;
-                    Agent front = ds > 0f ? b : a;
-                    behind.Speed = Mathf.Min(behind.Speed, front.Speed);
-
-                    // Separate along whichever axis penetrates least. The lighter one moves: a
-                    // sideswipe pushes it aside, a rear-ender shoves it forward (or holds it back).
-                    Agent light = a.Mass <= b.Mass ? a : b;
-                    Agent heavy = light == a ? b : a;
-                    if (overlapLat <= overlapS)
-                    {
-                        float push = (overlapLat + 0.05f) * (light.Lateral >= heavy.Lateral ? 1f : -1f);
-                        light.Lateral += push;
-                        light.TargetLateral = light.Lateral;
-                        if (light.IsPlayer) light.Position += Corridor.RightAt(light.S) * push;
-                    }
-                    else
-                    {
-                        bool lightInFront = light.S >= heavy.S;
-                        float push = (overlapS + 0.05f) * (lightInFront ? 1f : -1f);
-                        light.S += push;
-                        if (lightInFront) light.Speed = Mathf.Max(light.Speed, heavy.Speed);   // shoved along
-                        else light.Speed = Mathf.Min(light.Speed, heavy.Speed);               // held back
-                        if (light.IsPlayer) light.Position += Corridor.TangentAt(light.S) * push;
-                    }
+                    if (a.Corridor == b.Corridor) ResolveSameCorridor(a, b);
+                    else if (!a.IsPedestrian && !b.IsPedestrian) ResolveCrossCorridor(a, b);
                 }
             }
+        }
+
+        private void ResolveSameCorridor(Agent a, Agent b)
+        {
+            float ds = a.Corridor.DeltaS(a.S, b.S);
+            float dLat = b.Lateral - a.Lateral;
+            float overlapS = a.HalfLength + b.HalfLength - Mathf.Abs(ds);
+            float overlapLat = a.HalfWidth + b.HalfWidth - Mathf.Abs(dLat);
+            if (overlapS <= 0f || overlapLat <= 0f) return;
+
+            if (a.IsPedestrian || b.IsPedestrian)
+            {
+                Agent vehicle = a.IsPedestrian ? b : a;
+                if (vehicle.Speed < 0.5f) return;              // nudged at walking pace: nothing
+                if (vehicle.IsPlayer) Metrics.PersonHit = true;
+                else Metrics.NpcPersonHits++;
+                return;
+            }
+
+            CountScrape(a, b);
+
+            // The one behind can't go faster than the one in front.
+            Agent behind = ds > 0f ? a : b;
+            Agent front = ds > 0f ? b : a;
+            behind.Speed = Mathf.Min(behind.Speed, front.Speed);
+
+            // Separate along whichever axis penetrates least. The lighter one moves: a
+            // sideswipe pushes it aside, a rear-ender shoves it forward (or holds it back).
+            Agent light = a.Mass <= b.Mass ? a : b;
+            Agent heavy = light == a ? b : a;
+            if (overlapLat <= overlapS)
+            {
+                float push = (overlapLat + 0.05f) * (light.Lateral >= heavy.Lateral ? 1f : -1f);
+                light.Lateral += push;
+                light.TargetLateral = light.Lateral;
+                if (light.IsPlayer) light.Position += light.Corridor.RightAt(light.S) * push;
+            }
+            else
+            {
+                bool lightInFront = light.Corridor.DeltaS(heavy.S, light.S) >= 0f;
+                float push = (overlapS + 0.05f) * (lightInFront ? 1f : -1f);
+                light.S = light.Corridor.Wrap(light.S + push);
+                if (lightInFront) light.Speed = Mathf.Max(light.Speed, heavy.Speed);   // shoved along
+                else light.Speed = Mathf.Min(light.Speed, heavy.Speed);               // held back
+                if (light.IsPlayer) light.Position += light.Corridor.TangentAt(light.S) * push;
+            }
+        }
+
+        private void ResolveCrossCorridor(Agent a, Agent b)
+        {
+            // Cheap reject: far apart in the world.
+            if ((a.Position - b.Position).sqrMagnitude > 400f) return;
+
+            Geometry.Axis(a, out Vector3 ra, out Vector3 fa);
+            Geometry.Axis(b, out Vector3 rb, out Vector3 fb);
+            float distance = Geometry.SegmentDistance(ra, fa, rb, fb, out Vector3 ca, out Vector3 cb);
+            float penetration = a.HalfWidth + b.HalfWidth - distance;
+            if (penetration <= 0f) return;
+
+            CountScrape(a, b);
+
+            // Both stop: a box jam. The lighter one is pushed out along the shortest line.
+            a.Speed = Mathf.Min(a.Speed, 0.5f);
+            b.Speed = Mathf.Min(b.Speed, 0.5f);
+            Agent light = a.Mass <= b.Mass ? a : b;
+            Vector3 away = light == a ? ca - cb : cb - ca;
+            away.y = 0f;
+            if (away.sqrMagnitude < 1e-6f) away = light.Corridor.RightAt(light.S);
+            light.Position += away.normalized * (penetration + 0.05f);
+            light.Corridor.Project(light.Position, out light.S, out light.Lateral);
+            light.TargetLateral = light.Lateral;
+        }
+
+        private void CountScrape(Agent a, Agent b)
+        {
+            // Count once per pair per couple of seconds.
+            if (Metrics.Time - a.LastContactTime > 2f || Metrics.Time - b.LastContactTime > 2f)
+            {
+                if (a.IsPlayer || b.IsPlayer) Metrics.Contacts++;
+            }
+            a.LastContactTime = b.LastContactTime = Metrics.Time;
         }
 
         // ---------------------------------------------------------------- metrics
@@ -261,8 +408,8 @@ namespace TwentyTons.Core
         // ---------------------------------------------------------------- population
 
         /// <summary>
-        /// Keep traffic and pedestrians around the player: recycle what fell far behind or ran off
-        /// the end of the corridor, spawn into free space ahead and behind.
+        /// Keep traffic and pedestrians around the player on the main road, and a stream on every
+        /// cross street: recycle what fell far behind or ran off the end, spawn into free space.
         /// </summary>
         private void MaintainPopulation()
         {
@@ -271,22 +418,32 @@ namespace TwentyTons.Core
             float ps = Player.S;
 
             int vehicles = 0, pedestrians = 0;
+            var crossCounts = new Dictionary<Corridor, int>();
             for (int i = Agents.Count - 1; i >= 0; i--)
             {
                 Agent a = Agents[i];
                 if (a.IsPlayer) continue;
                 bool gone;
-                if (a.IsPedestrian)
+                if (a.Corridor != Corridor)
                 {
-                    gone = a.S < ps - spawn.PedestrianBehindMetres - 20f || a.S > ps + spawn.SpawnAheadMetres + 50f;
-                    if (!gone) pedestrians++;
+                    gone = a.S > a.Corridor.Length - 5f;
+                    if (!gone) crossCounts[a.Corridor] = (crossCounts.ContainsKey(a.Corridor) ? crossCounts[a.Corridor] : 0) + 1;
                 }
                 else
                 {
-                    gone = a.S < ps - Tuning.Performance.DespawnRadiusMetres
-                        || a.S > ps + spawn.SpawnAheadMetres + 150f
-                        || a.S > Corridor.Length - 5f;
-                    if (!gone) vehicles++;
+                    float ds = Corridor.DeltaS(ps, a.S);
+                    if (a.IsPedestrian)
+                    {
+                        gone = ds < -spawn.PedestrianBehindMetres - 20f || ds > spawn.SpawnAheadMetres + 50f;
+                        if (!gone) pedestrians++;
+                    }
+                    else
+                    {
+                        gone = ds < -Tuning.Performance.DespawnRadiusMetres
+                            || ds > spawn.SpawnAheadMetres + 150f
+                            || (!Corridor.Closed && a.S > Corridor.Length - 5f);
+                        if (!gone) vehicles++;
+                    }
                 }
                 if (gone) Agents.RemoveAt(i);
             }
@@ -297,11 +454,21 @@ namespace TwentyTons.Core
             }
             for (int attempt = 0; pedestrians < spawn.PedestriansAround && attempt < 10; attempt++)
             {
-                float s = Random.Range(ps - spawn.PedestrianBehindMetres, ps + spawn.SpawnAheadMetres);
-                if (s > 5f && s < Corridor.Length - 5f)
+                float s = ps + Random.Range(-spawn.PedestrianBehindMetres, spawn.SpawnAheadMetres);
+                if (Corridor.Closed || (s > 5f && s < Corridor.Length - 5f))
                 {
                     SpawnPedestrian(s, Random.Chance(0.5f) ? -1 : 1);
                     pedestrians++;
+                }
+            }
+
+            for (int i = 0; i < Junctions.Count; i++)
+            {
+                Corridor cross = Junctions[i].Cross;
+                int have = crossCounts.ContainsKey(cross) ? crossCounts[cross] : 0;
+                for (int attempt = 0; have < spawn.CrossVehiclesPerJunction && attempt < 5; attempt++)
+                {
+                    if (TrySpawnOn(cross, Random.Range(5f, 40f))) have++;
                 }
             }
         }
@@ -311,27 +478,34 @@ namespace TwentyTons.Core
             SpawnSettings spawn = Tuning.Spawn;
             // Mostly ahead (that is where the player drives into), some behind (that is who presses you).
             float s = Random.Chance(0.7f)
-                ? Random.Range(playerS + spawn.SpawnClearanceMetres, playerS + spawn.SpawnAheadMetres)
-                : Random.Range(playerS - spawn.SpawnBehindMetres, playerS - spawn.SpawnClearanceMetres);
-            if (s < 5f || s > Corridor.Length - 30f) return false;
+                ? playerS + Random.Range(spawn.SpawnClearanceMetres, spawn.SpawnAheadMetres)
+                : playerS - Random.Range(spawn.SpawnClearanceMetres, spawn.SpawnBehindMetres);
+            if (!Corridor.Closed && (s < 5f || s > Corridor.Length - 30f)) return false;
+            return TrySpawnOn(Corridor, s);
+        }
 
+        /// <summary>Spawn a random-class vehicle at s if that patch of road is free.</summary>
+        private bool TrySpawnOn(Corridor corridor, float s)
+        {
+            s = corridor.Wrap(s);
             VehicleClass vehicleClass = PickClass();
             VehicleShape shape = VehicleShape.For(vehicleClass);
-            float edge = Corridor.HalfWidth - shape.Width * 0.5f;
+            float edge = corridor.HalfWidth - shape.Width * 0.5f;
             float lateral = Random.Range(-edge, edge);
 
             // Only into free road: nobody within a few lengths in that band.
             for (int i = 0; i < Agents.Count; i++)
             {
                 Agent other = Agents[i];
+                if (other.Corridor != corridor) continue;
                 if (Mathf.Abs(other.Lateral - lateral) < other.HalfWidth + shape.Width * 0.5f + Steering.LateralMargin
-                    && Mathf.Abs(other.S - s) < other.HalfLength + shape.Length * 0.5f + 8f)
+                    && Mathf.Abs(corridor.DeltaS(s, other.S)) < other.HalfLength + shape.Length * 0.5f + 8f)
                 {
                     return false;
                 }
             }
 
-            Agent a = SpawnVehicle(vehicleClass, s, lateral, Random.Range(0.2f, 0.9f));
+            Agent a = NewVehicle(corridor, vehicleClass, s, lateral, 0.5f);
             a.Nerve = Mathf.Clamp01(Tuning.Nerve.DefaultNerve + Random.Range(-Tuning.Nerve.RandomSpread, Tuning.Nerve.RandomSpread));
             return true;
         }

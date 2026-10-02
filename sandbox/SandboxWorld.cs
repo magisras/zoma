@@ -5,34 +5,69 @@ using UnityEngine;
 namespace TwentyTons.Sandbox
 {
     /// <summary>
-    /// A made-up 1.2 km road with grey boxes along it, so there is something to drive through before
-    /// the real Mirpur corridor arrives from OpenStreetMap (docs/OSM_IMPORT_PLAN.md). The corridor is
-    /// one carriageway, 10 m wide: three lanes' worth of lane-free road.
+    /// A made-up ring road of about 1.5 km with grey boxes along it and two cross streets with
+    /// officers, so there is something to drive round before the real Mirpur corridor arrives from
+    /// OpenStreetMap (docs/OSM_IMPORT_PLAN.md). The road is one carriageway, 10 m wide: three lanes'
+    /// worth of lane-free road. A loop means endless driving and, later, laps as trips.
     /// </summary>
     public static class SandboxWorld
     {
         public const float RoadWidth = 10f;
+        public const float CrossWidth = 8f;
         public const float PavementMetres = 3f;
+        public const float CrossStreetLength = 240f;
+
+        /// <summary>Main-road S positions of the cross streets. Chosen on the long straights.</summary>
+        public static readonly float[] JunctionS = { 260f, 1010f };
 
         public static Corridor BuildCorridor(SeededRandom random)
         {
+            // A rounded rectangle, 520 × 200 m, walked anticlockwise so +lateral (right) is the outside.
             var points = new List<Vector3>();
-            Vector3 p = Vector3.zero;
-            float heading = 0f;                       // radians, 0 = +Z
-            points.Add(p);
-            for (int i = 0; i < 24; i++)
+            AddStraight(points, new Vector3(0, 0, 0), new Vector3(0, 0, 1), 480f, random);
+            AddArc(points, new Vector3(0, 0, 480f), 0f, 100f, random);
+            AddStraight(points, new Vector3(200f, 0, 480f), new Vector3(0, 0, -1), 480f, random);
+            AddArc(points, new Vector3(200f, 0, 0f), Mathf.PI, 100f, random);
+            return new Corridor(points, RoadWidth, closed: true, name: "ring");
+        }
+
+        private static void AddStraight(List<Vector3> points, Vector3 from, Vector3 dir, float length, SeededRandom random)
+        {
+            for (float s = 0f; s < length; s += 40f)
             {
-                // Gentle wander with a pull back toward straight, so it never loops.
-                heading += random.Range(-6f, 6f) * Mathf.Deg2Rad - heading * 0.15f;
-                p += new Vector3(Mathf.Sin(heading), 0f, Mathf.Cos(heading)) * 50f;
-                points.Add(p);
+                Vector3 side = Vector3.Cross(Vector3.up, dir);
+                float wobble = s > 0f ? random.Range(-3f, 3f) : 0f;     // a little bend, never a straight ruler
+                points.Add(from + dir * s + side * wobble);
             }
-            return new Corridor(points, RoadWidth);
+        }
+
+        private static void AddArc(List<Vector3> points, Vector3 start, float startAngle, float radius, SeededRandom random)
+        {
+            // Semicircle to the right of travel, centre offset from the start.
+            Vector3 centre = start + new Vector3(radius, 0f, 0f);
+            for (int i = 0; i <= 8; i++)
+            {
+                float a = startAngle + Mathf.PI * i / 8f;
+                points.Add(centre + new Vector3(-Mathf.Cos(a) * radius, 0f, Mathf.Sin(a) * radius));
+            }
+        }
+
+        /// <summary>A cross street through the main road at s, perpendicular, centred on it.</summary>
+        public static Corridor BuildCrossStreet(Corridor main, float s, int index)
+        {
+            Vector3 centre = main.PositionAt(s, 0f);
+            Vector3 right = main.RightAt(s);
+            var points = new List<Vector3>
+            {
+                centre - right * (CrossStreetLength * 0.5f),
+                centre + right * (CrossStreetLength * 0.5f),
+            };
+            return new Corridor(points, CrossWidth, false, "cross" + index);
         }
 
         /// <summary>
         /// Building boxes as a flat float array for the renderer: x, z, yaw, length (along the road),
-        /// width (across), height, repeated. Both sides, with a side-street gap now and then.
+        /// width (across), height, repeated. Both sides, with a gap at every cross street.
         /// </summary>
         public static float[] BuildBuildings(Corridor corridor, SeededRandom random)
         {
@@ -40,16 +75,14 @@ namespace TwentyTons.Sandbox
             for (int side = -1; side <= 1; side += 2)
             {
                 float s = 5f;
-                float nextSideStreet = random.Range(80f, 160f);
                 while (s < corridor.Length - 25f)
                 {
-                    if (s > nextSideStreet)
+                    float length = random.Range(10f, 22f);
+                    if (NearJunction(s, length))
                     {
-                        s += 12f;                                       // a side street
-                        nextSideStreet = s + random.Range(100f, 200f);
+                        s += 4f;
                         continue;
                     }
-                    float length = random.Range(10f, 22f);
                     float width = random.Range(10f, 20f);
                     float height = random.Range(2, 8) * 3f;             // 2–7 storeys of concrete
                     float setBack = PavementMetres + random.Range(0f, 2f);
@@ -66,13 +99,27 @@ namespace TwentyTons.Sandbox
             return data.ToArray();
         }
 
-        /// <summary>Road edge polylines for the renderer: x, z pairs, left edge then right edge.</summary>
+        private static bool NearJunction(float s, float length)
+        {
+            foreach (float js in JunctionS)
+            {
+                if (s + length > js - CrossWidth * 0.5f - 6f && s < js + CrossWidth * 0.5f + 6f) return true;
+            }
+            return false;
+        }
+
+        /// <summary>Road edge polyline for the renderer: x, z pairs. Closed loops repeat the first point.</summary>
         public static float[] RoadEdge(Corridor corridor, float lateral)
         {
             var data = new List<float>();
             for (float s = 0f; s <= corridor.Length; s += 5f)
             {
                 Vector3 p = corridor.PositionAt(s, lateral);
+                data.Add(p.x); data.Add(p.z);
+            }
+            if (corridor.Closed)
+            {
+                Vector3 p = corridor.PositionAt(0f, lateral);
                 data.Add(p.x); data.Add(p.z);
             }
             return data.ToArray();

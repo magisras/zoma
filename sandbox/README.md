@@ -24,7 +24,13 @@ python3 -m http.server -d out/wwwroot 8080      # then http://localhost:8080
 ## Controls
 
 W/↑ throttle · S/↓ brake · A/D or ←/→ steer · H or space horn (hold for a blast) · C camera ·
-T tuning panel · R restart with a new seed.
+T tuning panel · P autopilot (the careful driver) · R restart with a new seed.
+On phones: on-screen buttons.
+
+## Headless
+
+`./tools/headless.sh 1 150 25` runs the same world for 150 s with the careful driver capped at
+25 km/h and prints the metrics. Change the seed for a different day.
 
 ## What to look at
 
@@ -32,6 +38,8 @@ T tuning panel · R restart with a new seed.
 - Pale blue vehicles are yielding; red ones are bluffing ("I'm not moving"); a flash is a horn.
 - Pedestrians (tall thin boxes) step out in front of cars with a hand up and hesitate for buses.
   Hit one and the day is over.
+- Officers at the two cross streets: green cane along the road = you may go. Nobody stops you
+  running it; cross traffic in the box does.
 - The tuning panel edits the live `TuningTable` numbers. "Feels random" means nerve too high or
   gaps too small; "polite driving still wins" means rivals too timid (RESEARCH.md, Tuning).
 

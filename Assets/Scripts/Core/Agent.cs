@@ -20,6 +20,7 @@ namespace TwentyTons.Core
     public sealed class Agent
     {
         public int Id;
+        public Corridor Corridor;        // the road this agent reasons on
         public VehicleClass Class;
         public VehicleShape Shape;
         public bool IsPlayer;
@@ -44,6 +45,7 @@ namespace TwentyTons.Core
         public float BluffTimer;         // seconds left of a "no, I'm not moving" decision
         public float HornTimer;          // seconds left of visible horn (for rendering / HUD)
         public float LastContactTime = -999f;
+        public Junction LeakingThrough;  // a closed junction this driver decided to run anyway
 
         // Pedestrians only.
         public PedestrianState PedState = PedestrianState.Waiting;
@@ -56,11 +58,14 @@ namespace TwentyTons.Core
         public float HalfLength => Shape.Length * 0.5f;
         public float HalfWidth => Shape.Width * 0.5f;
 
-        /// <summary>Front bumper position along the corridor.</summary>
-        public float Front => S + HalfLength;
-
-        /// <summary>Rear bumper position along the corridor.</summary>
-        public float Rear => S - HalfLength;
+        /// <summary>
+        /// Bumper-to-bumper gap from my front to another agent's rear, along the road (negative when
+        /// overlapping). Goes through the corridor so loops measure the short way round.
+        /// </summary>
+        public float GapTo(Agent other)
+        {
+            return Corridor.DeltaS(S, other.S) - HalfLength - other.HalfLength;
+        }
 
         /// <summary>True when the two agents' lateral bands overlap, with a little margin.</summary>
         public bool OverlapsLaterally(Agent other, float margin)

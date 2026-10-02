@@ -70,11 +70,11 @@ namespace TwentyTons.Tests
             Run(sim, 20f);
 
             Assert.Less(car.S, slow.S, "the car must stay behind");
-            Assert.Greater(slow.Rear - car.Front, 0f, "no overlap");
+            Assert.Greater(car.GapTo(slow), 0f, "no overlap");
             Assert.AreEqual(slow.Speed, car.Speed, 0.5f, "it settles to the rickshaw's speed");
             // gap = floor + speed × headway (nerve 0 → 1.5 s)
             float expectedGap = sim.Tuning.Gap.FollowDistanceFloorMetres + car.Speed * 1.5f;
-            Assert.AreEqual(expectedGap, slow.Rear - car.Front, 1.0f);
+            Assert.AreEqual(expectedGap, car.GapTo(slow), 1.0f);
         }
 
         [Test]
@@ -202,7 +202,7 @@ namespace TwentyTons.Tests
 
             Run(sim, 6f);
 
-            Assert.Greater(rickshaw.Rear, bus.Front - 0.5f, "never more than a scrape inside the bus");
+            Assert.Greater(bus.GapTo(rickshaw), -0.5f, "never more than a scrape inside the bus");
             Assert.Greater(rickshaw.S, 25f, "it got shoved down the road");
             Assert.GreaterOrEqual(sim.Metrics.Contacts, 1);
         }
