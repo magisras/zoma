@@ -34,6 +34,9 @@ namespace TwentyTons.Core
         public int MainInBox;
         public int CrossInBox;
 
+        /// <summary>The same officer controls both carriageways: this junction copies that one's cane.</summary>
+        public Junction Mirror;
+
         public Junction(Corridor main, float mainS, Corridor cross, float crossS)
         {
             Main = main;
@@ -71,6 +74,13 @@ namespace TwentyTons.Core
         /// <summary>The officer's clock. Variable timing is the point: nobody can plan around it.</summary>
         public void Tick(float dt, OfficerSettings officer, SeededRandom random)
         {
+            if (Mirror != null)
+            {
+                if (Open != Mirror.Open) LeakersLeft = officer.LeakersPerCycle;
+                Open = Mirror.Open;
+                Timer = Mirror.Timer;
+                return;
+            }
             Timer -= dt;
             if (Timer > 0f) return;
             Open = Open == JunctionFlow.Main ? JunctionFlow.Cross : JunctionFlow.Main;

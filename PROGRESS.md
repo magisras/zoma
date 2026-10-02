@@ -110,11 +110,26 @@ in the headless runner and in the browser. Entries below are appended as steps l
   are English placeholders; Bangla comes with the recordings.
 - Tests: 62.
 
+**Step 7 — the oncoming carriageway and the wrong side** (done)
+
+- A second corridor runs the other way beside the main one (left-hand traffic: oncoming on your
+  right, past a painted median). The player appears on it as a ghost agent with the same body
+  and a negative speed, so its traffic sees a bus coming at them: head-on steering gives up the
+  closing speed, and anything much lighter swerves out of the band at once ("size is right of
+  way"). A head-on hit stops the bus; contacts through the ghost push the real player.
+- Cross streets now cross both carriageways; the oncoming side has a mirrored junction that
+  copies the officer's cane. The sergeant has a new reason: wrong side (the Tk 3,000 case).
+- Metrics: wrong-side seconds. Helper shouts "Bus coming! Back!" when something heavy is coming
+  while you are over there; the conductor suggests crossing over when stuck.
+- Found by driving: once the keyboard had been touched, the stale frame kept overwriting the
+  autopilot's pedals; inputs now apply only on the step they were pushed.
+- Tests: 67.
+
 **Where this leaves the project**
 
 Everything in README milestones 3–6 now exists as engine-free C# with tests, runs in the browser
 sandbox and in the headless runner. Not yet done: the Unity side (project settings, scene, OSM
-import, real bus physics, 3D assets), the wrong-side-of-the-road corridor, passengers alighting
+import, real bus physics, 3D assets), passengers alighting
 from a moving bus with falls, the rollover set piece, repairs and the fitness certificate, the
 mirror-moment scripting, Bangla lines and audio. All numbers are placeholders until the owner
 plays; the headless runner gives repeatable metrics for that tuning.

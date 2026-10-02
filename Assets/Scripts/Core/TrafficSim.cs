@@ -19,6 +19,8 @@ namespace TwentyTons.Core
         public int NpcPersonHits;                // NPCs hitting pedestrians (it happens; counted, not fatal)
         public int CaneRuns;                     // times the player crossed a closed stop line
         public int StopsLost;                    // a rival took a crowd the player was about to reach
+        public float WrongSideSeconds;           // time spent on the oncoming carriageway
+        public bool WrongSideNow;
         public bool PersonHit;                   // the player hit a person: the day is over
         public float GapAheadMetres = 999f;      // live: bumper to bumper
         public float HeadwayAheadSeconds = 99f;  // live: gap / speed
@@ -36,6 +38,10 @@ namespace TwentyTons.Core
     {
         /// <summary>The main road: the player's corridor.</summary>
         public readonly Corridor Corridor;
+        /// <summary>The carriageway running the other way beside it, if any.</summary>
+        public Corridor Oncoming;
+        /// <summary>The player's stand-in on the oncoming carriageway: what its traffic sees coming.</summary>
+        public Agent PlayerGhost;
         public readonly List<Corridor> Corridors = new List<Corridor>();
         public readonly List<Junction> Junctions = new List<Junction>();
         public readonly List<DemandZone> Zones = new List<DemandZone>();
@@ -84,6 +90,46 @@ namespace TwentyTons.Core
             return zone;
         }
 
+        /// <summary>
+        /// Add the oncoming carriageway. Its traffic reasons on its own corridor; the player appears on
+        /// it as a ghost agent with the same body, moving backwards relative to that road's direction.
+        /// </summary>
+        public void SetOncoming(Corridor oncoming)
+        {
+            Oncoming = oncoming;
+            if (!Corridors.Contains(oncoming)) Corridors.Add(oncoming);
+            if (Player != null) MakeGhost();
+        }
+
+        private void MakeGhost()
+        {
+            PlayerGhost = new Agent
+            {
+                Id = _nextId++,
+                Corridor = Oncoming,
+                Class = VehicleClass.Bus,
+                Shape = Player.Shape,
+                Mass = Player.Mass,
+                Nerve = Player.Nerve,
+                GhostOf = Player,
+            };
+            Agents.Add(PlayerGhost);
+            SyncGhost();
+        }
+
+        /// <summary>Put the ghost where the player is, in the oncoming road's coordinates.</summary>
+        private void SyncGhost()
+        {
+            Agent g = PlayerGhost;
+            Oncoming.Project(Player.Position, out g.S, out g.Lateral);
+            g.Position = Player.Position;
+            g.Yaw = Player.Yaw;
+            Vector3 forward = new Vector3(Mathf.Sin(Player.Yaw), 0f, Mathf.Cos(Player.Yaw));
+            g.Speed = Player.Speed * Vector3.Dot(forward, Oncoming.TangentAt(g.S));   // negative when driving against the flow
+            g.TargetLateral = g.Lateral;
+            g.HornTimer = Player.HornTimer;
+        }
+
         /// <summary>Add a cross street with an officer where it meets the main road.</summary>
         public Junction AddJunction(float mainS, Corridor cross, float crossS)
         {
@@ -105,6 +151,7 @@ namespace TwentyTons.Core
             Bus.BrakeWear = Tuning.Bus.StartingBrakeWear;
             Player = bus;
             SetPassengerCount(bus, Tuning.Bus.StartingPassengers);
+            if (Oncoming != null && PlayerGhost == null) MakeGhost();
             return bus;
         }
 
@@ -225,12 +272,19 @@ namespace TwentyTons.Core
                 Player.HornTimer = Mathf.Max(0f, Player.HornTimer - dt);
                 WatchPlayerAtJunctions();
                 WatchPlayerAtZones();
+                if (PlayerGhost != null)
+                {
+                    SyncGhost();
+                    // Beyond the middle of the median you are on their road.
+                    Metrics.WrongSideNow = Player.Lateral > Corridor.HalfWidth + Tuning.Spawn.MedianMetres * 0.5f;
+                    if (Metrics.WrongSideNow) Metrics.WrongSideSeconds += dt;
+                }
             }
 
             for (int i = 0; i < Agents.Count; i++)
             {
                 Agent a = Agents[i];
-                if (a.IsPlayer) continue;
+                if (a.IsPlayer || a.GhostOf != null) continue;
                 if (a.IsPedestrian) { Pedestrians.Step(this, a, dt); continue; }
                 if (a.Brain != null) RivalAI.Step(this, a, dt);
                 else if (a.Class == VehicleClass.Bus) RaceWhenNear(a);
@@ -348,10 +402,15 @@ namespace TwentyTons.Core
             _inputsThisStep = true;
         }
 
-        /// <summary>Apply the delayed, possibly frozen, inputs to the bus, the horn and the door.</summary>
+        /// <summary>
+        /// Apply the delayed, possibly frozen, inputs to the bus, the horn and the door. Only on a step
+        /// that was given inputs: tests and the autopilot drive the bus directly and must not be
+        /// overwritten by a stale frame.
+        /// </summary>
         private void ApplyPlayerInputs(float dt)
         {
-            if (!_inputsThisStep) return;                  // tests and the autopilot drive the bus directly
+            if (!_inputsThisStep) return;
+            _inputsThisStep = false;
             _inputDelay.Push(Metrics.Time, _latestInput);
             PlayerInput applied = _inputDelay.At(Metrics.Time - Fatigue.ReactionDelay(Tuning.Fatigue));
             if (Fatigue.Asleep) applied = Fatigue.Frozen;
@@ -522,9 +581,16 @@ namespace TwentyTons.Core
                     Agent b = Agents[j];
                     if (a.IsPedestrian && b.IsPedestrian) continue;
                     if (a.Corridor == b.Corridor) ResolveSameCorridor(a, b);
+                    else if (a.GhostOf != null || b.GhostOf != null) continue;          // the ghost meets its road's traffic only
+                    else if (IsParallel(a.Corridor, b.Corridor)) continue;              // main vs oncoming: handled through the ghost
                     else if (!a.IsPedestrian && !b.IsPedestrian) ResolveCrossCorridor(a, b);
                 }
             }
+        }
+
+        private bool IsParallel(Corridor x, Corridor y)
+        {
+            return (x == Corridor && y == Oncoming) || (x == Oncoming && y == Corridor);
         }
 
         private void ResolveSameCorridor(Agent a, Agent b)
@@ -538,8 +604,8 @@ namespace TwentyTons.Core
             if (a.IsPedestrian || b.IsPedestrian)
             {
                 Agent vehicle = a.IsPedestrian ? b : a;
-                if (vehicle.Speed < 0.5f) return;              // nudged at walking pace: nothing
-                if (vehicle.IsPlayer) Metrics.PersonHit = true;
+                if (Mathf.Abs(vehicle.Speed) < 0.5f) return;   // nudged at walking pace: nothing
+                if (vehicle.IsPlayerOrGhost) Metrics.PersonHit = true;
                 else Metrics.NpcPersonHits++;
                 return;
             }
@@ -560,7 +626,7 @@ namespace TwentyTons.Core
                 float push = (overlapLat + 0.05f) * (light.Lateral >= heavy.Lateral ? 1f : -1f);
                 light.Lateral += push;
                 light.TargetLateral = light.Lateral;
-                if (light.IsPlayer) light.Position += light.Corridor.RightAt(light.S) * push;
+                if (light.IsPlayerOrGhost) RealPlayer(light).Position += light.Corridor.RightAt(light.S) * push;
             }
             else
             {
@@ -569,7 +635,12 @@ namespace TwentyTons.Core
                 light.S = light.Corridor.Wrap(light.S + push);
                 if (lightInFront) light.Speed = Mathf.Max(light.Speed, heavy.Speed);   // shoved along
                 else light.Speed = Mathf.Min(light.Speed, heavy.Speed);               // held back
-                if (light.IsPlayer) light.Position += light.Corridor.TangentAt(light.S) * push;
+                if (light.IsPlayerOrGhost)
+                {
+                    Agent real = RealPlayer(light);
+                    real.Position += light.Corridor.TangentAt(light.S) * push;
+                    if (light.GhostOf != null) real.Speed = Mathf.Min(real.Speed, Mathf.Abs(heavy.Speed) + 0.5f);   // a head-on hit stops you
+                }
             }
         }
 
@@ -598,17 +669,22 @@ namespace TwentyTons.Core
             light.TargetLateral = light.Lateral;
         }
 
+        private static Agent RealPlayer(Agent a)
+        {
+            return a.GhostOf ?? a;
+        }
+
         private void CountScrape(Agent a, Agent b)
         {
             // Count once per pair per couple of seconds.
             if (Metrics.Time - a.LastContactTime > 2f || Metrics.Time - b.LastContactTime > 2f)
             {
-                if (a.IsPlayer || b.IsPlayer)
+                if (a.IsPlayerOrGhost || b.IsPlayerOrGhost)
                 {
                     Metrics.Contacts++;
                     Economy.OnScrape();
                     // A scrape with a named crew is remembered.
-                    Agent other = a.IsPlayer ? b : a;
+                    Agent other = a.IsPlayerOrGhost ? b : a;
                     if (other.Brain != null) RivalAI.ChangeGrudge(other.Brain, Tuning.Memory.GrudgeWhenCutOff, Tuning.Memory);
                 }
             }
@@ -646,14 +722,20 @@ namespace TwentyTons.Core
             SpawnSettings spawn = Tuning.Spawn;
             float ps = Player.S;
 
-            int vehicles = 0, pedestrians = 0;
+            int vehicles = 0, pedestrians = 0, oncoming = 0;
             var crossCounts = new Dictionary<Corridor, int>();
             for (int i = Agents.Count - 1; i >= 0; i--)
             {
                 Agent a = Agents[i];
-                if (a.IsPlayer || a.Persistent) continue;
+                if (a.IsPlayer || a.Persistent || a.GhostOf != null) continue;
                 bool gone;
-                if (a.Corridor != Corridor)
+                if (a.Corridor == Oncoming)
+                {
+                    float ds = Oncoming.DeltaS(PlayerGhost.S, a.S);
+                    gone = Mathf.Abs(ds) > Tuning.Performance.DespawnRadiusMetres;
+                    if (!gone) oncoming++;
+                }
+                else if (a.Corridor != Corridor)
                 {
                     gone = a.S > a.Corridor.Length - 5f;
                     if (!gone) crossCounts[a.Corridor] = (crossCounts.ContainsKey(a.Corridor) ? crossCounts[a.Corridor] : 0) + 1;
@@ -691,9 +773,21 @@ namespace TwentyTons.Core
                 }
             }
 
+            if (Oncoming != null)
+            {
+                int want = Mathf.RoundToInt(spawn.VehiclesAround * spawn.OncomingFraction);
+                for (int attempt = 0; oncoming < want && attempt < 10; attempt++)
+                {
+                    // Their "ahead" is where they come from: both sides of the ghost, like the main road.
+                    float s = PlayerGhost.S + (Random.Chance(0.5f) ? 1f : -1f) * Random.Range(spawn.SpawnClearanceMetres, spawn.SpawnAheadMetres);
+                    if (TrySpawnOn(Oncoming, s)) oncoming++;
+                }
+            }
+
             for (int i = 0; i < Junctions.Count; i++)
             {
                 Corridor cross = Junctions[i].Cross;
+                if (cross == Oncoming) continue;
                 int have = crossCounts.ContainsKey(cross) ? crossCounts[cross] : 0;
                 for (int attempt = 0; have < spawn.CrossVehiclesPerJunction && attempt < 5; attempt++)
                 {

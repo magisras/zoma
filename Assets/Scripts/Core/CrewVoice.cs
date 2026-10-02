@@ -74,6 +74,14 @@ namespace TwentyTons.Core
             if (load.DoorOpen && bus.Speed > _sim.Tuning.Passengers.DoorSpeedMs + 2f)
                 Say("door", v.DoorCooldownSeconds, Speaker.Helper, "Door's open and we're flying. Someone will fall!");
 
+            if (_sim.PlayerGhost != null && m.WrongSideNow)
+            {
+                Agent oncoming = Steering.FindAhead(_sim.Agents, _sim.PlayerGhost, _sim.PlayerGhost.Lateral, 70f, out float headOn);
+                // On their road, "ahead" of the ghost in its own direction is behind us; what we meet comes from the other way.
+                Agent coming = Steering.FindHeavierBehind(_sim.Agents, _sim.PlayerGhost, 70f);
+                if (coming != null || (oncoming != null && oncoming.Mass >= _sim.Tuning.Mass.Truck))
+                    Say("headon", 6f, Speaker.Helper, "Bus! Bus coming! Back, back, come back!");
+            }
             if (_sim.Fatigue.MicroSleeps > _sleepsSeen) { _sleepsSeen = _sim.Fatigue.MicroSleeps; Say("sleep", 5f, Speaker.Helper, "Ostad! Ostad! Wake up!"); }
 
             // ---- The conductor: the sergeant, the arguers, the count.
@@ -94,6 +102,8 @@ namespace TwentyTons.Core
             _stuckBehind = !clear && gap < 15f && bus.Speed < 4f && bus.Speed > 0.2f ? _stuckBehind + dt : 0f;
             if (_stuckBehind > v.SlowSecondsBeforeComplaint && load.Count > 5)
                 Say("overtake", v.PassengerCooldownSeconds, Speaker.Passenger, "Go round him! Take the other side!");
+            if (_stuckBehind > v.SlowSecondsBeforeComplaint * 0.7f && _sim.Oncoming != null && !m.WrongSideNow)
+                Say("wrongside", v.PassengerCooldownSeconds, Speaker.Conductor, "Other side's empty. Cross over, we'll come back before the sergeant.");
         }
 
         /// <summary>

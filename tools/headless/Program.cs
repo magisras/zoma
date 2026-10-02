@@ -24,6 +24,8 @@ public static class Headless
             sim.AddJunction(SandboxWorld.JunctionS[i], cross, cross.Length * 0.5f);
         }
         for (int i = 0; i < SandboxWorld.ZoneS.Length; i++) sim.AddZone(SandboxWorld.ZoneNames[i], SandboxWorld.ZoneS[i], SandboxWorld.ZoneHot[i]);
+        sim.Tuning.Spawn.MedianMetres = SandboxWorld.MedianMetres;
+        sim.SetOncoming(SandboxWorld.BuildOncoming(corridor));
         Agent bus = sim.SpawnPlayerBus(30f, -2f);
         sim.SpawnRivalBus("Rafiq", DriverPersonality.Reckless(), 180f, -2f);
         sim.SpawnRivalBus("Jamal", DriverPersonality.Spiteful(), corridor.Length - 160f, -2f);
@@ -67,6 +69,7 @@ public static class Headless
         Ledger l = sim.Economy.Ledger;
         Console.WriteLine($"  ledger: fares {l.FaresTk:0}  zoma {l.ZomaTk:0}  fuel {l.FuelTk:0}  lineman {l.LinemanTk:0}  party {l.PartyManTk:0}  sergeant {l.SergeantTk:0}  cases {l.CaseTk:0}  repairs {l.RepairsTk:0}  => crew {l.CrewNetTk:0} Tk  ({l.Trips} trips, day over: {sim.Economy.DayOver} {sim.Economy.DayOverReason})");
         foreach (string e in l.Events) Console.WriteLine("    " + e);
+        Console.WriteLine($"  wrong side {m.WrongSideSeconds:0} s");
         Console.WriteLine($"  fatigue at end {sim.Fatigue.Level:0.00}  micro-sleeps {sim.Fatigue.MicroSleeps}");
         Console.WriteLine($"  voices: {sim.Voice.Lines.Count} lines");
         int from = Math.Max(0, sim.Voice.Lines.Count - 8);

@@ -148,6 +148,16 @@ namespace TwentyTons.Core
             if (ahead != null)
             {
                 allowed = Mathf.Min(allowed, AllowedSpeed(gap, headway, tuning.Gap.FollowDistanceFloorMetres));
+                if (ahead.Speed < -0.5f)
+                {
+                    // Head-on: something is coming the wrong way down my road. The gap closes at both
+                    // speeds, so give up its speed too, and if it is much heavier, get out of its way now.
+                    allowed = Mathf.Max(0f, allowed + ahead.Speed);
+                    if (ahead.Mass >= a.Mass * 1.5f && gap < tuning.Nerve.HeadOnYieldMetres && !a.IsYielding)
+                    {
+                        Yield(a, ahead, tuning.Nerve.YieldSeconds, corridor);
+                    }
+                }
             }
 
             // 2. The officer: a closed stop line (or a box full of cross traffic) is an obstacle too.

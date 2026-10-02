@@ -75,6 +75,11 @@ function buildWorld(sceneDto) {
 
   const L = sceneDto.leftEdge, R = sceneDto.rightEdge;
   sceneRoot.add(stripMesh(L, R, 0x4a4a4c));
+  // The oncoming carriageway and the painted median between them.
+  sceneRoot.add(stripMesh(sceneDto.oncomingLeftEdge, sceneDto.oncomingRightEdge, 0x454547));
+  const medPts = [];
+  for (let i = 0; i < R.length; i += 2) medPts.push(new THREE.Vector3(R[i], 0.03, R[i + 1]));
+  sceneRoot.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(medPts), new THREE.LineBasicMaterial({ color: 0xd8d2b4 })));
 
   // Kerb lines help read the road edge from the chase camera.
   for (const edge of [L, R]) {
@@ -337,6 +342,9 @@ function updateHud(f, dt) {
   el('nearMissRate').textContent = f.time > 10 ? f.nearMissesPerMinute.toFixed(1) + ' / min' : '';
   el('contacts').textContent = f.contacts;
   el('caneRuns').textContent = f.caneRuns;
+  const ws = el('wrongSide');
+  ws.textContent = f.wrongSideSeconds.toFixed(0) + ' s';
+  ws.className = f.wrongSideNow ? 'warn' : '';
   el('hornPresses').textContent = f.hornPresses;
   el('yields').textContent = f.yieldsToHorn + ' moved';
   el('passengers').textContent = f.passengers + ' / ' + f.seats + ' seats';

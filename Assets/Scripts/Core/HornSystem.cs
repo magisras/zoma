@@ -25,7 +25,7 @@ namespace TwentyTons.Core
             for (int i = 0; i < sim.Agents.Count; i++)
             {
                 Agent listener = sim.Agents[i];
-                if (listener == source) continue;
+                if (listener == source || listener.GhostOf != null) continue;
 
                 Vector3 toListener = listener.Position - source.Position;
                 float distance = toListener.magnitude;

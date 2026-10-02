@@ -186,6 +186,7 @@ namespace TwentyTons.Core
             for (int i = 0; i < _sim.Junctions.Count; i++)
             {
                 Junction j = _sim.Junctions[i];
+                if (j.Main != bus.Corridor) continue;          // the other carriageway's mirror of this officer
                 float ds = _sim.Corridor.DeltaS(j.MainS, bus.S);
                 bool justPast = ds > j.MainHalfSpan + 8f && ds < j.MainHalfSpan + 30f;
                 bool wasPast;
@@ -193,14 +194,17 @@ namespace TwentyTons.Core
                 if (justPast && !wasPast)
                 {
                     _passedJunction[j] = true;
-                    float chance = ranCane ? _e.SergeantChanceAfterCaneRun : _sim.Tuning.Officer.SergeantStopChance * _e.SergeantChancePerPassFactor;
+                    bool wrongSide = _sim.Metrics.WrongSideNow;
+                    float chance = ranCane ? _e.SergeantChanceAfterCaneRun
+                                 : wrongSide ? _e.WrongSideSergeantChance
+                                 : _sim.Tuning.Officer.SergeantStopChance * _e.SergeantChancePerPassFactor;
                     if (_sim.Random.Chance(chance))
                     {
                         Sergeant.Active = true;
                         Sergeant.HeldSeconds = 0f;
                         Sergeant.ReleaseAt = -1f;
                         Sergeant.DemandTk = _e.SergeantDemandTk * _e.MoneyScale;
-                        Sergeant.Reason = ranCane ? "ran the cane" : "papers";
+                        Sergeant.Reason = ranCane ? "ran the cane" : wrongSide ? "wrong side" : "papers";
                         _sim.Bus.Held = true;
                         Ledger.Log("A sergeant steps out: " + Sergeant.Reason + ". Tk " + Sergeant.DemandTk.ToString("0") + " now, or a case.");
                     }

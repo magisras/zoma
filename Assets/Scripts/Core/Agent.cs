@@ -49,6 +49,7 @@ namespace TwentyTons.Core
         public BusLoad Load;             // passengers and door; null unless this is a bus that carries people
         public RivalBrain Brain;         // decision layer; null for generic traffic and the player
         public bool Persistent;          // never recycled by the population keeper (named crews)
+        public Agent GhostOf;            // a stand-in for another agent on a second corridor (the player on the oncoming road)
         public float LateralOverride = float.NaN;   // set by the decision layer to own the lateral this step
 
         // Pedestrians only.
@@ -57,6 +58,7 @@ namespace TwentyTons.Core
         public float WaitTimer;          // seconds before considering the next crossing
 
         public bool IsPedestrian => Class == VehicleClass.Pedestrian;
+        public bool IsPlayerOrGhost => IsPlayer || (GhostOf != null && GhostOf.IsPlayer);
         public bool IsYielding => YieldTimer > 0f;
         public bool IsHorning => HornTimer > 0f;
         public float HalfLength => Shape.Length * 0.5f;

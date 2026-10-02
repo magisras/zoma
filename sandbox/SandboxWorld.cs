@@ -13,7 +13,10 @@ namespace TwentyTons.Sandbox
     public static class SandboxWorld
     {
         public const float RoadWidth = 10f;
+        public const float MedianMetres = 1.5f;
         public const float CrossWidth = 8f;
+        /// <summary>From the main centreline to the oncoming centreline: both half widths and the median.</summary>
+        public const float OncomingOffset = RoadWidth + MedianMetres;
         public const float PavementMetres = 3f;
         public const float CrossStreetLength = 240f;
 
@@ -57,10 +60,25 @@ namespace TwentyTons.Sandbox
             }
         }
 
+        /// <summary>
+        /// The oncoming carriageway: the same ring walked the other way, to the right of the main road
+        /// (left-hand traffic: oncoming is on your right). Same points, offset, reversed.
+        /// </summary>
+        public static Corridor BuildOncoming(Corridor main)
+        {
+            var points = new List<Vector3>();
+            for (float s = main.Length; s > 0f; s -= 25f)
+            {
+                points.Add(main.PositionAt(s, OncomingOffset));
+            }
+            return new Corridor(points, RoadWidth, closed: true, name: "oncoming");
+        }
+
         /// <summary>A cross street through the main road at s, perpendicular, centred on it.</summary>
         public static Corridor BuildCrossStreet(Corridor main, float s, int index)
         {
-            Vector3 centre = main.PositionAt(s, 0f);
+            // Centred between the two carriageways, so it reaches equally far either side.
+            Vector3 centre = main.PositionAt(s, OncomingOffset * 0.5f);
             Vector3 right = main.RightAt(s);
             var points = new List<Vector3>
             {
@@ -91,7 +109,9 @@ namespace TwentyTons.Sandbox
                     float width = random.Range(10f, 20f);
                     float height = random.Range(2, 8) * 3f;             // 2–7 storeys of concrete
                     float setBack = PavementMetres + random.Range(0f, 2f);
-                    float lateral = side * (corridor.HalfWidth + setBack + width * 0.5f);
+                    // The right side sits beyond the oncoming carriageway.
+                    float beyond = side > 0 ? OncomingOffset : 0f;
+                    float lateral = side * (corridor.HalfWidth + setBack + width * 0.5f + beyond);
                     float mid = s + length * 0.5f;
                     Vector3 centre = corridor.PositionAt(mid, lateral);
 

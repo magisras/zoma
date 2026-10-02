@@ -150,6 +150,10 @@ namespace TwentyTons.Tuning
 
         [Tooltip("How long a bluff (refusing to move) is held before the driver reconsiders, seconds. placeholder")]
         public float BluffSeconds = 4f;
+
+        [Tooltip("A much heavier vehicle coming head-on within this distance makes a driver swerve at once, metres. " +
+                 "RESEARCH: wrong side is normal; size is right of way. placeholder")]
+        public float HeadOnYieldMetres = 45f;
     }
 
     /// <summary>
@@ -423,6 +427,12 @@ namespace TwentyTons.Tuning
         public float BusWeight = 10f;
         public float TruckWeight = 5f;
 
+        [Tooltip("Vehicles kept on the oncoming carriageway, as a fraction of VehiclesAround. placeholder")]
+        [Range(0f, 2f)] public float OncomingFraction = 0.7f;
+
+        [Tooltip("Width of the strip between the two carriageways, metres. placeholder")]
+        public float MedianMetres = 1.5f;
+
         [Tooltip("Vehicles kept queued or rolling on each cross street. placeholder")]
         public int CrossVehiclesPerJunction = 5;
 
@@ -486,6 +496,9 @@ namespace TwentyTons.Tuning
         [Range(0f, 1f)] public float SergeantChanceAfterCaneRun = 0.6f;
         [Tooltip("Officer.SergeantStopChance is per shift; per junction pass it is multiplied by this. placeholder")]
         [Range(0f, 1f)] public float SergeantChancePerPassFactor = 0.25f;
+
+        [Tooltip("Chance the sergeant steps out after a junction you passed on the wrong side. placeholder")]
+        [Range(0f, 1f)] public float WrongSideSergeantChance = 0.5f;
 
         [Tooltip("A case when you refuse, Tk. RESEARCH: wrong-side driving Tk 3,000 per case.")]
         public float CaseTk = 3000f;

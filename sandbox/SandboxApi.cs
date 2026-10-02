@@ -17,6 +17,8 @@ namespace TwentyTons.Sandbox
         public float[] Buildings { get; set; }
         /// <summary>Per cross street: its left and right edge polylines.</summary>
         public List<float[]> CrossEdges { get; set; }
+        public float[] OncomingLeftEdge { get; set; }
+        public float[] OncomingRightEdge { get; set; }
         /// <summary>Per zone: x, z, yaw, side. Names in ZoneNames.</summary>
         public float[] Zones { get; set; }
         public string[] ZoneNames { get; set; }
@@ -79,6 +81,8 @@ namespace TwentyTons.Sandbox
         public bool PersonHit { get; set; }
         public int AgentCount { get; set; }
         public int CaneRuns { get; set; }
+        public float WrongSideSeconds { get; set; }
+        public bool WrongSideNow { get; set; }
         /// <summary>Debug hooks for scripted drivers: where the bus sits across the road and how it points.</summary>
         public float Lateral { get; set; }
         public float YawErrorDeg { get; set; }
@@ -148,11 +152,22 @@ namespace TwentyTons.Sandbox
             var random = new SeededRandom(seed);
             Corridor corridor = SandboxWorld.BuildCorridor(random);
             _sim = new TrafficSim(corridor, _tuning, seed + 1);
+            _tuning.Spawn.MedianMetres = SandboxWorld.MedianMetres;
+            Corridor oncoming = SandboxWorld.BuildOncoming(corridor);
+            _sim.SetOncoming(oncoming);
             var crossEdges = new List<float[]>();
             for (int i = 0; i < SandboxWorld.JunctionS.Length; i++)
             {
                 Corridor cross = SandboxWorld.BuildCrossStreet(corridor, SandboxWorld.JunctionS[i], i);
-                _sim.AddJunction(SandboxWorld.JunctionS[i], cross, cross.Length * 0.5f);
+                // Where the cross street meets each carriageway's centreline, in the cross street's own S.
+                float crossAtMain, crossAtOncoming, oncomingS, unused;
+                cross.Project(corridor.PositionAt(SandboxWorld.JunctionS[i], 0f), out crossAtMain, out unused);
+                Junction mainJunction = _sim.AddJunction(SandboxWorld.JunctionS[i], cross, crossAtMain);
+                Vector3 onOncoming = corridor.PositionAt(SandboxWorld.JunctionS[i], SandboxWorld.OncomingOffset);
+                oncoming.Project(onOncoming, out oncomingS, out unused);
+                cross.Project(onOncoming, out crossAtOncoming, out unused);
+                var mirror = new Junction(oncoming, oncomingS, cross, crossAtOncoming) { Mirror = mainJunction };
+                _sim.Junctions.Add(mirror);
                 crossEdges.Add(SandboxWorld.RoadEdge(cross, -cross.HalfWidth));
                 crossEdges.Add(SandboxWorld.RoadEdge(cross, cross.HalfWidth));
             }
@@ -174,6 +189,8 @@ namespace TwentyTons.Sandbox
                 RightEdge = SandboxWorld.RoadEdge(corridor, corridor.HalfWidth),
                 Buildings = SandboxWorld.BuildBuildings(corridor, random),
                 CrossEdges = crossEdges,
+                OncomingLeftEdge = SandboxWorld.RoadEdge(oncoming, -oncoming.HalfWidth),
+                OncomingRightEdge = SandboxWorld.RoadEdge(oncoming, oncoming.HalfWidth),
                 Zones = ZoneGeometry(),
                 ZoneNames = SandboxWorld.ZoneNames,
             };
@@ -293,6 +310,7 @@ namespace TwentyTons.Sandbox
             for (int i = 0; i < agents.Count; i++)
             {
                 Agent a = agents[i];
+                if (a.GhostOf != null) continue;                  // the ghost is the player, already drawn
                 int flags = (a.IsPlayer ? 1 : 0) | (a.IsHorning ? 2 : 0) | (a.IsYielding ? 4 : 0)
                           | (a.PedState == PedestrianState.Crossing ? 8 : 0) | (a.BluffTimer > 0f ? 16 : 0)
                           | (a.Brain != null && a.Brain.OwnCompany ? 32 : 0) | (a.Load != null && a.Load.DoorOpen ? 64 : 0);
@@ -308,9 +326,11 @@ namespace TwentyTons.Sandbox
                 data[k++] = flags;
             }
 
+            if (k < data.Length) System.Array.Resize(ref data, k);
             var junctions = new List<JunctionDto>();
             foreach (Junction j in _sim.Junctions)
             {
+                if (j.Mirror != null) continue;                  // one officer, drawn once
                 junctions.Add(new JunctionDto
                 {
                     X = j.Centre.x, Z = j.Centre.z, MainYaw = _sim.Corridor.YawAt(j.MainS),
@@ -387,6 +407,8 @@ namespace TwentyTons.Sandbox
                 AtDoor = atDoor,
                 ZoneCrowds = crowds,
                 CaneRuns = m.CaneRuns,
+                WrongSideSeconds = m.WrongSideSeconds,
+                WrongSideNow = m.WrongSideNow,
                 Autopilot = _autopilot,
                 Lateral = _sim.Player.Lateral,
                 YawErrorDeg = Mathf.DeltaAngle(_sim.Corridor.YawAt(_sim.Player.S) * Mathf.Rad2Deg, _sim.Player.Yaw * Mathf.Rad2Deg),
