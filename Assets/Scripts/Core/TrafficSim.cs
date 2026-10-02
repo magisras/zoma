@@ -103,7 +103,8 @@ namespace TwentyTons.Core
                 Lateral = lateral,
                 TargetLateral = lateral,
                 Speed = shape.CruiseSpeed * 0.8f,
-                DesiredSpeed = shape.CruiseSpeed * Random.Range(0.85f, 1.15f),
+                // A wide spread: some dawdle, some race. That spread is what makes overtaking happen.
+                DesiredSpeed = shape.CruiseSpeed * Random.Range(0.6f, 1.25f),
             };
             a.Position = Corridor.PositionAt(a.S, a.Lateral);
             a.Yaw = Corridor.YawAt(a.S);
@@ -214,15 +215,25 @@ namespace TwentyTons.Core
                     Agent front = ds > 0f ? b : a;
                     behind.Speed = Mathf.Min(behind.Speed, front.Speed);
 
-                    // Sideways: the lighter one gets pushed clear.
+                    // Separate along whichever axis penetrates least. The lighter one moves: a
+                    // sideswipe pushes it aside, a rear-ender shoves it forward (or holds it back).
                     Agent light = a.Mass <= b.Mass ? a : b;
                     Agent heavy = light == a ? b : a;
-                    float push = (overlapLat + 0.05f) * (light.Lateral >= heavy.Lateral ? 1f : -1f);
-                    light.Lateral += push;
-                    light.TargetLateral = light.Lateral;
-                    if (light.IsPlayer)
+                    if (overlapLat <= overlapS)
                     {
-                        light.Position += Corridor.RightAt(light.S) * push;
+                        float push = (overlapLat + 0.05f) * (light.Lateral >= heavy.Lateral ? 1f : -1f);
+                        light.Lateral += push;
+                        light.TargetLateral = light.Lateral;
+                        if (light.IsPlayer) light.Position += Corridor.RightAt(light.S) * push;
+                    }
+                    else
+                    {
+                        bool lightInFront = light.S >= heavy.S;
+                        float push = (overlapS + 0.05f) * (lightInFront ? 1f : -1f);
+                        light.S += push;
+                        if (lightInFront) light.Speed = Mathf.Max(light.Speed, heavy.Speed);   // shoved along
+                        else light.Speed = Mathf.Min(light.Speed, heavy.Speed);               // held back
+                        if (light.IsPlayer) light.Position += Corridor.TangentAt(light.S) * push;
                     }
                 }
             }

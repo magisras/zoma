@@ -46,3 +46,8 @@ Thumbs.db
 
 # Local compile/test cache (tools/check.sh)
 tools/.cache/
+
+# .NET build output (sandbox)
+sandbox/bin/
+sandbox/obj/
+sandbox/out/

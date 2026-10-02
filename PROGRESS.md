@@ -2,6 +2,53 @@
 
 One entry per session. The next session reads this first.
 
+## Session 2 — 2 Oct 2026 — Simulation core and browser sandbox
+
+**Shipped**
+
+- `tools/check.sh`: compiles all scripts with Mono against a UnityEngine stub and runs the tests with
+  NUnitLite. The cloud session has no Unity, so this is how logic is verified. 20/20 tests pass.
+- `Assets/Scripts/Core/` (engine-free, used by Unity and the sandbox alike):
+  - `Corridor`: centreline polyline + width; (S, Lateral) ↔ world; projection for the player's bus.
+  - `Agent`, `VehicleShape`, `SeededRandom`.
+  - `Steering`: follow at a nerve-scaled headway (0.5–1.5 s), seek a gap sideways when blocked,
+    yield by mass unless nerve bluffs. Per-second chances scaled by dt.
+  - `HornSystem`: cone broadcast; yield boost by relative mass; pedestrians pause.
+  - `Pedestrians`: cross band by band, stop mid-road, hurry when inside a vehicle's strip; the hand
+    (less margin for small vehicles, more for buses).
+  - `BusController`: power-limited acceleration, brakes that fade with wear, steering that gets
+    heavy with speed, bicycle model. Off the road the bus bogs down.
+  - `TrafficSim`: steps everything, resolves contacts (sideswipe pushes aside, rear-ender shoves
+    forward), ends the day when the player hits a person, keeps traffic and pedestrians populated
+    around the player, records the RESEARCH.md playtest metrics (headway, near misses/min, horn
+    presses, yields, scrapes).
+- `TuningTable` grew sections: Bus, Spawn, and finer Gap / Nerve / Horn / Pedestrian numbers.
+- `sandbox/`: Blazor WebAssembly project that includes `Assets/Scripts/**` by path and draws it
+  with three.js (vendored r170). Chase and top-down cameras, HUD with the metrics, live tuning
+  sliders (T), restart (R). Verified headless with Playwright: loads, drives, horns, scrapes,
+  ends the day on a pedestrian hit. `make sandbox` to run; see `sandbox/README.md`.
+
+**Observed in the first scripted drives** (worth a human look)
+
+- Full throttle down the middle for 25 s: ~9 near misses, 2 scrapes, 5 horn presses moving 23
+  vehicles. Headway hits 0.4 s against crossing pedestrians. Feels like the right kind of
+  uncomfortable, but a human must judge.
+- Pedestrians used to walk straight into the bus; now they cross strip by strip. Still naive
+  about a bus that accelerates after they commit.
+
+**Not done**
+
+- No rival-bus decision layer yet (utility AI, Milestone 4); the weights sit in `TuningTable`.
+- No passengers, stops, ledger or fatigue (Milestones 4–6).
+- Unity side untouched since session 1: no ProjectSettings, no scene, no OSM import.
+
+**Next**
+
+1. Owner drives the sandbox and reports what feels wrong (see sandbox/README.md "What to look at").
+2. Milestone 4 logic in the core: two rival buses with utility AI, five demand zones, passengers
+   choosing the first bus; drawn in the sandbox as more boxes.
+3. On the MacBook: open the project in Unity, run the Blender import (docs/OSM_IMPORT_PLAN.md).
+
 ## Session 1 — 2 Oct 2026 — Milestone 1 scaffolding
 
 **Shipped**

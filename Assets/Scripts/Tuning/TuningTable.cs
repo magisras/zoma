@@ -384,16 +384,16 @@ namespace TwentyTons.Tuning
     public sealed class SpawnSettings
     {
         [Tooltip("Vehicles kept alive around the player. placeholder")]
-        public int VehiclesAround = 40;
+        public int VehiclesAround = 50;
 
         [Tooltip("Traffic is spawned up to this far ahead of the player, metres. placeholder")]
-        public float SpawnAheadMetres = 300f;
+        public float SpawnAheadMetres = 250f;
 
         [Tooltip("...and up to this far behind, metres. placeholder")]
         public float SpawnBehindMetres = 120f;
 
         [Tooltip("Nothing spawns closer to the player than this, metres. placeholder")]
-        public float SpawnClearanceMetres = 50f;
+        public float SpawnClearanceMetres = 30f;
 
         [Header("Class mix (relative weights). RESEARCH: rickshaws fill every gap; buses ~1 in 4 crashes.")]
         public float RickshawWeight = 40f;

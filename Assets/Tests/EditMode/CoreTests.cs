@@ -140,23 +140,71 @@ namespace TwentyTons.Tests
         [Test]
         public void PedestrianWaitsForBusButStepsOutForCar()
         {
-            // A vehicle 30 m away at 10 m/s is 3 s away. A pedestrian demands 1.5 s of a car (×0.6 = 0.9 s)
-            // and 1.5 + 1.0 = 2.5 s of a bus... both would cross. Bring it closer: 20 m → 2 s.
+            // From the left kerb (lateral −6) the first strip to cross belongs to a vehicle at lateral −3.
+            // Clearing a car's strip takes ~3.3 s of walking; a bus's ~3.6 s. The vehicle is 50 m away at
+            // 10 m/s = 5 s. Car: 3.3 + 1.5 × 0.6 (hand up) = 4.2 s < 5 → walk. Bus: 3.6 + 1.5 + 1.0 = 6.1 s > 5 → wait.
             var simCar = NewSim();
-            Agent car = simCar.SpawnVehicle(VehicleClass.Car, 0f, 0f, 0.5f);
+            Agent car = simCar.SpawnVehicle(VehicleClass.Car, 0f, -3f, 0.5f);
             car.Speed = 10f; car.DesiredSpeed = 10f;
-            Agent pedA = simCar.SpawnPedestrian(20f + car.HalfLength, -1);
+            Agent pedA = simCar.SpawnPedestrian(50f + car.HalfLength, -1);
             pedA.WaitTimer = 0f;
             simCar.Step(1f / 60f);
             Assert.AreEqual(PedestrianState.Crossing, pedA.PedState, "hand up, steps out in front of the car");
 
             var simBus = NewSim();
-            Agent bus = simBus.SpawnVehicle(VehicleClass.Bus, 0f, 0f, 0.5f);
+            Agent bus = simBus.SpawnVehicle(VehicleClass.Bus, 0f, -3f, 0.5f);
             bus.Speed = 10f; bus.DesiredSpeed = 10f;
-            Agent pedB = simBus.SpawnPedestrian(20f + bus.HalfLength, -1);
+            Agent pedB = simBus.SpawnPedestrian(50f + bus.HalfLength, -1);
             pedB.WaitTimer = 0f;
             simBus.Step(1f / 60f);
             Assert.AreEqual(PedestrianState.Waiting, pedB.PedState, "hesitates for the bus");
+        }
+
+        [Test]
+        public void PedestrianStopsMidRoadForTheNextBand()
+        {
+            // Pedestrian mid-road at lateral −2, walking toward +. A fast car owns the band at +2,
+            // 12 m away at 12 m/s (1 s). Clearing that band takes ~4 s: they must stop, not walk on.
+            var sim = NewSim();
+            Agent car = sim.SpawnVehicle(VehicleClass.Car, 0f, 2f, 0.5f);
+            car.Speed = 12f; car.DesiredSpeed = 12f;
+            Agent ped = sim.SpawnPedestrian(12f + car.HalfLength, -1);
+            ped.PedState = PedestrianState.Crossing;
+            ped.CrossDirection = 1f;
+            ped.Lateral = -2f;
+            float before = ped.Lateral;
+            sim.Step(1f / 60f);
+            Assert.AreEqual(before, ped.Lateral, 1e-4f, "stops in the road and waits for the car to pass");
+
+            // Same again, but the car is in the band the pedestrian already left (lateral −4): walk on.
+            var sim2 = NewSim();
+            Agent car2 = sim2.SpawnVehicle(VehicleClass.Car, 0f, -4f, 0.5f);
+            car2.Speed = 12f; car2.DesiredSpeed = 12f;
+            Agent ped2 = sim2.SpawnPedestrian(12f + car2.HalfLength, -1);
+            ped2.PedState = PedestrianState.Crossing;
+            ped2.CrossDirection = 1f;
+            ped2.Lateral = -1f;
+            sim2.Step(1f / 60f);
+            Assert.Greater(ped2.Lateral, -1f, "the car's strip is behind them; they keep walking");
+        }
+
+        [Test]
+        public void RearEndingARickshawShovesItForwardNotThroughIt()
+        {
+            var sim = NewSim();
+            Agent bus = sim.SpawnPlayerBus(10f, 0f);
+            bus.Speed = 10f;
+            sim.Bus.Throttle = 1f;
+            Agent rickshaw = sim.SpawnVehicle(VehicleClass.Rickshaw, 20f, 0f, 0.0f);
+            rickshaw.DesiredSpeed = 1f;
+            rickshaw.Speed = 1f;
+            rickshaw.TargetLateral = 0f;
+
+            Run(sim, 6f);
+
+            Assert.Greater(rickshaw.Rear, bus.Front - 0.5f, "never more than a scrape inside the bus");
+            Assert.Greater(rickshaw.S, 25f, "it got shoved down the road");
+            Assert.GreaterOrEqual(sim.Metrics.Contacts, 1);
         }
 
         [Test]
@@ -168,9 +216,8 @@ namespace TwentyTons.Tests
             Agent ped = sim.SpawnPedestrian(40f, -1);
             ped.PedState = PedestrianState.Crossing;
             ped.CrossDirection = 1f;
-            ped.Speed = 0f;                 // frozen in the road, directly in the bus's path
             ped.Lateral = 0f;
-            ped.WaitTimer = 999f;
+            sim.Tuning.Pedestrians.WalkSpeed = 0f;   // cannot get out of the way: frozen in the bus's path
 
             Run(sim, 15f);
 

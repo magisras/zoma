@@ -11,6 +11,7 @@ A serious, realistic game about a Dhaka bus crew: you don't play a hero, you pla
 - `CLAUDE.md` — the working brief for each coding session (principle, stack, rules)
 - `PROGRESS.md` — what each session shipped and what comes next
 - `Assets/` — the Unity 6 (URP) project; every gameplay number lives in `Assets/Scripts/Tuning/TuningTable.cs`
+- `sandbox/` — the simulation core running in a browser as grey boxes (`make sandbox`), for trying driving and traffic logic before Unity
 - `docs/OSM_IMPORT_PLAN.md` — how the Mirpur 12–Azimpur corridor goes from OpenStreetMap to grey boxes
 - `RESEARCH.md` — the research backbone: pay system (zoma), fares, crew roles, sleep and health, bus costs, accidents, bribes and extortion, driving culture, passenger behaviour, crew testimony, sources, game mechanics derived from the research, traffic/character AI method, tech plan and prototype milestones.
 

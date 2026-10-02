@@ -39,6 +39,10 @@ crew and the ledger make the player feel it.
   verified without opening Unity. Keep simulation logic free of UnityEngine types where you can
   (pure C# in `Assets/Scripts/Core/`), so it stays testable this way; Unity-only code (MonoBehaviours,
   physics, rendering) is thin and lives beside it.
+- The browser sandbox (`sandbox/`, `make sandbox`) compiles the same `Assets/Scripts` to WebAssembly
+  and draws grey boxes with three.js. Use it to try driving and NPC logic without Unity. It must
+  keep building: if a script needs a UnityEngine type the stub lacks, add the type to
+  `tools/unity-stubs/`, never a `#if` in game code.
 - At the end of every session: update `PROGRESS.md` (what shipped, what's next, open questions),
   commit, push. Summarise the same in the final message.
 
@@ -52,6 +56,7 @@ Assets/
   Data/         ScriptableObject instances (TuningTable.asset lives here)
   Tests/        EditMode tests (NUnit via Unity Test Framework)
 docs/           plans and notes that are not research (OSM import, scene budget)
+sandbox/        Blazor WebAssembly + three.js page that runs the core in a browser
 tools/          check.sh (compile + test without Unity), UnityEngine stub, NUnitLite entry point
 ```
 

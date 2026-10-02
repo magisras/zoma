@@ -178,7 +178,10 @@ namespace TwentyTons.Core
 
             // Sideways: you can't drift much when standing still.
             float lateralRate = Mathf.Min(a.Shape.LateralSpeed, 0.3f + a.Speed * 0.3f);
-            float target = Mathf.Clamp(a.TargetLateral, -edge, edge);
+            // The target may sit up to a metre onto the pavement: a vehicle shoved there by a bus
+            // stays put until it picks a new target, instead of fighting its way back into the bus.
+            // Targets chosen by SeekGap and Yield are always on the road.
+            float target = Mathf.Clamp(a.TargetLateral, -edge - 1f, edge + 1f);
             float before = a.Lateral;
             a.Lateral = Mathf.MoveTowards(a.Lateral, target, lateralRate * dt);
             float lateralVelocity = dt > 0f ? (a.Lateral - before) / dt : 0f;

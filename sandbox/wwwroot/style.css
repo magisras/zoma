@@ -1,0 +1,48 @@
+:root {
+  --ink: #e8e6e1;
+  --dim: #9a978f;
+  --panel: rgba(18, 18, 20, 0.72);
+  --warn: #e0a83a;
+  --danger: #d9534f;
+  --ok: #7fb069;
+}
+html, body { margin: 0; height: 100%; overflow: hidden; background: #202226; color: var(--ink);
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+#view { display: block; width: 100vw; height: 100vh; }
+
+#hud { position: fixed; left: 16px; top: 16px; padding: 12px 14px; background: var(--panel);
+  border-radius: 8px; min-width: 220px; backdrop-filter: blur(4px); }
+#hud .row { display: flex; gap: 8px; align-items: baseline; }
+#hud .big { font-size: 34px; font-weight: 300; letter-spacing: -1px; }
+#hud .unit { color: var(--dim); }
+#hud .label { color: var(--dim); min-width: 100px; }
+.dim { color: var(--dim); }
+.warn { color: var(--warn); }
+.danger { color: var(--danger); }
+
+#horn-indicator { position: fixed; left: 50%; top: 24px; transform: translateX(-50%);
+  padding: 6px 14px; border-radius: 6px; background: var(--warn); color: #1a1a1a; letter-spacing: 2px;
+  opacity: 0; transition: opacity 80ms; }
+#horn-indicator.on { opacity: 1; }
+
+#tuning { position: fixed; right: 16px; top: 16px; width: 280px; padding: 12px 14px; background: var(--panel);
+  border-radius: 8px; backdrop-filter: blur(4px); }
+#tuning.hidden { display: none; }
+#tuning .title { margin-bottom: 8px; }
+#tuning label { display: grid; grid-template-columns: 1fr 110px 44px; gap: 8px; align-items: center;
+  color: var(--dim); font-size: 13px; margin: 4px 0; }
+#tuning output { color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+#tuning input[type=range] { width: 110px; accent-color: #c9c5bb; }
+
+#help { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); padding: 6px 12px;
+  background: var(--panel); border-radius: 6px; color: var(--dim); white-space: nowrap; }
+#help b { color: var(--ink); font-weight: 500; }
+
+#overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, 0.55); }
+#overlay.on { display: flex; }
+#overlay .card { padding: 28px 36px; background: #141416; border-radius: 10px; max-width: 420px; text-align: center; }
+#overlay .headline { font-size: 24px; margin-bottom: 10px; }
+
+#loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--dim); }
+#loading.hidden { display: none; }

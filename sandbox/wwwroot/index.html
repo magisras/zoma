@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Twenty Tons sandbox</title>
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <canvas id="view"></canvas>
+
+  <div id="hud">
+    <div class="row"><span class="big" id="speed">0</span><span class="unit">km/h</span></div>
+    <div class="row"><span class="label">gap ahead</span><span id="gap">—</span></div>
+    <div class="row"><span class="label">headway</span><span id="headway">—</span></div>
+    <div class="row"><span class="label">min headway</span><span id="minHeadway">—</span></div>
+    <div class="row"><span class="label">near misses</span><span id="nearMisses">0</span><span class="dim" id="nearMissRate"></span></div>
+    <div class="row"><span class="label">scrapes</span><span id="contacts">0</span></div>
+    <div class="row"><span class="label">horn</span><span id="hornPresses">0</span><span class="dim" id="yields"></span></div>
+    <div class="row"><span class="label">passengers</span><span id="passengers">0</span></div>
+    <div class="row"><span class="label">brake wear</span><span id="brakeWear">0</span></div>
+    <div class="row"><span class="label">time</span><span id="time">0:00</span><span class="dim" id="distance"></span></div>
+    <div class="row dim" id="fps"></div>
+  </div>
+
+  <div id="horn-indicator">HORN</div>
+
+  <div id="tuning">
+    <div class="title">Tuning <span class="dim">(live, from TuningTable)</span></div>
+    <label>nerve <input type="range" data-param="nerve" min="0" max="1" step="0.05" value="0.5"><output>0.50</output></label>
+    <label>critical gap min <input type="range" data-param="gapMin" min="0.1" max="3" step="0.1" value="0.5"><output>0.5</output></label>
+    <label>critical gap max <input type="range" data-param="gapMax" min="0.1" max="6" step="0.1" value="1.5"><output>1.5</output></label>
+    <label>horn tap strength <input type="range" data-param="hornTap" min="0" max="1" step="0.05" value="0.25"><output>0.25</output></label>
+    <label>yield w/o horn <input type="range" data-param="yieldSilent" min="0" max="1" step="0.05" value="0.15"><output>0.15</output></label>
+    <label>bluff at full nerve <input type="range" data-param="bluff" min="0" max="1" step="0.05" value="0.35"><output>0.35</output></label>
+    <label>vehicles <input type="range" data-param="vehicles" min="0" max="120" step="5" value="50"><output>50</output></label>
+    <label>pedestrians <input type="range" data-param="pedestrians" min="0" max="60" step="2" value="14"><output>14</output></label>
+    <label>brake wear <input type="range" data-param="brakeWear" min="0" max="1" step="0.05" value="0.5"><output>0.50</output></label>
+    <label>passengers <input type="range" data-param="passengers" min="0" max="90" step="5" value="30"><output>30</output></label>
+  </div>
+
+  <div id="help">
+    <b>W/↑</b> throttle · <b>S/↓</b> brake · <b>A D / ← →</b> steer · <b>H</b> or <b>space</b> horn (hold = blast) ·
+    <b>C</b> camera · <b>T</b> tuning · <b>R</b> restart
+  </div>
+
+  <div id="overlay">
+    <div class="card">
+      <div class="headline">You hit a person.</div>
+      <div>The crowd gathers. The day is over, and so is the money in it.</div>
+      <div class="dim">Press R.</div>
+    </div>
+  </div>
+
+  <div id="loading">Loading the simulation…</div>
+
+  <script src="_framework/blazor.webassembly.js" autostart="false"></script>
+  <script type="module">
+    import { main } from './app.js';
+    Blazor.start().then(() => main()).catch(e => {
+      document.getElementById('loading').textContent = 'Failed to start: ' + e;
+      console.error(e);
+    });
+  </script>
+</body>
+</html>
