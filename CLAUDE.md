@@ -50,7 +50,9 @@ crew and the ledger make the player feel it.
 
 ```
 Assets/
-  Scripts/      C# by feature (Tuning/, later Core/ for engine-free simulation, Unity/ for adapters)
+  Scripts/      Tuning/ (the one table), Core/ (engine-free simulation: Corridor, Agent, Steering,
+                HornSystem, Pedestrians, Junction, TrafficSim, Boarding, RivalAI, Economy, Fatigue,
+                CrewVoice), later Unity/ for MonoBehaviour adapters
   Scenes/       one scene per corridor chunk or test bed
   Prefabs/      vehicles, props, grey-box blocks
   Data/         ScriptableObject instances (TuningTable.asset lives here)

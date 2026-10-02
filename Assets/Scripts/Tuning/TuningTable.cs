@@ -46,6 +46,9 @@ namespace TwentyTons.Tuning
         [Header("The driver's body")]
         public FatigueSettings Fatigue = new FatigueSettings();
 
+        [Header("The crew's voices")]
+        public VoiceSettings Voice = new VoiceSettings();
+
         [Header("Decision layer (rival buses)")]
         public UtilitySettings Utility = new UtilitySettings();
         public MemorySettings Memory = new MemorySettings();
@@ -537,6 +540,32 @@ namespace TwentyTons.Tuning
         [Range(0f, 1f)] public float BusFloorKeeps = 0.6f;
         [Tooltip("Fatigue after a day off. RESEARCH: 7–9 h of sleep on the off day cuts violations. placeholder")]
         [Range(0f, 1f)] public float AfterRestDay = 0.05f;
+    }
+
+    /// <summary>When the crew speaks (RESEARCH.md: the crew teaches). Cooldowns keep them human.</summary>
+    [Serializable]
+    public sealed class VoiceSettings
+    {
+        [Tooltip("The helper calls a bus behind when it is within this distance, metres. placeholder")]
+        public float BusBehindCloseMetres = 80f;
+        [Tooltip("...and says 'easy' when the bus ahead is further than this, metres. placeholder")]
+        public float BusAheadFarMetres = 300f;
+        [Tooltip("Seconds between gap calls. placeholder")]
+        public float GapCooldownSeconds = 15f;
+        [Tooltip("The helper calls a crowd this far before the zone, metres. placeholder")]
+        public float CrowdCallMetres = 70f;
+        [Tooltip("...if at least this many are waiting. placeholder")]
+        public int CrowdCallMinimum = 4;
+        [Tooltip("Seconds between 'why aren't you honking'. placeholder")]
+        public float SilenceCooldownSeconds = 25f;
+        [Tooltip("Seconds between door warnings. placeholder")]
+        public float DoorCooldownSeconds = 12f;
+        [Tooltip("Below this speed with a clear road, passengers get restless, km/h. placeholder")]
+        public float SlowKmh = 12f;
+        [Tooltip("...after this many seconds. placeholder")]
+        public float SlowSecondsBeforeComplaint = 12f;
+        [Tooltip("Seconds between passenger complaints. placeholder")]
+        public float PassengerCooldownSeconds = 25f;
     }
 
     // ------------------------------------------------------------------------------------------

@@ -114,6 +114,8 @@ namespace TwentyTons.Sandbox
         public int Day { get; set; }
         public float SavingsTk { get; set; }
         public bool SleptChosen { get; set; }     // the end-of-day card's two steps
+        public string Subtitle { get; set; }      // "Helper: ..." or null
+        public float SubtitleAge { get; set; }
         public List<JunctionDto> Junctions { get; set; }
     }
 
@@ -175,6 +177,17 @@ namespace TwentyTons.Sandbox
                 Zones = ZoneGeometry(),
                 ZoneNames = SandboxWorld.ZoneNames,
             };
+        }
+
+        private static string SpeakerName(VoiceLine line)
+        {
+            switch (line.Speaker)
+            {
+                case Speaker.Helper: return "Helper";
+                case Speaker.Conductor: return "Conductor";
+                case Speaker.Passenger: return "Passenger";
+                default: return line.Who ?? "Crew";
+            }
         }
 
         private static float[] ZoneGeometry()
@@ -358,6 +371,8 @@ namespace TwentyTons.Sandbox
                 Day = _household.Day,
                 SavingsTk = _household.SavingsTk,
                 SleptChosen = _sleptChosen,
+                Subtitle = _sim.Voice.Latest == null ? null : SpeakerName(_sim.Voice.Latest) + ": " + _sim.Voice.Latest.Text,
+                SubtitleAge = _sim.Voice.Latest == null ? 999f : m.Time - _sim.Voice.Latest.Time,
                 StopsLost = m.StopsLost,
                 Rivals = rivals,
                 HelperGap = helper,

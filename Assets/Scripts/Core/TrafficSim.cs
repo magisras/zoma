@@ -46,6 +46,7 @@ namespace TwentyTons.Core
         public readonly BusController Bus = new BusController();
         public Economy Economy;
         public readonly FatigueState Fatigue = new FatigueState();
+        public CrewVoice Voice;
         public Agent Player;
 
         private readonly InputDelay _inputDelay = new InputDelay();
@@ -64,6 +65,7 @@ namespace TwentyTons.Core
             Tuning = tuning;
             Random = new SeededRandom(seed);
             Economy = new Economy(this);
+            Voice = new CrewVoice(this);
         }
 
         /// <summary>Add a place where people wait for buses. Hot zones (near junctions, markets) fill faster.</summary>
@@ -246,6 +248,21 @@ namespace TwentyTons.Core
             MaintainPopulation();
             Economy.Step(dt);
             Economy.SyncFares();
+            Voice.Step(dt);
+            if (Economy.DayOver && !_terminalSaid) { _terminalSaid = true; TerminalScene(); }
+        }
+
+        private bool _terminalSaid;
+
+        /// <summary>At the terminal, each crew says one thing, chosen by the day and the grudge.</summary>
+        private void TerminalScene()
+        {
+            for (int i = 0; i < Agents.Count; i++)
+            {
+                Agent a = Agents[i];
+                if (a.Brain == null || !a.Brain.OwnCompany) continue;
+                Economy.Ledger.Log(Voice.TerminalLine(a.Brain, Economy.Ledger));
+            }
         }
 
         /// <summary>

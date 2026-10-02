@@ -2,7 +2,7 @@
 
 One entry per session. The next session reads this first.
 
-## Session 3 — 2 Oct 2026 — Building the system in the sandbox (in progress)
+## Session 3 — 2 Oct 2026 — Building the system in the sandbox
 
 Working through README milestones 3–6 in the engine-free core, each step tested in `check.sh`,
 in the headless runner and in the browser. Entries below are appended as steps land.
@@ -96,6 +96,31 @@ in the headless runner and in the browser. Entries below are appended as steps l
 - Headless 15-minute day: fatigue 1.0 at the end with 17 micro-sleeps, which is the research's
   routine 14-hour shift in miniature. Likely too harsh for play; tune with the owner.
 - Tests: 57.
+
+**Step 6 — the crew's voices** (done)
+
+- `CrewVoice`: scripted lines chosen from the simulation's state with a cooldown per trigger.
+  Helper: the bus behind and how far, "easy" when the bus ahead is far, the crowd at the next
+  zone, "why aren't you honking" after 20 s of silence with traffic ahead, the open door at
+  speed, "wake up" after a micro-sleep. Conductor: the sergeant ("hiding the cash, pay him"),
+  the half-fare arguer, the count every ten boardings. Passengers: "stop, I'm getting off
+  here" when carried past, "faster" when crawling on a clear road, "go round him" when stuck.
+  At the terminal each crew says one line by grudge and by how the day went (cold above 3).
+- Subtitles in the sandbox for 4.5 s each; `VoiceSettings` for thresholds and cooldowns. Lines
+  are English placeholders; Bangla comes with the recordings.
+- Tests: 62.
+
+**Where this leaves the project**
+
+Everything in README milestones 3–6 now exists as engine-free C# with tests, runs in the browser
+sandbox and in the headless runner. Not yet done: the Unity side (project settings, scene, OSM
+import, real bus physics, 3D assets), the wrong-side-of-the-road corridor, passengers alighting
+from a moving bus with falls, the rollover set piece, repairs and the fitness certificate, the
+mirror-moment scripting, Bangla lines and audio. All numbers are placeholders until the owner
+plays; the headless runner gives repeatable metrics for that tuning.
+
+**How to try it**: `make sandbox` (or the artifact link), P for the careful autopilot to watch,
+then drive yourself. `./tools/headless.sh 1 900 25` for a full day's numbers in seconds.
 
 ## Session 2 — 2 Oct 2026 — Simulation core and browser sandbox
 

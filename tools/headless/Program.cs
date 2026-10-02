@@ -68,6 +68,9 @@ public static class Headless
         Console.WriteLine($"  ledger: fares {l.FaresTk:0}  zoma {l.ZomaTk:0}  fuel {l.FuelTk:0}  lineman {l.LinemanTk:0}  party {l.PartyManTk:0}  sergeant {l.SergeantTk:0}  cases {l.CaseTk:0}  repairs {l.RepairsTk:0}  => crew {l.CrewNetTk:0} Tk  ({l.Trips} trips, day over: {sim.Economy.DayOver} {sim.Economy.DayOverReason})");
         foreach (string e in l.Events) Console.WriteLine("    " + e);
         Console.WriteLine($"  fatigue at end {sim.Fatigue.Level:0.00}  micro-sleeps {sim.Fatigue.MicroSleeps}");
+        Console.WriteLine($"  voices: {sim.Voice.Lines.Count} lines");
+        int from = Math.Max(0, sim.Voice.Lines.Count - 8);
+        for (int i = from; i < sim.Voice.Lines.Count; i++) { VoiceLine v = sim.Voice.Lines[i]; Console.WriteLine($"    [{v.Time,5:0}s] {v.Speaker}: {v.Text}"); }
         foreach (Agent a in sim.Agents)
         {
             if (a.Brain == null) continue;

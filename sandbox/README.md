@@ -23,9 +23,11 @@ python3 -m http.server -d out/wwwroot 8080      # then http://localhost:8080
 
 ## Controls
 
-W/↑ throttle · S/↓ brake · A/D or ←/→ steer · H or space horn (hold for a blast) · C camera ·
-T tuning panel · P autopilot (the careful driver) · R restart with a new seed.
-On phones: on-screen buttons.
+W/↑ throttle · S/↓ brake · A/D or ←/→ steer · H or space horn (hold for a blast) · E door ·
+1/2 pay or refuse the sergeant · C camera · T tuning panel · P autopilot (the careful driver) ·
+R restart with a new seed. On phones: on-screen buttons.
+
+A day lasts 15 minutes (slider). At the end: the ledger, where to sleep, work or rest tomorrow.
 
 ## Headless
 
@@ -40,6 +42,11 @@ On phones: on-screen buttons.
   Hit one and the day is over.
 - Officers at the two cross streets: green cane along the road = you may go. Nobody stops you
   running it; cross traffic in the box does.
+- Zones: tall thin boxes waiting on the kerb; stop slow, open the door (E), they board one by one.
+  The two darker-gold buses are your own company's crews; the HUD shows what they are doing.
+- The sergeant after a junction: pay, or take the case and sit. Fatigue arrives late in the day
+  as slow hands, a narrowing view and the screen going dark for a moment.
+- Subtitles are the crew. They are the manual.
 - The tuning panel edits the live `TuningTable` numbers. "Feels random" means nerve too high or
   gaps too small; "polite driving still wins" means rivals too timid (RESEARCH.md, Tuning).
 

@@ -385,6 +385,12 @@ function updateHud(f, dt) {
     el('savings').textContent = 'Day ' + f.day + ' · savings ' + (f.savingsTk < 0 ? '−' : '') + 'Tk ' + Math.abs(f.savingsTk).toFixed(0);
   }
 
+  // Subtitles: the crew's voices, for a few seconds each.
+  const sub = el('subtitle');
+  const showSub = f.subtitle && f.subtitleAge < 4.5;
+  sub.classList.toggle('on', !!showSub);
+  if (showSub) sub.textContent = f.subtitle;
+
   // The body: a narrowing view and, now and then, nothing at all.
   el('vignette').style.opacity = (f.tunnel * 0.9).toFixed(2);
   el('blackout').classList.toggle('on', f.asleep);
