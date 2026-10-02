@@ -393,6 +393,17 @@ namespace TwentyTons.Tuning
         [Tooltip("Brake wear the bus starts the prototype with, 0..1. placeholder")]
         [Range(0f, 1f)] public float StartingBrakeWear = 0.5f;
 
+        [Tooltip("Wear added per (brake input × m/s × second) of real driving. 1.5e-4 makes one stop from 36 km/h " +
+                 "cost 0.002, so a racing day of 150 stops adds 0.3. The sandbox divides by MoneyScale so its " +
+                 "short day wears like a real one. placeholder")]
+        public float WearPerMetreSecondBraked = 0.00015f;
+
+        [Tooltip("Wear left after a roadside brake service. placeholder")]
+        [Range(0f, 1f)] public float WearAfterService = 0.05f;
+
+        [Tooltip("Above this wear the helper mentions the brakes. placeholder")]
+        [Range(0f, 1f)] public float SoftBrakesAbove = 0.7f;
+
         [Tooltip("Passengers aboard at the start of the prototype. placeholder")]
         public int StartingPassengers = 30;
 
@@ -519,6 +530,23 @@ namespace TwentyTons.Tuning
 
         [Tooltip("The case after hitting a person, Tk. RESEARCH: non-bailable; the day's money is gone too. placeholder")]
         public float PersonHitCaseTk = 20000f;
+
+        [Header("Repairs and papers (RESEARCH: maintenance rarely happens; certificates are bought)")]
+        [Tooltip("A roadside brake service, Tk. placeholder")]
+        public float BrakeServiceTk = 4000f;
+
+        [Tooltip("A fitness certificate without the inspection, Tk. placeholder")]
+        public float FitnessTk = 3000f;
+
+        [Tooltip("Days the paper is good for. placeholder")]
+        public int FitnessDays = 7;
+
+        [Tooltip("With valid papers the sergeant's 'papers' stops happen this often (× the base chance). " +
+                 "Cane runs and wrong side are not helped. RESEARCH: a fit bus with clean papers lowers how often. placeholder")]
+        [Range(0f, 1f)] public float PapersSergeantFactor = 0.3f;
+
+        [Tooltip("Each unfixed dent raises the sergeant's 'papers' chance by this factor. placeholder")]
+        public float DentSergeantFactor = 0.05f;
 
         [Header("The household")]
         [Tooltip("What the crew spends on food per day, Tk. placeholder")]

@@ -223,9 +223,13 @@ namespace TwentyTons.Core
                 {
                     _passedJunction[j] = true;
                     bool wrongSide = _sim.Metrics.WrongSideNow;
+                    // Clean papers and an undented bus give him less to point at; a cane run or the wrong side, nothing helps.
+                    float papers = _sim.Tuning.Officer.SergeantStopChance * _e.SergeantChancePerPassFactor
+                                 * (_sim.Condition.PapersValid(_sim.Day) ? _e.PapersSergeantFactor : 1f)
+                                 * (1f + _sim.Condition.Dents * _e.DentSergeantFactor);
                     float chance = ranCane ? _e.SergeantChanceAfterCaneRun
                                  : wrongSide ? _e.WrongSideSergeantChance
-                                 : _sim.Tuning.Officer.SergeantStopChance * _e.SergeantChancePerPassFactor;
+                                 : Mathf.Clamp01(papers);
                     if (_sim.Random.Chance(chance))
                     {
                         Sergeant.Active = true;

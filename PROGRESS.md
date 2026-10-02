@@ -150,6 +150,19 @@ in the headless runner and in the browser. Entries below are appended as steps l
   Loading in parallel lifted both; scrapes still decide it.
 - Tests: 72.
 
+**Step 10 — the bus as a character** (done)
+
+- `BusCondition` lives in the household and rides the same bus every day: brake wear grows with
+  how hard and how fast you brake (scaled like the money, so a sandbox day wears like a real
+  one), every scrape leaves a dent, and the fitness certificate is a number on a paper with an
+  expiry day. The controller's brakes fade with the wear.
+- At the end of the day, before sleeping: service the brakes (Tk 4,000 scaled) or buy a
+  certificate (Tk 3,000 scaled, seven days), both from savings, into debt if need be. Skipping
+  is the loan against tomorrow the research describes.
+- The sergeant's "papers" stops fall to 30 % with a valid certificate and rise with dents; a cane
+  run or the wrong side is not helped by paper. Helper mentions soft brakes above 70 % wear.
+- Tests: 76.
+
 **Where this leaves the project**
 
 Everything in README milestones 3–6 now exists as engine-free C# with tests, runs in the browser

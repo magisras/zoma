@@ -121,6 +121,12 @@ namespace TwentyTons.Sandbox
         public int Day { get; set; }
         public float SavingsTk { get; set; }
         public bool SleptChosen { get; set; }     // the end-of-day card's two steps
+        public float BrakeWearToday { get; set; }
+        public int Dents { get; set; }
+        public bool PapersValid { get; set; }
+        public int PapersDaysLeft { get; set; }
+        public float BrakeServiceTk { get; set; }
+        public float FitnessTk { get; set; }
         public string Subtitle { get; set; }      // "Helper: ..." or null
         public float SubtitleAge { get; set; }
         public List<JunctionDto> Junctions { get; set; }
@@ -179,7 +185,12 @@ namespace TwentyTons.Sandbox
                 _sim.AddZone(SandboxWorld.ZoneNames[i], SandboxWorld.ZoneS[i], SandboxWorld.ZoneHot[i]);
             }
             ScriptedDriver.Reset();
-            _sim.SpawnPlayerBus(30f, -2f);
+            _sim.Condition = _household.Bus;                 // the same bus every day
+            _sim.Day = _household.Day;
+            bool continuing = _household.Days.Count > 0;
+            float wearCarried = _household.Bus.BrakeWear;
+            _sim.SpawnPlayerBus(30f, -2f);                   // sets the prototype's starting wear...
+            if (continuing) { _sim.Condition.BrakeWear = wearCarried; _sim.Bus.BrakeWear = wearCarried; }   // ...unless the bus has a history
             // The two crews of the player's own company: one ahead, one behind, as the research describes.
             _sim.SpawnRivalBus("Rafiq", DriverPersonality.Reckless(), 180f, -2f);
             _sim.SpawnRivalBus("Jamal", DriverPersonality.Spiteful(), corridor.Length - 160f, -2f);
@@ -267,6 +278,16 @@ namespace TwentyTons.Sandbox
             if (!_dayClosed) { _household.CloseWorkedDay(_sim.Economy.Ledger, _tuning.Economy); _dayClosed = true; }
             _household.Sleep(bed, _sim.Fatigue.Level, _tuning.Fatigue, _tuning.Economy);
             _sleptChosen = true;
+        }
+
+        /// <summary>Repairs at the end of the day: "brakes" or "papers". Paid from savings, into debt if need be.</summary>
+        [JSInvokable]
+        public static void Repair(string what)
+        {
+            if (!_sim.Economy.DayOver) return;
+            if (!_dayClosed) { _household.CloseWorkedDay(_sim.Economy.Ledger, _tuning.Economy); _dayClosed = true; }
+            if (what == "brakes") _household.ServiceBrakes(_tuning.Bus, _tuning.Economy);
+            else if (what == "papers") _household.BuyPapers(_tuning.Economy);
         }
 
         /// <summary>Step two: work tomorrow, or take the day off. Either way a new day starts.</summary>
@@ -398,6 +419,12 @@ namespace TwentyTons.Sandbox
                 Day = _household.Day,
                 SavingsTk = _household.SavingsTk,
                 SleptChosen = _sleptChosen,
+                BrakeWearToday = _sim.Condition.BrakeWearToday,
+                Dents = _sim.Condition.Dents,
+                PapersValid = _sim.Condition.PapersValid(_sim.Day),
+                PapersDaysLeft = Mathf.Max(0, _sim.Condition.PapersValidUntilDay - _sim.Day),
+                BrakeServiceTk = _tuning.Economy.BrakeServiceTk * _tuning.Economy.MoneyScale,
+                FitnessTk = _tuning.Economy.FitnessTk * _tuning.Economy.MoneyScale,
                 Subtitle = _sim.Voice.Latest == null ? null : SpeakerName(_sim.Voice.Latest) + ": " + _sim.Voice.Latest.Text,
                 SubtitleAge = _sim.Voice.Latest == null ? 999f : m.Time - _sim.Voice.Latest.Time,
                 StopsLost = m.StopsLost,
@@ -434,7 +461,7 @@ namespace TwentyTons.Sandbox
                 HornPresses = m.HornPresses,
                 YieldsToHorn = m.YieldsToHorn,
                 Passengers = load.Count,
-                BrakeWear = _sim.Bus.BrakeWear,
+                BrakeWear = _sim.Condition.BrakeWear,
                 Time = m.Time,
                 DistanceMetres = m.DistanceMetres,
                 PersonHit = m.PersonHit,

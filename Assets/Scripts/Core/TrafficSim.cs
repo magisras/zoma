@@ -52,6 +52,9 @@ namespace TwentyTons.Core
         public readonly BusController Bus = new BusController();
         public Economy Economy;
         public readonly FatigueState Fatigue = new FatigueState();
+        /// <summary>The bus's wear and papers. Replace with the household's to carry it across days.</summary>
+        public BusCondition Condition = new BusCondition();
+        public int Day = 1;
         public CrewVoice Voice;
         public Agent Player;
 
@@ -148,7 +151,8 @@ namespace TwentyTons.Core
             bus.IsPlayer = true;
             bus.Speed = 0f;
             bus.Load = new BusLoad();
-            Bus.BrakeWear = Tuning.Bus.StartingBrakeWear;
+            Condition.BrakeWear = Tuning.Bus.StartingBrakeWear;
+            Bus.BrakeWear = Condition.BrakeWear;
             Player = bus;
             SetPassengerCount(bus, Tuning.Bus.StartingPassengers);
             if (Oncoming != null && PlayerGhost == null) MakeGhost();
@@ -267,6 +271,9 @@ namespace TwentyTons.Core
                 Fatigue.Step(dt, Tuning.Fatigue, Tuning.Economy, Random);
                 ApplyPlayerInputs(dt);
                 Bus.Passengers = Player.Load.Count;
+                // The sandbox day stands for a whole day's driving: wear is scaled like the money is.
+                Condition.Brake(Bus.Held ? 0f : Bus.Brake, Player.Speed, dt / Mathf.Max(0.01f, Tuning.Economy.MoneyScale), Tuning.Bus);
+                Bus.BrakeWear = Condition.BrakeWear;
                 Bus.Step(Player, Corridor, Tuning.Bus, dt);
                 Metrics.DistanceMetres += Player.Speed * dt;
                 Player.HornTimer = Mathf.Max(0f, Player.HornTimer - dt);
@@ -689,6 +696,7 @@ namespace TwentyTons.Core
                 {
                     Metrics.Contacts++;
                     Economy.OnScrape();
+                    Condition.Dents++;
                     // A scrape with a named crew is remembered.
                     Agent other = a.IsPlayerOrGhost ? b : a;
                     if (other.Brain != null) RivalAI.ChangeGrudge(other.Brain, Tuning.Memory.GrudgeWhenCutOff, Tuning.Memory);

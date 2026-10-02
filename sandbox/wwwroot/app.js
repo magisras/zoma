@@ -236,6 +236,8 @@ function bindTouch() {
   const pulse = bit => { keys |= bit; setTimeout(() => { keys &= ~bit; }, 120); };
   document.getElementById('pay').addEventListener('click', () => pulse(KEY.pay));
   document.getElementById('refuse').addEventListener('click', () => pulse(KEY.refuse));
+  document.getElementById('fix-brakes').addEventListener('click', () => DotNet.invokeMethod(ASSEMBLY, 'Repair', 'brakes'));
+  document.getElementById('buy-papers').addEventListener('click', () => DotNet.invokeMethod(ASSEMBLY, 'Repair', 'papers'));
   document.getElementById('sleep-bus').addEventListener('click', () => DotNet.invokeMethod(ASSEMBLY, 'Sleep', false));
   document.getElementById('sleep-bed').addEventListener('click', () => DotNet.invokeMethod(ASSEMBLY, 'Sleep', true));
   document.getElementById('next-work').addEventListener('click', () => { seed++; buildWorld(DotNet.invokeMethod(ASSEMBLY, 'NextDay', true, seed)); });
@@ -362,7 +364,8 @@ function updateHud(f, dt) {
   el('stopsLost').textContent = f.stopsLost;
   el('helper').textContent = f.helperGap;
   el('rivals').textContent = f.rivals.map(r => r.name + ' ' + (r.gapMetres >= 0 ? '+' : '') + r.gapMetres.toFixed(0) + ' m · ' + r.action.replace(/([A-Z])/g, ' $1').trim().toLowerCase() + ' · ' + r.aboard + ' aboard · grudge ' + r.grudge).join('\n');
-  el('brakeWear').textContent = (f.brakeWear * 100).toFixed(0) + '%';
+  el('brakeWear').textContent = (f.brakeWear * 100).toFixed(0) + '%' + (f.papersValid ? ' · papers ok' : ' · no papers');
+  el('brakeWear').className = f.brakeWear > 0.7 ? 'warn' : '';
   const mins = Math.floor(f.time / 60), secs = Math.floor(f.time % 60);
   el('time').textContent = mins + ':' + String(secs).padStart(2, '0');
   el('distance').textContent = (f.distanceMetres / 1000).toFixed(2) + ' km · ' + f.agentCount + ' agents';
@@ -398,6 +401,12 @@ function updateHud(f, dt) {
     el('sleep-choice').hidden = f.sleptChosen;
     el('day-choice').hidden = !f.sleptChosen;
     el('savings').textContent = 'Day ' + f.day + ' · savings ' + (f.savingsTk < 0 ? '−' : '') + 'Tk ' + Math.abs(f.savingsTk).toFixed(0);
+    el('bus-state').textContent = 'Brakes ' + (f.brakeWear * 100).toFixed(0) + '% worn (+' + (f.brakeWearToday * 100).toFixed(0) + ' today) · ' + f.dents + ' dents · papers ' + (f.papersValid ? 'good for ' + f.papersDaysLeft + ' days' : 'none');
+    el('fix-brakes').textContent = 'Service brakes (Tk ' + f.brakeServiceTk.toFixed(0) + ')';
+    el('fix-brakes').disabled = f.brakeWear < 0.1;
+    el('buy-papers').textContent = 'Buy a fitness certificate (Tk ' + f.fitnessTk.toFixed(0) + ')';
+    el('buy-papers').disabled = f.papersValid;
+    el('repairs').hidden = f.sleptChosen;
   }
 
   // Subtitles: the crew's voices, for a few seconds each.

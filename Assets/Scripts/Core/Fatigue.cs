@@ -105,7 +105,22 @@ namespace TwentyTons.Core
         public bool WorkToday = true;
         public float SavingsTk;
         public float FatigueCarried;       // where the next shift starts
+        public readonly BusCondition Bus = new BusCondition();   // the same bus every day
         public readonly List<DaySummary> Days = new List<DaySummary>();
+
+        /// <summary>A roadside brake service, paid from savings (into debt if need be).</summary>
+        public void ServiceBrakes(BusSettings b, EconomySettings e)
+        {
+            SavingsTk -= e.BrakeServiceTk * e.MoneyScale;
+            Bus.ServiceBrakes(b);
+        }
+
+        /// <summary>The paper that means nothing, bought for a few days of fewer questions.</summary>
+        public void BuyPapers(EconomySettings e)
+        {
+            SavingsTk -= e.FitnessTk * e.MoneyScale;
+            Bus.PapersValidUntilDay = Day + e.FitnessDays;
+        }
 
         /// <summary>Close a worked day: the crew's net goes into savings, food comes out.</summary>
         public DaySummary CloseWorkedDay(Ledger ledger, EconomySettings e)
@@ -149,6 +164,7 @@ namespace TwentyTons.Core
         {
             Day++;
             WorkToday = true;
+            Bus.BrakeWearToday = 0f;
         }
     }
 }

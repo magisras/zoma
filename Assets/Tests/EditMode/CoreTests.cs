@@ -231,7 +231,7 @@ namespace TwentyTons.Tests
         {
             var sim = NewSim();
             sim.SpawnPlayerBus(10f, 0f);
-            sim.Bus.BrakeWear = wear;
+            sim.Condition.BrakeWear = wear;
             sim.Player.Speed = 15f;
             sim.Bus.Brake = 1f;
             float start = sim.Player.S;

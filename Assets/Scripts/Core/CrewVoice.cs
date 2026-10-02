@@ -88,6 +88,8 @@ namespace TwentyTons.Core
                 if (coming != null || (oncoming != null && oncoming.Mass >= _sim.Tuning.Mass.Truck))
                     Say("headon", 6f, Speaker.Helper, "Bus! Bus coming! Back, back, come back!");
             }
+            if (_sim.Condition.BrakeWear > _sim.Tuning.Bus.SoftBrakesAbove && bus.Speed > 5f)
+                Say("brakes", 600f, Speaker.Helper, "Brakes are soft, ostad. Leave room. Tell the owner, for all the good it does.");
             if (_sim.Fatigue.MicroSleeps > _sleepsSeen) { _sleepsSeen = _sim.Fatigue.MicroSleeps; Say("sleep", 5f, Speaker.Helper, "Ostad! Ostad! Wake up!"); }
 
             // ---- The conductor: the sergeant, the arguers, the count.
