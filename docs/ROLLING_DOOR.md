@@ -1,7 +1,7 @@
 # The rolling door: getting on and off a bus that doesn't stop
 
 Research annex to `RESEARCH.md`, 3 Oct 2026, done in Bangla first (CLAUDE.md). How people get on
-and off Dhaka buses that barely stop, why it looks so fluent, and how fast the bus is going. Most
+and off Dhaka buses that barely stop, where in the road it happens, why it looks so fluent, and how fast the bus is going. Most
 Bangla news sites are blocked from the cloud sessions this was written in; points rest on
 search-result snippets of the articles listed, and each says how sure it is.
 
@@ -35,6 +35,50 @@ search-result snippets of the articles listed, and each says how sure it is.
 - **Who it fails.** Women, the elderly, children, people with bags: they need the bus to stop and
   often don't get it. Reports of passengers jumping, being pushed, or the bus pulling away
   mid-step are common (Prothom Alo, Newsbangla24).
+
+## Where the bus stops: the kerb, or wherever it is (confirmed, many reports)
+
+The rule says the kerb; the street says wherever the people are.
+
+- **The rule.** DMP road-safety guidance: বাস বে/নির্দিষ্ট স্থান ব্যতীত যত্রতত্র বাস থামিয়ে যাত্রী
+  উঠানামা করাবেন না এবং গাড়ী থামানোর ক্ষেত্রে সর্বদা রাস্তার বাম ঘেঁসে থামাবেন — "do not stop to
+  load anywhere but a bus bay or set place, and when stopping always keep to the left of the road".
+  The Road Transport Act 2018 makes loading outside set places an offence.
+- **The street: in the middle of the road, any lane.** মাঝ রাস্তায় থামে বাস, ঝুঁকিতে যাত্রী — "buses
+  stop in the middle of the road, passengers at risk" (Rising BD). Buses stop in the middle at busy
+  junctions when someone waves (English press: Gulistan, Sayedabad, Jatrabari, Gabtoli, Mohakhali,
+  Farmgate, Karwan Bazar, Mirpur, Uttara named).
+- **Onto the divider.** On the Dhaka–Chattogram highway (Cumilla) the bus stops mid-carriageway and
+  people at the door যে যার মতো লাফিয়ে নামতে থাকেন সড়ক ডিভাইডারের ওপর — "jump down onto the road
+  divider, each as best they can"; locals say dozens of buses a day drop people on the divider "or
+  wherever they like". At the mouth of the Mohakhali flyover people **wait on the divider** and
+  climb on when a bus stops beside it (সড়ক বিভাজকের ওপর দাঁড়িয়ে … বাস এসে থামলে উঠে পড়েন), though it
+  is no stop (Prothom Alo).
+- **Two lanes wide.** Where buses gather they stand side by side: বাসগুলো দুই লেনজুড়ে সারিবদ্ধভাবে
+  দাঁড়িয়ে থাকে — "buses stand in rows across two lanes", with the lineman deciding which bus stands
+  where (Prothom Alo). A bus that arrives second stops **outside** the first one, so its door opens
+  onto the second lane, and its passengers walk between moving traffic and the first bus.
+- **Between two buses.** That gap is where people die: দুই বাসের মাঝখানে চাপা পড়ে পথচারী নিহত —
+  "pedestrian crushed to death between two buses" (Dhaka Tribune Bangla); the same at Chankharpul
+  (two racing buses) and in Chattogram (বাসের অপেক্ষায় থাকা বিল্লালের প্রাণ গেল দুই বাসের চাপায়, "Billal,
+  waiting for a bus, killed between two buses", ITV).
+- **Why not the kerb.** The left edge is taken: rickshaws, legunas and CNGs waiting there, hawkers
+  out over the footpath and into the road (সড়কের তিন লেনই হকারের, "all three lanes are the hawkers'",
+  Bangladesh Pratidin), parked buses at the stand. Pulling in to the kerb also costs seconds and
+  lets the bus behind pass. And the crowd does not wait on the footpath: people walk out into the
+  road toward the bus they want.
+- **How often.** Prothom Alo rode one Shikor Paribahan bus from Mirpur 11 to Zero Point:
+  ১২ কিলোমিটার পথে ২৩ স্থানে যাত্রী তুলল বাসটি — "the bus took on passengers at 23 places in
+  12 km", about one stop every 500 m, at Kamarpara, Farmgate, Karwan Bazar, Bangla Motor, Shahbag,
+  the Press Club corner and more. When it sees traffic police, the bus slows and lets people on and
+  off while still moving rather than stopping in front of them.
+
+**For the simulation**: the demand zone today sits at the kerb and the bus "works it" within 20 m
+under 3 m/s with the walk to the bus costed per metre (`WalkToBusSecondsPerMetre`). That already
+allows a mid-road stop. What the street adds: the crowd walks out to meet the bus (the kerb is not
+where they stand), a second bus stops outside the first and loads across it, people get off onto
+whatever is beside the door (the divider, the second lane), and the space between two loading
+buses is the most dangerous place on the road.
 
 ## How fast (not measured anywhere I could find: estimate)
 
@@ -70,6 +114,18 @@ step, more than at a steady crawl.
 
 ## Sources
 
+- [Rising BD: "মাঝ রাস্তায় থামে বাস, ঝুঁকিতে যাত্রী"](https://www.risingbd.com/bangladesh/news/604683)
+- [Prothom Alo: loading at the mouth of the Mohakhali flyover](https://www.prothomalo.com/bangladesh/%E0%A6%AE%E0%A6%B9%E0%A6%BE%E0%A6%96%E0%A6%BE%E0%A6%B2%E0%A7%80-%E0%A6%89%E0%A7%9C%E0%A6%BE%E0%A6%B2%E0%A6%B8%E0%A7%9C%E0%A6%95%E0%A7%87%E0%A6%B0-%E0%A6%AE%E0%A7%81%E0%A6%96%E0%A7%87-%E0%A6%AC%E0%A7%8D%E0%A6%AF%E0%A6%B8%E0%A7%8D%E0%A6%A4-%E0%A6%B8%E0%A7%9C%E0%A6%95%E0%A7%87-%E0%A6%AF%E0%A6%BE%E0%A6%A4%E0%A7%8D%E0%A6%B0%E0%A7%80-%E0%A6%93%E0%A6%A0%E0%A6%BE%E2%80%93%E0%A6%A8%E0%A6%BE%E0%A6%AE%E0%A6%BE)
+- [Prothom Alo: "১২ কিলোমিটার পথে ২৩ স্থানে যাত্রী তুলল বাসটি"](https://www.prothomalo.com/bangladesh/capital/cvkqsgoznt)
+- [Prothom Alo: buses stop anywhere, people cross at risk](https://www.prothomalo.com/bangladesh/%E0%A6%AF%E0%A6%A4%E0%A7%8D%E0%A6%B0%E0%A6%A4%E0%A6%A4%E0%A7%8D%E0%A6%B0-%E0%A6%A5%E0%A6%BE%E0%A6%AE%E0%A6%9B%E0%A7%87-%E0%A6%AC%E0%A6%BE%E0%A6%B8-%E0%A6%9D%E0%A7%81%E0%A6%81%E0%A6%95%E0%A6%BF-%E0%A6%A8%E0%A6%BF%E0%A7%9F%E0%A7%87-%E0%A6%B0%E0%A6%BE%E0%A6%B8%E0%A7%8D%E0%A6%A4%E0%A6%BE-%E0%A6%AA%E0%A6%BE%E0%A6%B0%E0%A6%BE%E0%A6%AA%E0%A6%BE%E0%A6%B0)
+- [Prothom Alo: why people pay to climb over the road divider](https://www.prothomalo.com/bangladesh/district/fqketwthzh)
+- [Banglanews24: the whole road is a bus station](https://www.banglanews24.com/national/news/bd/565226.details)
+- [Dhaka Tribune Bangla: pedestrian crushed between two buses](https://bangla.dhakatribune.com/bangladesh/98894/)
+- [Daily Star Bangla: helper crushed between two buses](https://bangla.thedailystar.net/news/bangladesh/accident-fire/news-503001)
+- [ITV: Billal, waiting for a bus, killed between two buses](https://www.itvbd.com/country/chittagong/268394/)
+- [Bangladesh Pratidin: all three lanes are the hawkers'](https://www.bd-pratidin.com/city-news/2026/05/15/1251182)
+- [DMP: road safety guidance](https://dmp.gov.bd/road-safety/)
+- [Daily New Nation: buses stop anywhere, park everywhere](https://dailynewnation.com/news/855003)
 - [Bangla Tribune: loading in the road though stops exist](https://www.banglatribune.com/amp/c/414571/)
 - [Prothom Alo: "নামতে গেলেই চালক বাস টান দিচ্ছিলেন, পরে লাফিয়ে নামেন"](https://www.prothomalo.com/bangladesh/capital/le26byz3e1)
 - [Prothom Alo: "ওস্তাদ, টান দিয়েন না"](https://www.prothomalo.com/bangladesh/district/h4macl378t)
