@@ -80,6 +80,27 @@ where they stand), a second bus stops outside the first and loads across it, peo
 whatever is beside the door (the divider, the second lane), and the space between two loading
 buses is the most dangerous place on the road.
 
+## When people pay (confirmed for local buses; the door dispute is reported often)
+
+- **Local buses: in the ride, to the conductor.** On a local (লোকাল) bus nobody pays at the door
+  going in. The conductor works the aisle after people are aboard, asks where they're getting off,
+  and names the fare by distance (minimum Tk 10). On counter and "sitting service" buses (সিটিং
+  সার্ভিস) a ticket is bought at the counter before boarding; those are the exception on a local
+  route.
+- **The dispute happens on the way out.** Fares are argued, and the argument is settled at the
+  door. Reports: a passenger from Savar asked for Tk 80 paid the old Tk 70 and got off after a
+  shouting match (কথাকাটাকাটি); ভাড়া নিয়ে বচসা, ছুরি হাতে যাত্রীকে তাড়া করলেন হেলপার — "a quarrel
+  over the fare, the helper chased the passenger with a knife" (Daily Star Bangla). Students
+  claim half fare; the conductor argues.
+- **Unconfirmed, but it follows from the above:** whoever gets off before the conductor reached
+  them pays what they hand over at the door, or nothing if they jump. A rider carried past their
+  place has a reason to pay less and the crew little leverage to argue on a moving bus.
+
+**For the simulation**: today the whole fare is added when a rider steps on
+(`Boarding.Step`, `load.FaresTk += boarded.FareTk`). The street says the money is not in the bag
+until the conductor has collected it, and the last chance is the door. That gives "carried past"
+and "jumped off" a cost without any UI: the fare in the ledger is simply smaller.
+
 ## How fast (not measured anywhere I could find: estimate)
 
 No source gives a speed. What the reports allow us to say:
@@ -114,6 +135,11 @@ step, more than at a steady crawl.
 
 ## Sources
 
+- [Daily Star Bangla: quarrel over the fare, helper chases a passenger with a knife](https://bangla.thedailystar.net/news/bangladesh/news-462446)
+- [bdnews24 Bangla: fares raised 'as they like' before the new list](https://bangla.bdnews24.com/bangladesh/d6fab6ebac1f)
+- [Rupali Bangladesh: arguments over higher fares, passengers pay the old fare](https://www.rupalibangladesh.com/national-news/news/167998)
+- [bdnews24 Bangla: illegal 'sitting service'](https://bangla.bdnews24.com/janadurbhog/article1583466.bdnews)
+- [Daily Star: Service 'local', fare special](https://www.thedailystar.net/backpage/service-local-fare-special-1392046)
 - [Rising BD: "মাঝ রাস্তায় থামে বাস, ঝুঁকিতে যাত্রী"](https://www.risingbd.com/bangladesh/news/604683)
 - [Prothom Alo: loading at the mouth of the Mohakhali flyover](https://www.prothomalo.com/bangladesh/%E0%A6%AE%E0%A6%B9%E0%A6%BE%E0%A6%96%E0%A6%BE%E0%A6%B2%E0%A7%80-%E0%A6%89%E0%A7%9C%E0%A6%BE%E0%A6%B2%E0%A6%B8%E0%A7%9C%E0%A6%95%E0%A7%87%E0%A6%B0-%E0%A6%AE%E0%A7%81%E0%A6%96%E0%A7%87-%E0%A6%AC%E0%A7%8D%E0%A6%AF%E0%A6%B8%E0%A7%8D%E0%A6%A4-%E0%A6%B8%E0%A7%9C%E0%A6%95%E0%A7%87-%E0%A6%AF%E0%A6%BE%E0%A6%A4%E0%A7%8D%E0%A6%B0%E0%A7%80-%E0%A6%93%E0%A6%A0%E0%A6%BE%E2%80%93%E0%A6%A8%E0%A6%BE%E0%A6%AE%E0%A6%BE)
 - [Prothom Alo: "১২ কিলোমিটার পথে ২৩ স্থানে যাত্রী তুলল বাসটি"](https://www.prothomalo.com/bangladesh/capital/cvkqsgoznt)
