@@ -66,6 +66,15 @@ days.** The Dhaka driver's losses are now rollovers: five in six days ("turned t
 tons"), Tk 500 of ropes each, which is its own steering at speed and the first thing the tuning pass
 should look at, before the stand. **Verdict unchanged: polite driving still wins.**
 
+## After the bus research and test report 0817 (3 Oct 2026, 6 seeds × 900 s, `main` at fb94880)
+
+Air brakes with a lag and a cold start, the ring repaired, the Dhaka driver taking the wrong side and
+cornering under the tipping point, head-on contacts by mass: careful +10 with fares 447, 1.63 km;
+Dhaka −394 with fares 236, 1.68 km, 34.5 scrapes, wrong side 13 s a day, **no rollovers, nobody
+hit in twelve days**. The Dhaka driver now covers as much road as the careful one and still earns
+half the fares: the gap is entirely at the stand (serial boarding, crowds that never run dry), not on
+the road. **Verdict unchanged: polite driving still wins.** This is the batch the tuning pass starts from.
+
 ## Why, and what to tune
 
 The numbers say the aggressive policy loses money three ways, none of them the way the research
