@@ -57,6 +57,15 @@ below the careful driver's (2.5 vs 3.8): it gets to the crowds first and still e
 it leaves them half-loaded. **Verdict unchanged: polite driving still wins.** The gap is now about
 what happens at the stand, not on the road.
 
+## After the first test report (3 Oct 2026, 6 seeds × 900 s, `main` at 9c0ac02)
+
+Blocking the box fixed, people brushed rather than killed by a creep or a graze, the Dhaka driver
+taking the wrong side when there is room and seeing the people on the median: careful −58 with
+fares 353, 1.47 km, two days in profit; Dhaka −705 with fares 161, 1.28 km. **Nobody hit in twelve
+days.** The Dhaka driver's losses are now rollovers: five in six days ("turned too hard for twenty
+tons"), Tk 500 of ropes each, which is its own steering at speed and the first thing the tuning pass
+should look at, before the stand. **Verdict unchanged: polite driving still wins.**
+
 ## Why, and what to tune
 
 The numbers say the aggressive policy loses money three ways, none of them the way the research
