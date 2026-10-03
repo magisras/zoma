@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TwentyTons.Tuning;
 using UnityEngine;
 
@@ -42,6 +43,8 @@ namespace TwentyTons.Core
         // Who is physically in the box right now, counted each step by TrafficSim.
         public int MainInBox;
         public int CrossInBox;
+        public readonly List<Agent> MainBoxAgents = new List<Agent>();
+        public readonly List<Agent> CrossBoxAgents = new List<Agent>();
 
         /// <summary>The same officer controls both carriageways: this junction copies that one's cane.</summary>
         public Junction Mirror;
@@ -85,6 +88,30 @@ namespace TwentyTons.Core
         public bool BoxBlockedFor(Corridor corridor)
         {
             return corridor == Main ? CrossInBox > 0 : MainInBox > 0;
+        }
+
+        /// <summary>
+        /// Is the other stream's traffic in the box actually across <paramref name="asker"/>'s path? A nose
+        /// poked half a metre over the line at the kerb side does not stop a bus crossing through the middle:
+        /// Dhaka traffic squeezes past it, and if it did not, that nose and the bus would wait for each other
+        /// for the rest of the day (seed 1 of the 3 Oct batch locked a crossing for 500 s this way). Each
+        /// standing vehicle in the box is projected onto the asker's own road: it blocks when its length lies
+        /// within the asker's width, plus a hand's breadth. One still moving sweeps the box and blocks as before.
+        /// </summary>
+        public bool BoxBlockedFor(Corridor corridor, Agent asker)
+        {
+            List<Agent> others = corridor == Main ? CrossBoxAgents : MainBoxAgents;
+            if (others.Count == 0) return false;
+            Corridor theirs = corridor == Main ? Cross : Main;
+            float sOnTheirs, unused;
+            theirs.Project(asker.Position, out sOnTheirs, out unused);   // where the asker's line meets their road
+            for (int i = 0; i < others.Count; i++)
+            {
+                Agent o = others[i];
+                if (o.Speed > 0.5f) return true;                       // still moving: it will be across the path
+                if (Mathf.Abs(theirs.DeltaS(sOnTheirs, o.S)) < asker.HalfWidth + o.HalfLength + 0.3f) return true;
+            }
+            return false;
         }
 
         /// <summary>The officer's clock. Variable timing is the point: nobody can plan around it.</summary>

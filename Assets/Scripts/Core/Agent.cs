@@ -60,6 +60,7 @@ namespace TwentyTons.Core
         public float CrossDirection;     // +1 = walking toward +Lateral, −1 toward −Lateral
         public float WaitTimer;          // seconds before considering the next crossing
         public float FlinchTimer;        // seconds left standing back from the kerb edge because something overhangs it
+        public float MidRoadSeconds;     // how long this crosser has stood still in the road waiting for a gap
 
         public bool IsPedestrian => Class == VehicleClass.Pedestrian;
         public bool IsPlayerOrGhost => IsPlayer || (GhostOf != null && GhostOf.IsPlayer);

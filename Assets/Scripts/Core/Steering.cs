@@ -46,6 +46,9 @@ namespace TwentyTons.Core
 
                 float ds = self.Corridor.DeltaS(self.S, other.S);
                 if (ds <= 0f) continue;                                   // not ahead of my centre
+                // A person beside the body, behind the nose, is not ahead either: they are walking round
+                // a standing vehicle (Pedestrians), and waiting for them is the other half of the lock.
+                if (other.IsPedestrian && ds < self.HalfLength - 0.3f) continue;
                 float g = ds - self.HalfLength - other.HalfLength;
                 if (g < gap)
                 {
@@ -137,6 +140,21 @@ namespace TwentyTons.Core
             return found;
         }
 
+        /// <summary>Is the strip just behind (or ahead of) this vehicle, in its own band, free for <paramref name="within"/> metres?</summary>
+        public static bool NothingClose(List<Agent> agents, Agent self, bool behind, float within)
+        {
+            for (int i = 0; i < agents.Count; i++)
+            {
+                Agent other = agents[i];
+                if (other == self || other.Corridor != self.Corridor) continue;
+                if (!self.WouldOverlapLaterally(self.Lateral, other, LateralMargin)) continue;
+                float ds = self.Corridor.DeltaS(self.S, other.S);
+                if (behind ? ds >= 0f : ds <= 0f) continue;
+                if (Mathf.Abs(ds) - self.HalfLength - other.HalfLength < within) return false;
+            }
+            return true;
+        }
+
         /// <summary>
         /// Move aside for <paramref name="to"/>: pick the side away from them and hold it for a while.
         /// Called by the mass rule and by the horn.
@@ -219,6 +237,18 @@ namespace TwentyTons.Core
             if (stopLine < tuning.Gap.LookAheadMetres)
             {
                 allowed = Mathf.Min(allowed, AllowedSpeed(stopLine, headway, tuning.Gap.FollowDistanceFloorMetres));
+                // And no faster than the brakes can actually stop from before the line: the headway rule alone
+                // lets a vehicle arrive hot, roll over the line and sit with its nose in the box, where it holds
+                // the other stream and locks the crossing (seed 1 of the 3 Oct batch: a CNG 2 m over its line).
+                float room = Mathf.Max(0f, stopLine - tuning.Gap.FollowDistanceFloorMetres * 0.5f);
+                allowed = Mathf.Min(allowed, Mathf.Sqrt(2f * a.Shape.Braking * tuning.Gap.ComfortableBrakingShare * room));
+                // Nose over the line and the box full against me: back off the half metre, as drivers do when
+                // the officer waves them back, so the stream I am blocking can pass. Otherwise my nose and the
+                // vehicle it blocks wait for each other all day (seed 5 of the 3 Oct batch, 320 s).
+                if (stopLine < -0.1f && stopLine > -3f && a.Speed < 0.1f && NothingClose(sim.Agents, a, behind: true, within: 0.6f))
+                {
+                    a.S = corridor.Wrap(a.S - 0.5f * dt);
+                }
             }
 
             // 3. Seek gap: blocked by the vehicle ahead, or about to be? Look for a band with more free road

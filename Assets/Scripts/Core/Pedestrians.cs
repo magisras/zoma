@@ -38,16 +38,25 @@ namespace TwentyTons.Core
                 if (side > 0f && sim.Oncoming != null) stand = Mathf.Min(stand, corridor.HalfWidth + sim.Tuning.Spawn.MedianMetres - 0.3f);
                 p.Lateral = Mathf.MoveTowards(p.Lateral, stand * side, 2f * dt);   // a step, not a jump
 
-                if (p.WaitTimer <= 0f && p.FlinchTimer <= 0f && Decide(sim, p, direction, tuning) == Verdict.Walk)
+                if (p.WaitTimer <= 0f && p.FlinchTimer <= 0f && Decide(sim, p, direction, tuning, false) == Verdict.Walk)
                 {
                     p.PedState = PedestrianState.Crossing;
                     p.CrossDirection = direction;
+                    p.MidRoadSeconds = 0f;
                 }
             }
             else
             {
-                Verdict verdict = Decide(sim, p, p.CrossDirection, tuning);
+                // Standing in the road waiting for a gap wears thin: after a while the hand goes up and they step
+                // out in front of the light traffic, which brakes (Steering: a person ahead in the band).
+                bool impatient = p.MidRoadSeconds > tuning.MidRoadPatienceSeconds;
+                Verdict verdict = Decide(sim, p, p.CrossDirection, tuning, impatient);
                 p.Speed = verdict == Verdict.Stop ? 0f : verdict == Verdict.Hurry ? tuning.WalkSpeed * 1.6f : tuning.WalkSpeed;
+                if (verdict == Verdict.Stop && Mathf.Abs(p.Lateral) < corridor.HalfWidth) p.MidRoadSeconds += dt;
+                else if (verdict != Verdict.Stop) p.MidRoadSeconds = 0f;
+                // Pinned long enough: give up, go back to the kerb, try again later. Without a backstop one
+                // person standing in a lane holds a bus, and the bus holds the street, for the rest of the day.
+                if (p.MidRoadSeconds > tuning.MidRoadGiveUpSeconds) { p.CrossDirection = -p.CrossDirection; p.MidRoadSeconds = 0f; }
                 p.Lateral += p.CrossDirection * p.Speed * dt;
 
                 bool arrived = p.CrossDirection > 0f ? p.Lateral >= kerb : p.Lateral <= -kerb;
@@ -93,7 +102,7 @@ namespace TwentyTons.Core
         /// vehicle arrives, with the margin they demand of that kind of vehicle? For the strip they are
         /// standing in: hurry. Anything else: walk.
         /// </summary>
-        private static Verdict Decide(TrafficSim sim, Agent p, float direction, PedestrianSettings tuning)
+        private static Verdict Decide(TrafficSim sim, Agent p, float direction, PedestrianSettings tuning, bool impatient)
         {
             Verdict verdict = Verdict.Walk;
             for (int i = 0; i < sim.Agents.Count; i++)
@@ -104,13 +113,14 @@ namespace TwentyTons.Core
                 if (Mathf.Abs(ds) < v.HalfLength + 1f)
                 {
                     // Alongside the crossing point right now: its strip is a wall until it has passed.
-                    // Unless it is standing and I am past its nose or tail: then it is waiting for me,
-                    // and I go. (Its body itself stays a wall: nobody walks through a parked bus.)
-                    bool body = Mathf.Abs(ds) < v.HalfLength + 0.2f;
-                    if (v.Speed < 0.3f && !body) continue;
+                    // Unless it is standing: then it is waiting for me, or parked, and I go round it the
+                    // way everyone does. Treating a standing body as a wall locked the street: a person a
+                    // step behind a bus's nose waited for the bus, the bus waited for the person, all day
+                    // (four of the twelve days in the 3 Oct batch ended that way).
+                    if (v.Speed < 0.3f) continue;
                     // Already in its strip with its nose on me: freezing is death, so get out, fast.
-                    if (Inside(p, v) && !body) { verdict = Verdict.Hurry; continue; }
-                    if (StripIsAhead(p, v, direction) || Inside(p, v)) return Verdict.Stop;
+                    if (Inside(p, v)) { verdict = Verdict.Hurry; continue; }
+                    if (StripIsAhead(p, v, direction)) return Verdict.Stop;
                     continue;
                 }
                 if (ds > 0f) continue;                                    // already past
@@ -146,6 +156,9 @@ namespace TwentyTons.Core
                 float margin = tuning.CrossingGapSeconds;
                 if (v.Mass >= tuning.HesitateAboveMass) margin += tuning.HesitationSeconds;          // a bus: hesitate
                 else if (v.Mass <= tuning.StepOutBelowMass) margin *= tuning.HandConfidenceGapFactor;  // a car: hand up
+                // Pinned mid-road long enough: anything lighter than a bus and not fast gets the hand and has to
+                // brake; only the time to get out of its way is demanded, no margin.
+                if (impatient && v.Mass < tuning.HesitateAboveMass && speed < 6f) { margin = 0f; secondsToClear *= 0.5f; }
 
                 if (secondsAway < secondsToClear + margin) return Verdict.Stop;
             }

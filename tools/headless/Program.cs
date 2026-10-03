@@ -36,6 +36,9 @@ public static class Headless
         }
         bool verbose = list.Remove("-v");
         bool dhaka = list.Remove("--dhaka");
+        // --crowd X: the same crowd rate multiplier the batch takes, for replaying one of its days.
+        int cr = list.IndexOf("--crowd");
+        if (cr >= 0) { RateScale = float.Parse(list[cr + 1]); list.RemoveRange(cr, 2); }
         // --watch S0 S1: every 5 s, print what is on the main road between S0 and S1 (a queue, a junction).
         float watch0 = -1f, watch1 = -1f;
         int w = list.IndexOf("--watch");
@@ -50,6 +53,7 @@ public static class Headless
         ScriptedDriver.Current = dhaka ? Policy.Dhaka : Policy.Careful;
         ScriptedDriver.CapKmh = capKmh;
         bool doorWas = false;
+        int contactsWere = 0;
         const float dt = 1f / 60f;
         for (float t = 0f; t < seconds && !sim.Economy.DayOver; t += dt)
         {
@@ -60,7 +64,24 @@ public static class Headless
             {
                 doorWas = bus.Load.DoorOpen;
                 DemandZone z = Boarding.ZoneInReach(sim, bus);
-                Console.WriteLine($"  t={t,6:0.0} door {(doorWas ? "OPEN " : "shut ")} at {(z == null ? "-" : z.Name),-10} waiting {(z == null ? 0 : z.Waiting.Count),2}  aboard {bus.Load.Count,2}  S={bus.S:0}");
+                float aheadM, behindM;
+                Agent crewAhead = sim.OwnBusAhead(out aheadM), crewBehind = sim.OwnBusBehind(out behindM);
+                Console.WriteLine($"  t={t,6:0.0} door {(doorWas ? "OPEN " : "shut ")} at {(z == null ? "-" : z.Name),-10} waiting {(z == null ? 0 : z.Waiting.Count),2}  aboard {bus.Load.Count,2}  S={bus.S:0}  fares {bus.Load.FaresTk:0}  crew ahead {(crewAhead == null ? "-" : aheadM.ToString("0") + " m")} behind {(crewBehind == null ? "-" : behindM.ToString("0") + " m")}");
+            }
+            if (verbose && sim.Metrics.Contacts > contactsWere)
+            {
+                // Who did we touch, and how: the shape of the Dhaka driver's scrapes.
+                contactsWere = sim.Metrics.Contacts;
+                Console.Write($"  t={t,6:0.0} CONTACT #{contactsWere} bus S={bus.S:0} lat={bus.Lateral:0.00} v={bus.Speed:0.0} latV={bus.LateralVelocity:0.00} want={ScriptedDriver.WantLateral:0.00} steer={sim.Bus.Steer:0.00} wrongSide={sim.Metrics.WrongSideNow}:");
+                foreach (Agent a in sim.Agents)
+                {
+                    if (a.IsPlayer || a.GhostOf != null || a.IsPedestrian) continue;
+                    float ds = a.Corridor == sim.Corridor ? sim.Corridor.DeltaS(bus.S, a.S) : (a.Position - bus.Position).magnitude;
+                    if (Mathf.Abs(ds) > bus.HalfLength + a.HalfLength + 1f) continue;
+                    if (a.Corridor == sim.Corridor && Mathf.Abs(a.Lateral - bus.Lateral) > bus.HalfWidth + a.HalfWidth + 0.5f) continue;
+                    Console.Write($"  {a.Class}#{a.Id} {(a.Corridor == sim.Corridor ? "" : a.Corridor.Name + " ")}ds={ds:0.0} lat={a.Lateral:0.00} v={a.Speed:0.0}");
+                }
+                Console.WriteLine();
             }
             if (sim.Metrics.PersonHit)
             {
@@ -124,9 +145,27 @@ public static class Headless
             foreach (Agent a in sim.Agents) if (a.Corridor == j.Cross && !a.IsPedestrian && Math.Abs(j.Cross.DeltaS(j.CrossS, a.S)) < 40f) crossNear++;
             Console.WriteLine($"  junction S={j.MainS:0} {(j.Mirror != null ? "(mirror)" : "        ")} open={j.Open} timer={j.Timer:0}s roped={j.Roped} camera={j.Camera} inBox main={j.MainInBox} cross={j.CrossInBox} crossNear={crossNear} leakers={j.LeakersLeft}");
             if (j.Mirror == null)
+            {
                 foreach (Agent a in sim.Agents)
-                    if (a.Corridor == j.Cross && !a.IsPedestrian && Math.Abs(j.Cross.DeltaS(j.CrossS, a.S)) < 25f)
-                        Console.WriteLine($"      cross {a.Class,-8} #{a.Id,-4} crossS-boxCentre={j.Cross.DeltaS(j.CrossS, a.S),6:0.0} lat={a.Lateral,5:0.00} v={a.Speed:0.0} want={a.DesiredSpeed:0.0} inBox={j.InBox(j.Cross, a.S, a.HalfLength)}");
+                {
+                    if (a.Corridor != j.Cross || a.IsPedestrian || Math.Abs(j.Cross.DeltaS(j.CrossS, a.S)) >= 25f) continue;
+                    float gapAhead;
+                    Agent ahead = Steering.FindAhead(sim.Agents, a, a.Lateral, 60f, out gapAhead);
+                    Console.WriteLine($"      cross {a.Class,-8} #{a.Id,-4} crossS-boxCentre={j.Cross.DeltaS(j.CrossS, a.S),6:0.0} lat={a.Lateral,5:0.00} v={a.Speed:0.0} want={a.DesiredSpeed:0.0} inBox={j.InBox(j.Cross, a.S, a.HalfLength)} ahead={(ahead == null ? "-" : ahead.Class + "#" + ahead.Id)} gap={gapAhead:0.0} stopAhead={sim.StopDistanceAhead(a, 60f):0.0}");
+                }
+            }
+            else
+            {
+                // The oncoming carriageway at the same crossing: what stands in or before the mirror box, and why.
+                foreach (Agent o in sim.Agents)
+                {
+                    if (o.Corridor != j.Main || o.IsPedestrian || Math.Abs(j.Main.DeltaS(j.MainS, o.S)) >= 30f) continue;
+                    float gapAhead;
+                    Agent ahead = Steering.FindAhead(sim.Agents, o, o.Lateral, 60f, out gapAhead);
+                    string state = o.GhostOf != null ? "GHOST" : o.IsYielding ? "yield" : o.BluffTimer > 0f ? "bluff" : "drive";
+                    Console.WriteLine($"      oncoming {o.Class,-8} #{o.Id,-4} S-boxCentre={j.Main.DeltaS(j.MainS, o.S),6:0.0} lat={o.Lateral,5:0.00} v={o.Speed:0.0} want={o.DesiredSpeed:0.0} inBox={j.InBox(j.Main, o.S, o.HalfLength)} {state} ahead={(ahead == null ? "-" : ahead.Class + "#" + ahead.Id + (ahead.GhostOf != null ? "(ghost)" : ""))} gap={gapAhead:0.0} stopAhead={sim.StopDistanceAhead(o, 60f):0.0}");
+                }
+            }
         }
         foreach (string e in l.Events) Console.WriteLine("    " + e);
         Console.WriteLine($"  wrong side {m.WrongSideSeconds:0} s  waited at closed canes {m.CaneWaitSeconds:0} s  of which at a rope {m.RopeHeldSeconds:0} s");

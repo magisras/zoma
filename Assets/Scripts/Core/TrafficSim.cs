@@ -585,7 +585,7 @@ namespace TwentyTons.Core
                 // crosses the second whatever the cane says, and the second carriageway lets it, or the
                 // whole crossing locks with that vehicle sitting in the first box (docs: blocking the box).
                 bool committed = a.Corridor == j.Cross && Committed(j, a);
-                bool boxFull = j.BoxBlockedFor(a.Corridor) || (a.Corridor == j.Main && j.CrossCommitted > 0);
+                bool boxFull = j.BoxBlockedFor(a.Corridor, a) || (a.Corridor == j.Main && j.CrossCommitted > 0);
                 if (boxFull)
                 {
                     nearest = Mathf.Min(nearest, ds);   // physics, not politeness
@@ -615,14 +615,16 @@ namespace TwentyTons.Core
                 j.MainInBox = 0;
                 j.CrossInBox = 0;
                 j.CrossCommitted = 0;
+                j.MainBoxAgents.Clear();
+                j.CrossBoxAgents.Clear();
                 for (int k = 0; k < Agents.Count; k++)
                 {
                     Agent a = Agents[k];
                     if (a.IsPedestrian) continue;
-                    if (a.Corridor == j.Main && j.InBox(j.Main, a.S, a.HalfLength)) j.MainInBox++;
+                    if (a.Corridor == j.Main && j.InBox(j.Main, a.S, a.HalfLength)) { j.MainInBox++; j.MainBoxAgents.Add(a); }
                     else if (a.Corridor == j.Cross)
                     {
-                        if (j.InBox(j.Cross, a.S, a.HalfLength)) j.CrossInBox++;
+                        if (j.InBox(j.Cross, a.S, a.HalfLength)) { j.CrossInBox++; j.CrossBoxAgents.Add(a); }
                         else if (Committed(j, a) && a.S + a.HalfLength < j.CrossS - j.CrossHalfSpan) j.CrossCommitted++;
                     }
                 }

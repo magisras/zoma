@@ -34,7 +34,7 @@ namespace TwentyTons.Tests
             sim.SpawnPlayerBus(1900f, -2f);      // far from every zone
             Run(sim, 120f);
             int stand = sim.Zones[0].Waiting.Count, market = sim.Zones[1].Waiting.Count;
-            Assert.GreaterOrEqual(stand, 5);
+            Assert.GreaterOrEqual(stand, Mathf.FloorToInt(2f * sim.Tuning.Passengers.BaseRatePerMinute) - 1, "two minutes of arrivals at the base rate");
             Assert.Greater(market, stand, "the hot zone fills faster");
             Assert.LessOrEqual(market, sim.Tuning.Passengers.MaxWaiting);
         }

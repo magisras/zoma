@@ -388,6 +388,16 @@ namespace TwentyTons.Tuning
                  "distance drivers keep from people when standing (6 m in the autopilots), or the standoff returns. placeholder")]
         public float StoppedForMeMetres = 7f;
 
+        [Tooltip("A crosser stuck mid-road this long stops waiting for a proper gap in the light traffic: hand up, step " +
+                 "out, the rickshaw brakes. Without it a stream of rickshaws in the next band pins a pedestrian in the " +
+                 "middle of the road, and behind the pedestrian a bus, for the rest of the day (seed 2 of the 3 Oct " +
+                 "batch stood 500 s). Buses and trucks are still waited for. placeholder")]
+        public float MidRoadPatienceSeconds = 4f;
+
+        [Tooltip("Stuck mid-road this long even so, a crosser gives up and goes back to the kerb they came from, to try " +
+                 "again later. The backstop: nobody stands in the road all day, whatever the traffic does. placeholder")]
+        public float MidRoadGiveUpSeconds = 10f;
+
         [Tooltip("Walking speed, m/s. placeholder")]
         public float WalkSpeed = 1.3f;
 
@@ -1016,14 +1026,16 @@ namespace TwentyTons.Tuning
         public float WalkToBusSecondsPerMetre = 0.4f;
 
         [Header("Demand")]
-        [Tooltip("People arriving per minute at an ordinary zone. placeholder")]
-        public float BaseRatePerMinute = 3f;
+        [Tooltip("People arriving per minute at an ordinary zone. Low enough that a crowd is taken whole by the first " +
+                 "door and the second bus finds the kerb empty: arriving first is what pays (RESEARCH: the race for " +
+                 "the stop; PLAYTEST: 'arriving second barely costs' at 3). Tuning pass, 3 Oct 2026. placeholder")]
+        public float BaseRatePerMinute = 1.2f;
 
         [Tooltip("Multiplier for hot zones (junctions, markets). RESEARCH: hot clusters at junctions. placeholder")]
         public float HotZoneRateMultiplier = 2.5f;
 
-        [Tooltip("Crowd size at which newcomers give up and take a rickshaw. placeholder")]
-        public int MaxWaiting = 25;
+        [Tooltip("Crowd size at which newcomers give up and take a rickshaw. Tuning pass: 18. placeholder")]
+        public int MaxWaiting = 18;
 
         [Tooltip("Share of passengers who are students (fast, half fare). placeholder")]
         [Range(0f, 1f)] public float StudentShare = 0.2f;
