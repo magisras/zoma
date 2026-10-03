@@ -357,6 +357,8 @@ Deeper notes kept beside this file, each with its own sources (Bangla quoted and
   slaps and code words, the crowd after a hit), and what the simulation could do with it.
 - `docs/ROLLING_DOOR.md`: getting on and off a bus that doesn't stop: why, how (left foot first,
   the helper's hand), how fast (estimated), against the game's door numbers.
+- `docs/ROUTE_AND_TRIPS.md`: how long a real trip is (Mirpur 12–Azimpur ~15 km, 1.5–2.5 h at
+  6–10 km/h), how many make a day (3–4 round trips), and what that means for the sandbox ring.
 
 ## Sources
 
