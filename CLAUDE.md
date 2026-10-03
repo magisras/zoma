@@ -33,6 +33,10 @@ crew and the ledger make the player feel it.
   A bug in one must never break the other. No machine learning.
 - Code is simple and well commented; the owner reads it to learn. Prefer a clear 20-line method to a
   clever 5-line one. Explain *why*, not *what*.
+- Research anything about Bangladesh in Bangla first, then English: the Bangla press (Prothom Alo,
+  Jugantor, Samakal, Bangla Tribune, Jago News, Daily Star Bangla, Dhaka Tribune Bangla) covers the
+  street, crews and police far more than English sources. Quote the important Bangla and give the
+  English translation beside it; mark anything only one source says as unconfirmed.
 - **Ask before adding paid assets.** Free alternatives first (Vehicle Physics Pro Community Edition,
   Unity Splines, NavMesh, blosm base version).
 - OpenStreetMap data is ODbL: keep "© OpenStreetMap contributors" in the credits and in
