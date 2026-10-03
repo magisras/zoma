@@ -33,6 +33,9 @@ Everything below runs in a fresh cloud container or on a laptop; no Unity, no GP
 
 ## What to look at, in order
 
+- First, the answers to earlier reports: for every report marked `Status: answered` in
+  `docs/test-reports/`, retest each finding the builder answered "fixed", fill that report's Retest
+  column, and set it to `closed` (or back to `open` if a fix did not hold). See that folder's `README.md`.
 - Does `check.sh` pass, and does `headless.sh 1 900 25` finish with a ledger and no exception?
 - In the sandbox: a full day with the Dhaka autopilot (P, P) to the end-of-day card, sleep, work
   tomorrow, day 2 loads. Then the same as the helper (O). Then by hand on a phone-sized viewport
