@@ -82,6 +82,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #202226; col
 @media (pointer: coarse) {
   #touch { display: block; }
   #hud { cursor: pointer; }
+  .key { display: none; }                 /* keyboard hints mean nothing on a touch screen */
   #help { display: none; }
   #tuning { top: calc(60px + env(safe-area-inset-top, 0px)); }
   #tuning:not(.open) { display: none; }

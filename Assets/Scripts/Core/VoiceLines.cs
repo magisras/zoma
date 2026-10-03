@@ -59,7 +59,8 @@ namespace TwentyTons.Core
 
             // ---- The terminal, at the end of the day. {0} is the crew's name.
             new VoiceLineText("terminal-cold", Speaker.Crew, "{0} walks past without a word.", "Grudge above the cold threshold."),
-            new VoiceLineText("terminal-sore", Speaker.Crew, "{0}: \"You cut me twice today. Tomorrow I won't let you.\"", "Grudge of two or three."),
+            new VoiceLineText("terminal-sore", Speaker.Crew, "{0}: \"You cut me twice today. Tomorrow I won't let you.\"", "Grudge of two or three, earned today."),
+            new VoiceLineText("terminal-carried", Speaker.Crew, "{0}: \"I haven't forgotten the other day. Keep your distance.\"", "A grudge carried from earlier days with nothing new added today."),
             new VoiceLineText("terminal-badday", Speaker.Crew, "{0}: \"Nothing left after the deposit again. Same for us. Tea?\"", "No grudge, and the crew's day ended in the red."),
             new VoiceLineText("terminal-thanks", Speaker.Crew, "{0}: \"Thanks for the room at Block 11. See you at six.\"", "Negative grudge: the player let them through."),
             new VoiceLineText("terminal-plain", Speaker.Crew, "{0}: \"Long day. Sleep in the bus or go home?\"", "Nothing in particular happened between you."),

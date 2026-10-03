@@ -28,7 +28,7 @@ namespace TwentyTons.Tests
             for (float t = 0; t < seconds; t += dt) sim.Step(dt);
         }
 
-        [Test, Explicit("Known bug: a pedestrian 3 m in front of a standing bus waits for it all day")]
+        [Test]
         public void PedestrianInFrontOfAStandingBusDoesNotWaitForever()
         {
             // Seen in headless seed 1 (careful): ped #382 stood in the road 3 m from the parked bus's nose,
@@ -44,6 +44,7 @@ namespace TwentyTons.Tests
             ped.CrossDirection = 1f;
             ped.Lateral = -4.59f;                       // the position logged for ped #382
 
+            bool reachedTheOtherKerb = false;
             for (float t = 0; t < 60f; t += 1f / 60f)
             {
                 // The driver's reflex (sandbox/ScriptedDriver.PersonInTheWay): a person within 3 m of a
@@ -51,13 +52,15 @@ namespace TwentyTons.Tests
                 sim.Bus.Throttle = 0f;
                 sim.Bus.Brake = 1f;
                 sim.Step(1f / 60f);
+                if (ped.PedState == PedestrianState.Waiting && ped.Lateral > 0f) reachedTheOtherKerb = true;
             }
 
-            Assert.AreEqual(PedestrianState.Waiting, ped.PedState,
-                $"still in the road after 60 s: lateral {ped.Lateral:0.00}, speed {ped.Speed:0.0}");
+            // Fixed 3 Oct 2026 (StoppedForMeMetres): she crosses in ~10 s, waits on the far kerb, and
+            // crosses back later, so the state at exactly 60 s is luck; reaching the far kerb is the point.
+            Assert.IsTrue(reachedTheOtherKerb, $"never crossed: lateral {ped.Lateral:0.00}, speed {ped.Speed:0.0}");
         }
 
-        [Test, Explicit("Known bug: a rope snaps a vehicle already in the box back onto the line, into whoever is behind")]
+        [Test]
         public void ARopeDoesNotPullAVehicleOutOfTheBoxBackwards()
         {
             // Seen in the browser (pass 2, rope try 2): held by the rope at t=81 with gapAhead = −6 m, a
@@ -88,7 +91,7 @@ namespace TwentyTons.Tests
                 $"the car was moved backwards from nose {noseBefore:0.0} to {car.S + car.HalfLength:0.0} (line at {line:0.0})");
         }
 
-        [Test, Explicit("Known bug: the helper keeps shouting the gap while the bus lies on its side")]
+        [Test]
         public void HelperDoesNotShoutTheGapWhileTheBusIsOnItsSide()
         {
             // Seen in headless seed 1 (Dhaka): after "The bus is on its side (turned too hard for twenty

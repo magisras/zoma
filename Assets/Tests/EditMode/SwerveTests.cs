@@ -85,6 +85,30 @@ namespace TwentyTons.Tests
         }
 
         [Test]
+        public void AFlankEasingIntoSomeoneShovesThemAsideButAFastFlankKills()
+        {
+            // Easing in: the bus crawls and drifts a little; the person beside it is pushed clear.
+            var sim = Road();
+            Agent bus = sim.SpawnPlayerBus(100f, -2f);
+            bus.Speed = 1f; sim.Bus.Throttle = 0.3f;                                     // crawling into the stand
+            Agent p = sim.SpawnPedestrian(100f, -1);
+            p.Lateral = -3.3f; p.PedState = PedestrianState.Crossing; p.CrossDirection = 1f; p.Speed = 0f;   // standing against its flank
+            for (int i = 0; i < 90; i++) sim.Step(1f / 60f);
+            Assert.IsFalse(sim.Metrics.PersonHit, "a shove, not a death");
+            Assert.GreaterOrEqual(sim.Metrics.Brushes, 1);
+            Assert.Less(p.Lateral, bus.Lateral - bus.HalfWidth, "she is clear of the flank");
+
+            // Passing at speed: someone stepping into the flank goes under it.
+            var fast = Road();
+            Agent bus2 = fast.SpawnPlayerBus(100f, -2f);
+            bus2.Speed = 6f; fast.Bus.Throttle = 1f;
+            Agent q = fast.SpawnPedestrian(100f, -1);
+            q.Lateral = -3.1f; q.PedState = PedestrianState.Crossing; q.CrossDirection = 1f; q.Speed = 1.3f;   // a real step in, not a graze
+            fast.Step(1f / 60f);
+            Assert.IsTrue(fast.Metrics.PersonHit);
+        }
+
+        [Test]
         public void AScrapePushesApartOverFramesNotAtOnce()
         {
             var sim = Road();

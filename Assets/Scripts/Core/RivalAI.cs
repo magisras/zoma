@@ -16,6 +16,7 @@ namespace TwentyTons.Core
 
         // Memory.
         public int Grudge;
+        public int GrudgeAtDayStart;     // what was carried in from earlier days, so the terminal line knows what happened today
         public float Fatigue;            // 0..1
         public float MoneyToday;
 

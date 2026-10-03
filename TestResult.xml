@@ -1,0 +1,92 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" name="TwentyTons.Tests.exe" fullname="/home/user/zoma/tools/.cache/build/TwentyTons.Tests.exe" testcasecount="1" result="Failed" start-time="2026-10-03T05:38:10.9896690Z" end-time="2026-10-03T05:38:11.0386760Z" duration="0.048893" total="1" passed="0" failed="1" inconclusive="0" skipped="0" warnings="0" asserts="1" random-seed="1205872235">
+  <command-line><![CDATA[/home/user/zoma/tools/.cache/build/TwentyTons.Tests.exe --test=TwentyTons.Tests.PlaytestFindingsTests.PedestrianInFrontOfAStandingBusDoesNotWaitForever]]></command-line>
+  <filter>
+    <test>TwentyTons.Tests.PlaytestFindingsTests.PedestrianInFrontOfAStandingBusDoesNotWaitForever</test>
+  </filter>
+  <test-suite type="Assembly" id="1002" name="TwentyTons.Tests.exe" fullname="/home/user/zoma/tools/.cache/build/TwentyTons.Tests.exe" runstate="Runnable" testcasecount="1" result="Failed" site="Child" start-time="2026-10-03T05:38:10.9896690Z" end-time="2026-10-03T05:38:11.0386760Z" duration="0.048893" total="1" passed="0" failed="1" warnings="0" inconclusive="0" skipped="0" asserts="1">
+    <environment framework-version="3.14.0.0" clr-version="4.0.30319.42000" os-version="Unix 6.18.44.64" platform="Unix" cwd="/home/user/zoma" machine-name="vm" user="root" user-domain="vm" culture="" uiculture="" os-architecture="x64" />
+    <settings>
+      <setting name="LOAD" value="System.Collections.Generic.List`1[System.String]" />
+      <setting name="WorkDirectory" value="/home/user/zoma" />
+      <setting name="NumberOfTestWorkers" value="4" />
+    </settings>
+    <properties>
+      <property name="_PID" value="2279" />
+      <property name="_APPDOMAIN" value="TwentyTons.Tests.exe" />
+    </properties>
+    <failure>
+      <message><![CDATA[One or more child tests had errors]]></message>
+    </failure>
+    <test-suite type="TestSuite" id="1003" name="TwentyTons" fullname="TwentyTons" runstate="Runnable" testcasecount="1" result="Failed" site="Child" start-time="2026-10-03T05:38:10.9974160Z" end-time="2026-10-03T05:38:11.0386670Z" duration="0.041251" total="1" passed="0" failed="1" warnings="0" inconclusive="0" skipped="0" asserts="1">
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestSuite" id="1004" name="Tests" fullname="TwentyTons.Tests" runstate="Runnable" testcasecount="1" result="Failed" site="Child" start-time="2026-10-03T05:38:10.9976960Z" end-time="2026-10-03T05:38:11.0386390Z" duration="0.040943" total="1" passed="0" failed="1" warnings="0" inconclusive="0" skipped="0" asserts="1">
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-suite type="TestFixture" id="1000" name="PlaytestFindingsTests" fullname="TwentyTons.Tests.PlaytestFindingsTests" classname="TwentyTons.Tests.PlaytestFindingsTests" runstate="Runnable" testcasecount="1" result="Failed" site="Child" start-time="2026-10-03T05:38:10.9986630Z" end-time="2026-10-03T05:38:11.0382370Z" duration="0.039574" total="1" passed="0" failed="1" warnings="0" inconclusive="0" skipped="0" asserts="1">
+          <failure>
+            <message><![CDATA[One or more child tests had errors]]></message>
+          </failure>
+          <test-case id="1001" name="PedestrianInFrontOfAStandingBusDoesNotWaitForever" fullname="TwentyTons.Tests.PlaytestFindingsTests.PedestrianInFrontOfAStandingBusDoesNotWaitForever" methodname="PedestrianInFrontOfAStandingBusDoesNotWaitForever" classname="TwentyTons.Tests.PlaytestFindingsTests" runstate="Explicit" seed="881622765" result="Failed" start-time="2026-10-03T05:38:11.0007390Z" end-time="2026-10-03T05:38:11.0363410Z" duration="0.035691" asserts="1">
+            <properties>
+              <property name="_SKIPREASON" value="Known bug: a pedestrian 3 m in front of a standing bus waits for it all day" />
+            </properties>
+            <failure>
+              <message><![CDATA[  still in the road after 60 s: lateral -3.90, speed 1.3
+  Expected: Waiting
+  But was:  Crossing
+]]></message>
+              <stack-trace><![CDATA[  at TwentyTons.Tests.PlaytestFindingsTests.PedestrianInFrontOfAStandingBusDoesNotWaitForever () [0x001c9] in <e02f6095cb5740e7a728c898a593bb0b>:0 
+]]></stack-trace>
+            </failure>
+            <output><![CDATA[t=0 lat=-4.57 Crossing v=1.3 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=2 lat=-1.97 Crossing v=1.3 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=4 lat=0.63 Crossing v=1.3 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=6 lat=3.23 Crossing v=1.3 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=8 lat=5.83 Crossing v=1.3 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=10 lat=6.00 Waiting v=0.0 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=12 lat=6.00 Waiting v=0.0 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=14 lat=6.00 Waiting v=0.0 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=16 lat=6.00 Waiting v=0.0 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=18 lat=6.00 Waiting v=0.0 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=20 lat=3.51 Crossing v=1.3 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=22 lat=0.91 Crossing v=1.3 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=24 lat=-1.69 Crossing v=1.3 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=26 lat=-4.29 Crossing v=1.3 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=28 lat=-6.00 Waiting v=0.0 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=30 lat=-6.00 Waiting v=0.0 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=32 lat=-6.00 Waiting v=0.0 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=34 lat=-6.00 Waiting v=0.0 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=36 lat=-6.00 Waiting v=0.0 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=38 lat=-3.73 Crossing v=1.3 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=40 lat=-1.13 Crossing v=1.3 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=42 lat=1.47 Crossing v=1.3 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=44 lat=4.08 Crossing v=1.3 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=46 lat=6.00 Waiting v=0.0 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=48 lat=6.00 Waiting v=0.0 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=50 lat=6.00 Waiting v=0.0 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=52 lat=6.00 Waiting v=0.0 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=54 lat=3.90 Crossing v=1.3 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=56 lat=1.30 Crossing v=1.3 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=58 lat=-1.30 Crossing v=1.3 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+t=60 lat=-3.90 Crossing v=1.3 S=108.5 busS=100.0 busLat=-2.10 busV=0.00
+]]></output>
+            <assertions>
+              <assertion result="Failed">
+                <message><![CDATA[  still in the road after 60 s: lateral -3.90, speed 1.3
+  Expected: Waiting
+  But was:  Crossing
+]]></message>
+                <stack-trace><![CDATA[  at TwentyTons.Tests.PlaytestFindingsTests.PedestrianInFrontOfAStandingBusDoesNotWaitForever () [0x00000] in <e02f6095cb5740e7a728c898a593bb0b>:0 
+]]></stack-trace>
+              </assertion>
+            </assertions>
+          </test-case>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

@@ -444,11 +444,6 @@ function updateHud(f, dt) {
   el('nearMissRate').textContent = f.time > 10 ? f.nearMissesPerMinute.toFixed(1) + ' / min' : '';
   el('contacts').textContent = f.contacts + (f.hardContacts ? ' (' + f.hardContacts + ' cost)' : '');
   el('caneRuns').textContent = f.caneRuns;
-  const street = [];
-  if (f.driveDay) street.push('drive day');
-  if (f.junctions.some(j => j.camera)) street.push('camera at the first junction');
-  if (f.heldByRope) street.push('rope ahead');
-  el('street').textContent = street.length ? street.join(' · ') : '—';
   const ws = el('wrongSide');
   ws.textContent = f.wrongSideSeconds.toFixed(0) + ' s';
   ws.className = f.wrongSideNow ? 'warn' : '';
@@ -498,8 +493,8 @@ function updateHud(f, dt) {
   // The end of the day.
   const ov = el('overlay');
   ov.classList.toggle('on', f.dayOver);
-  if (f.dayOver && ov.dataset.shown !== f.clock) {
-    ov.dataset.shown = f.clock;
+  if (f.dayOver && ov.dataset.shown !== String(f.day)) {     // every shift ends at the same clock; the day number is the key
+    ov.dataset.shown = String(f.day);
     const L = f.ledger;
     el('day-headline').textContent = L.arrested ? 'You hit a person.' : f.seized ? 'The bus is gone.' : 'End of the shift, ' + f.clock + '.';
     el('day-sub').textContent = L.arrested ? 'The crowd gathers. The police take the bus and the day\'s money. A case follows.'

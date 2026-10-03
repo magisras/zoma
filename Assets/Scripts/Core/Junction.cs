@@ -45,6 +45,13 @@ namespace TwentyTons.Core
 
         /// <summary>The same officer controls both carriageways: this junction copies that one's cane.</summary>
         public Junction Mirror;
+        /// <summary>The other carriageway's junction of the same crossing, whichever side the mirror link is on. Set each step by TrafficSim.</summary>
+        public Junction Partner;
+        /// <summary>Cross-street vehicles already through the partner's box and waiting to cross this one. They are let through.</summary>
+        public int CrossCommitted;
+
+        /// <summary>Of a pair, the junction cross traffic reaches first (the smaller S on the cross street).</summary>
+        public Junction FirstOfPair => Partner == null || CrossS <= Partner.CrossS ? this : Partner;
 
         public Junction(Corridor main, float mainS, Corridor cross, float crossS)
         {

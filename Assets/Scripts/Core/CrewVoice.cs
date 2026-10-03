@@ -51,8 +51,10 @@ namespace TwentyTons.Core
             BusLoad load = bus.Load;
 
             // ---- The helper: the gap, the crowd, the horn, the door.
+            // Nobody shouts "go, go" at a bus on its side or under a sergeant's hand.
+            bool canGo = !_sim.Rollover.Active && !_sim.Bus.Held;
             Agent behind = _sim.OwnBusBehind(out float behindM);
-            if (behind != null && behindM < v.BusBehindCloseMetres)
+            if (canGo && behind != null && behindM < v.BusBehindCloseMetres)
                 Say("gap-behind", v.GapCooldownSeconds, behind.Brain.CrewName, Mathf.RoundToInt(behindM));
             Agent ahead = _sim.OwnBusAhead(out float aheadM);
             if (ahead != null && aheadM > v.BusAheadFarMetres && (behind == null || behindM > v.BusBehindCloseMetres * 2f))
@@ -135,7 +137,9 @@ namespace TwentyTons.Core
         /// </summary>
         public string TerminalLine(RivalBrain crew, Ledger ledger)
         {
-            string id = crew.Grudge > _sim.Tuning.Memory.ColdLinesAbove ? "terminal-cold"
+            int today = crew.Grudge - crew.GrudgeAtDayStart;      // a grudge carried from earlier days is not "today"
+            string id = crew.Grudge > 1 && today < 1 ? "terminal-carried"
+                      : crew.Grudge > _sim.Tuning.Memory.ColdLinesAbove ? "terminal-cold"
                       : crew.Grudge > 1 ? "terminal-sore"
                       : ledger.CrewNetTk < 0f ? "terminal-badday"
                       : crew.Grudge < 0 ? "terminal-thanks"

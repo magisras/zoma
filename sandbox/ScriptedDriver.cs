@@ -46,6 +46,8 @@ namespace TwentyTons.Sandbox
 
         public static void Apply(TrafficSim sim)
         {
+            // On its side, the only decision is the men with the ropes: both autopilots pay and wait.
+            if (sim.Rollover.Pending) Rollover.Answer(sim, true);
             if (Current == Policy.Dhaka) ApplyDhaka(sim);
             else ApplyCareful(sim);
         }
@@ -150,7 +152,11 @@ namespace TwentyTons.Sandbox
                 Agent a = sim.Agents[i];
                 if (a.Corridor != sim.Oncoming || a.GhostOf != null) continue;
                 float ds = sim.Oncoming.DeltaS(g.S, a.S);
-                if (ds < 0f && -ds < metres) return false;     // on their road, "behind" the ghost is what we will meet
+                if (ds >= 0f) continue;                        // on their road, "behind" the ghost is what we will meet
+                // Something coming within the look is a reason not to go. Something standing (their
+                // queue at the junction) is a wall only if it is close; a standing queue 60 m off is room.
+                float reach = a.Speed > 1f ? metres : Mathf.Min(metres, 25f);
+                if (-ds < reach) return false;
             }
             return true;
         }
@@ -207,11 +213,15 @@ namespace TwentyTons.Sandbox
             {
                 Agent p = sim.Agents[i];
                 if (!p.IsPedestrian || p.Corridor != bus.Corridor) continue;
-                // Anyone on the carriageway (not on the kerb) within the sweep from where I am to where I am steering.
-                if (Mathf.Abs(p.Lateral) > sim.Corridor.HalfWidth + 0.3f) continue;
+                // Anyone within the sweep from where I am to where I am steering. People on the kerb or
+                // the median count only when the bus itself is leaving the road on their side: crossing
+                // the median to the wrong side goes through the people waiting on it.
                 float lo = Mathf.Min(bus.Lateral, _wantLateral) - bus.HalfWidth - 1.2f;
                 float hi = Mathf.Max(bus.Lateral, _wantLateral) + bus.HalfWidth + 1.2f;
                 if (p.Lateral < lo || p.Lateral > hi) continue;
+                float half = sim.Corridor.HalfWidth;
+                if (p.Lateral > half + 0.3f && hi - 1.2f < half) continue;      // on the median, and I stay on the road
+                if (p.Lateral < -half - 0.3f && lo + 1.2f > -half) continue;    // on the kerb, and I stay on the road
                 float ds = sim.Corridor.DeltaS(bus.S, p.S) - bus.HalfLength;
                 // Beside the bus counts too: steering across someone standing at the door is a sideswipe.
                 if (ds < -bus.Shape.Length || ds > 45f) continue;

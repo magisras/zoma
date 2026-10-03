@@ -101,5 +101,34 @@ namespace TwentyTons.Tests
             Assert.AreEqual(main.Open, mirror.Open);
             Assert.AreEqual(JunctionFlow.Main, mirror.Open);
         }
+
+        [Test]
+        public void ACrossVehicleCaughtBetweenTheBoxesIsLetThroughInsteadOfLockingTheCrossing()
+        {
+            // The trap: the second carriageway's cross stop line lies inside the first box. A rickshaw
+            // that got into the first box stops there for the second's cane, the main queue waits for
+            // it, and the oncoming stream never gives it a gap. Everyone sits.
+            var sim = TwoWay();
+            var cross = new Corridor(new List<Vector3> { new Vector3(-100, 0, 500), new Vector3(100, 0, 500) }, 8f, false, "cross");
+            Junction main = sim.AddJunction(500f, cross, 100f);
+            var mirror = new Junction(sim.Oncoming, 500f, cross, 111.5f) { Mirror = main };
+            sim.Junctions.Add(mirror);
+            main.Open = JunctionFlow.Main; main.Timer = 9999f; main.Roped = false;
+            Agent rickshaw = sim.SpawnVehicle(cross, VehicleClass.Rickshaw, 100f, 0f, 0.5f);   // in the first box
+            rickshaw.Speed = 0f; rickshaw.DesiredSpeed = 4f;
+            Agent queued = sim.SpawnVehicle(VehicleClass.Car, 470f, 0f, 0.5f);               // main road, behind the box
+            queued.DesiredSpeed = 10f;
+            var stream = new List<Agent>();
+            for (int i = 0; i < 4; i++)
+            {
+                Agent c = sim.SpawnVehicle(sim.Oncoming, VehicleClass.Car, 420f + i * 14f, 0f, 0.5f);   // oncoming, closing on its box
+                c.DesiredSpeed = 10f;
+                stream.Add(c);
+            }
+            Run(sim, 12f);
+            Assert.Greater(rickshaw.S, 111.5f + 5f + 2f, "the rickshaw crossed the second carriageway too");
+            Assert.Greater(queued.S, 530f, "and the main road moved on behind it");
+            Assert.AreEqual(0, sim.Metrics.Contacts, "nobody drove into anyone");
+        }
     }
 }

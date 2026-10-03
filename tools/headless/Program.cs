@@ -18,6 +18,7 @@ public static class Headless
         public int Seed;
         public float Net, Fares, Km, Scrapes, NearMisses, StopsLost, WrongSide, Trips, Boarded, CaneRuns;
         public bool PersonHit;
+        public int Rollovers;
     }
 
     private static float RateScale = 1f;
@@ -35,6 +36,10 @@ public static class Headless
         }
         bool verbose = list.Remove("-v");
         bool dhaka = list.Remove("--dhaka");
+        // --watch S0 S1: every 5 s, print what is on the main road between S0 and S1 (a queue, a junction).
+        float watch0 = -1f, watch1 = -1f;
+        int w = list.IndexOf("--watch");
+        if (w >= 0) { watch0 = float.Parse(list[w + 1]); watch1 = float.Parse(list[w + 2]); list.RemoveRange(w, 3); }
         int seed = list.Count > 0 ? int.Parse(list[0]) : 1;
         float seconds = list.Count > 1 ? float.Parse(list[1]) : 120f;
         float capKmh = list.Count > 2 ? float.Parse(list[2]) : 25f;
@@ -50,6 +55,7 @@ public static class Headless
         {
             ScriptedDriver.Apply(sim);
             sim.Step(dt);
+            if (watch0 >= 0f && Mathf.RoundToInt(t * 60f) % 300 == 0) Watch(sim, t, watch0, watch1);
             if (verbose && bus.Load.DoorOpen != doorWas)
             {
                 doorWas = bus.Load.DoorOpen;
@@ -109,7 +115,7 @@ public static class Headless
         BusLoad load = bus.Load;
         Ledger l = sim.Economy.Ledger;
         Console.WriteLine($"seed {seed} ({ScriptedDriver.Current}): {seconds:0}s  dist {m.DistanceMetres / 1000f:0.00} km  nearMisses {m.NearMisses} ({m.NearMissesPerMinute:0.0}/min)  minHeadway {m.MinHeadwaySeconds:0.00}s  scrapes {m.Contacts} ({m.HardContacts} hard)  caneRuns {m.CaneRuns}  horn {m.HornPresses} moved {m.YieldsToHorn}  agents {sim.Agents.Count}");
-        Console.WriteLine($"  aboard {load.Count}  boarded {load.Boarded}  alighted {load.Alighted}  missed {load.MissedAlights}  stumbles {load.Stumbles}  hurt {load.Injuries}  fares Tk {load.FaresTk:0}  stopsLost {m.StopsLost}");
+        Console.WriteLine($"  aboard {load.Count}  boarded {load.Boarded}  alighted {load.Alighted}  missed {load.MissedAlights}  stumbles {load.Stumbles}  brushes {m.Brushes}  hurt {load.Injuries}  fares Tk {load.FaresTk:0}  stopsLost {m.StopsLost}");
         Console.WriteLine($"  ledger: fares {l.FaresTk:0}  zoma {l.ZomaTk:0}  fuel {l.FuelTk:0}  lineman {l.LinemanTk:0}  party {l.PartyManTk:0}  sergeant {l.SergeantTk:0}  cases {l.CaseTk:0}  camera {l.CameraTk:0}  repairs {l.RepairsTk:0}  => crew {l.CrewNetTk:0} Tk  ({l.Trips} trips, day over: {sim.Economy.DayOver} {sim.Economy.DayOverReason})");
         Console.WriteLine($"  street: {(sim.Economy.DriveDay ? "DRIVE DAY" : "ordinary day")}  boxes manned {sim.Checkpoints.FindAll(c => c.SergeantOnDuty).Count}/{sim.Checkpoints.Count}  seized {sim.Economy.Seized}");
         foreach (Junction j in sim.Junctions)
@@ -148,14 +154,14 @@ public static class Headless
         var careful = new List<DayResult>();
         var dhaka = new List<DayResult>();
         Console.WriteLine($"Thesis report: {seeds} seeds x {seconds:0} s, careful vs Dhaka driving, crowd rate x{RateScale:0.00}");
-        Console.WriteLine("seed  policy   net Tk  fares   km  scrapes  nearMiss  stopsLost  wrongSide  caneRuns  trips  hit");
+        Console.WriteLine("seed  policy   net Tk  fares   km  scrapes  nearMiss  stopsLost  wrongSide  caneRuns  trips  rolls  hit");
         for (int seed = 1; seed <= seeds; seed++)
         {
             foreach (Policy policy in new[] { Policy.Careful, Policy.Dhaka })
             {
                 DayResult r = RunDay(seed, seconds, policy);
                 (policy == Policy.Careful ? careful : dhaka).Add(r);
-                Console.WriteLine($"{seed,4}  {policy,-7} {r.Net,7:0} {r.Fares,6:0} {r.Km,5:0.00} {r.Scrapes,8:0} {r.NearMisses,9:0} {r.StopsLost,10:0} {r.WrongSide,9:0}s {r.CaneRuns,9:0} {r.Trips,6:0}  {(r.PersonHit ? "YES" : "")}");
+                Console.WriteLine($"{seed,4}  {policy,-7} {r.Net,7:0} {r.Fares,6:0} {r.Km,5:0.00} {r.Scrapes,8:0} {r.NearMisses,9:0} {r.StopsLost,10:0} {r.WrongSide,9:0}s {r.CaneRuns,9:0} {r.Trips,6:0} {r.Rollovers,6}  {(r.PersonHit ? "YES" : "")}");
             }
         }
         Console.WriteLine();
@@ -187,7 +193,7 @@ public static class Headless
         {
             Seed = seed, Net = l.CrewNetTk, Fares = l.FaresTk, Km = m.DistanceMetres / 1000f, Scrapes = m.Contacts,
             NearMisses = m.NearMisses, StopsLost = m.StopsLost, WrongSide = m.WrongSideSeconds, Trips = l.Trips,
-            Boarded = sim.Player.Load.Boarded, CaneRuns = m.CaneRuns, PersonHit = m.PersonHit,
+            Boarded = sim.Player.Load.Boarded, CaneRuns = m.CaneRuns, PersonHit = m.PersonHit, Rollovers = sim.Rollover.Count,
         };
     }
 
@@ -204,6 +210,21 @@ public static class Headless
     }
 
     /// <summary>Everyone within 40 m of the bus along the road, nearest first.</summary>
+    private static void Watch(TrafficSim sim, float t, float s0, float s1)
+    {
+        Corridor c = sim.Corridor;
+        var inside = new List<Agent>();
+        foreach (Agent a in sim.Agents) if (a.Corridor == c && a.GhostOf == null && a.S >= s0 && a.S <= s1) inside.Add(a);
+        inside.Sort((x, y) => y.S.CompareTo(x.S));
+        var j = sim.Junctions.Count > 0 ? sim.Junctions[0] : null;
+        Console.WriteLine($"--- t={t:0}s  junction0 open={j?.Open} timer={j?.Timer:0} roped={j?.Roped} mainInBox={j?.MainInBox} crossInBox={j?.CrossInBox}  ({inside.Count} on S {s0:0}-{s1:0}, head first)");
+        foreach (Agent a in inside)
+        {
+            string state = a.IsPedestrian ? a.PedState.ToString() : a.IsPlayer ? "PLAYER" : a.IsYielding ? "yield" : a.BluffTimer > 0f ? "bluff" : a.LeakingThrough != null ? "leak" : "drive";
+            Console.WriteLine($"  {(a.IsPlayer ? "BUS*" : a.Class.ToString()),-10} #{a.Id,-4} S={a.S,6:0.0} lat={a.Lateral,5:0.00} tgt={a.TargetLateral,5:0.00} v={a.Speed,4:0.0} want={a.DesiredSpeed,4:0.0} {state,-8} heldAhead={a.HeldAhead}");
+        }
+    }
+
     private static void DumpScene(TrafficSim sim, Agent bus, Corridor corridor)
     {
         Console.WriteLine($"bus S={bus.S:0.0} lat={bus.Lateral:0.00} speed={bus.Speed:0.0} gap={sim.Metrics.GapAheadMetres:0.0}");

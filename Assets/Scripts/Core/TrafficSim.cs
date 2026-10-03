@@ -18,6 +18,7 @@ namespace TwentyTons.Core
         public int Contacts;                     // player scrapes, light and hard
         public int HardContacts;                 // the ones that cost money
         public int NpcPersonHits;                // NPCs hitting pedestrians (it happens; counted, not fatal)
+        public int Brushes;                      // the player's flank shoved someone aside at a crawl: a shout, not a death
         public int CaneRuns;                     // times the player crossed a closed stop line
         public float RopeHeldSeconds;            // time the player's bus spent held at a constable's rope
         public float CaneWaitSeconds;            // time the player's bus spent stopped before a closed stop line, rope or not
@@ -252,7 +253,7 @@ namespace TwentyTons.Core
             for (int i = 0; i < Agents.Count; i++)
             {
                 Agent a = Agents[i];
-                if (a.Brain != null) a.Brain.Grudge = household.RecallCrew(a.Brain.CrewName, Tuning.Memory);
+                if (a.Brain != null) a.Brain.Grudge = a.Brain.GrudgeAtDayStart = household.RecallCrew(a.Brain.CrewName, Tuning.Memory);
             }
         }
 
@@ -326,7 +327,9 @@ namespace TwentyTons.Core
                 // The sandbox day stands for a whole day's driving: wear is scaled like the money is.
                 Condition.Brake(Bus.Held ? 0f : Bus.Brake, Player.Speed, dt / Mathf.Max(0.01f, Tuning.Economy.MoneyScale), Tuning.Bus);
                 Bus.BrakeWear = Condition.BrakeWear;
+                float lateralBefore = Player.Lateral;
                 Bus.Step(Player, Corridor, Tuning.Bus, dt);
+                Player.LateralVelocity = (Player.Lateral - lateralBefore) / dt;   // for the flank rule in contacts
                 Metrics.DistanceMetres += Player.Speed * dt;
                 Player.HornTimer = Mathf.Max(0f, Player.HornTimer - dt);
                 WatchPlayerAtJunctions();
@@ -575,13 +578,17 @@ namespace TwentyTons.Core
                 }
 
                 bool caneAgainst = !j.IsOpenFor(a.Corridor);
-                bool boxFull = j.BoxBlockedFor(a.Corridor);
+                // A cross-street vehicle already through the first carriageway's box is committed: it
+                // crosses the second whatever the cane says, and the second carriageway lets it, or the
+                // whole crossing locks with that vehicle sitting in the first box (docs: blocking the box).
+                bool committed = a.Corridor == j.Cross && Committed(j, a);
+                bool boxFull = j.BoxBlockedFor(a.Corridor) || (a.Corridor == j.Main && j.CrossCommitted > 0);
                 if (boxFull)
                 {
                     nearest = Mathf.Min(nearest, ds);   // physics, not politeness
                     continue;
                 }
-                if (!caneAgainst || ignoreCane) continue;
+                if (!caneAgainst || ignoreCane || committed) continue;
                 if (a.LeakingThrough == j) continue;    // already decided to run it
 
                 // The cane just dropped and I'm nearly there: a few of us go anyway.
@@ -598,19 +605,44 @@ namespace TwentyTons.Core
 
         private void CountBoxes()
         {
+            for (int i = 0; i < Junctions.Count; i++) Junctions[i].Partner = PartnerOf(Junctions[i]);
             for (int i = 0; i < Junctions.Count; i++)
             {
                 Junction j = Junctions[i];
                 j.MainInBox = 0;
                 j.CrossInBox = 0;
+                j.CrossCommitted = 0;
                 for (int k = 0; k < Agents.Count; k++)
                 {
                     Agent a = Agents[k];
                     if (a.IsPedestrian) continue;
                     if (a.Corridor == j.Main && j.InBox(j.Main, a.S, a.HalfLength)) j.MainInBox++;
-                    else if (a.Corridor == j.Cross && j.InBox(j.Cross, a.S, a.HalfLength)) j.CrossInBox++;
+                    else if (a.Corridor == j.Cross)
+                    {
+                        if (j.InBox(j.Cross, a.S, a.HalfLength)) j.CrossInBox++;
+                        else if (Committed(j, a) && a.S + a.HalfLength < j.CrossS - j.CrossHalfSpan) j.CrossCommitted++;
+                    }
                 }
             }
+        }
+
+        /// <summary>The other carriageway's junction of the same crossing, if any.</summary>
+        private Junction PartnerOf(Junction j)
+        {
+            if (j.Mirror != null) return j.Mirror;
+            for (int i = 0; i < Junctions.Count; i++) if (Junctions[i].Mirror == j) return Junctions[i];
+            return null;
+        }
+
+        /// <summary>
+        /// Is this cross-street vehicle past the first box of the pair, so that the second must let it
+        /// through? At the first junction nobody is committed; the cane there is the officer's.
+        /// </summary>
+        private static bool Committed(Junction j, Agent a)
+        {
+            Junction first = j.FirstOfPair;
+            if (first == j) return false;
+            return a.S + a.HalfLength > first.CrossS - first.CrossHalfSpan;
         }
 
         /// <summary>
@@ -630,10 +662,11 @@ namespace TwentyTons.Core
                     Agent a = Agents[k];
                     if (a.IsPedestrian || a.IsPlayerOrGhost) continue;
                     if (j.IsOpenFor(a.Corridor)) continue;
+                    if (a.Corridor == j.Cross && Committed(j, a)) continue;   // already through the first box: no rope holds it here
                     float lineS = j.StopLineOn(a.Corridor, officer.StopLineSetbackMetres);
                     if (float.IsNaN(lineS)) continue;
                     float ds = a.Corridor.DeltaS(a.S, lineS) - a.HalfLength;   // nose to rope
-                    if (ds >= 0f || ds < -(officer.StopLineSetbackMetres + j.MainHalfSpan)) continue;   // short of it, or already through
+                    if (ds >= 0f || ds < -0.3f) continue;   // short of it, or already past it: a vehicle in the box clears the box
                     a.S = a.Corridor.Wrap(lineS - a.HalfLength);
                     a.Position = a.Corridor.PositionAt(a.S, a.Lateral);
                     a.Speed = 0f;
@@ -654,6 +687,7 @@ namespace TwentyTons.Core
             BusSettings b = Tuning.Bus;
             float decel = b.BrakeDecelNewMs2 * (1f - b.BrakeWearLoss * Mathf.Clamp01(Bus.BrakeWear));
             float stopping = bus.Speed * bus.Speed / (2f * Mathf.Max(0.5f, decel)) + 1.5f;
+            Junction holding = null;
             for (int i = 0; i < Junctions.Count; i++)
             {
                 Junction j = Junctions[i];
@@ -662,10 +696,14 @@ namespace TwentyTons.Core
                 float ds = bus.Corridor.DeltaS(bus.S, lineS) - bus.HalfLength;   // nose to rope
                 if (ds < -1f) continue;             // already through: the rope went up behind us
                 if (ds <= 0.3f) bus.Speed = 0f;     // nose at the rope: it does not give
-                if (ds <= stopping) return true;
+                // Once caught, held until the cane turns or the rope drops: the hold must not pulse as
+                // the bus slows and its stopping distance shrinks under it.
+                if (ds <= stopping || _ropeHolding == j) holding = j;
             }
-            return false;
+            _ropeHolding = holding;
+            return holding != null;
         }
+        private Junction _ropeHolding;         // the roped junction currently holding the player's bus
 
         /// <summary>Distance from the bus's nose to the nearest closed stop line ahead on its road, or a large number.</summary>
         private float ClosedLineAhead(Agent bus)
@@ -762,7 +800,31 @@ namespace TwentyTons.Core
             if (a.IsPedestrian || b.IsPedestrian)
             {
                 Agent vehicle = a.IsPedestrian ? b : a;
-                if (Mathf.Abs(vehicle.Speed) < 0.5f) return;   // nudged at walking pace: nothing
+                Agent person = a.IsPedestrian ? a : b;
+                // The nose at speed kills. The flank is different: a bus easing into a stand shoves the
+                // person standing beside it, and they step aside with a shout. A flank that is moving at
+                // them fast, or a flank passing at speed (it drags you under), kills too.
+                // Like scrapes between vehicles (CosmeticContactMs), a touch below walking pace or a graze
+                // of a few centimetres is a shout, not a death: the person is pushed clear and counted.
+                float along = vehicle.Corridor.DeltaS(vehicle.S, person.S);          // + = person ahead of the vehicle's centre
+                bool atTheNose = along > vehicle.HalfLength - 1f;
+                float personSideways = person.PedState == PedestrianState.Crossing ? person.CrossDirection * person.Speed : 0f;
+                float flankClosing = Mathf.Abs(vehicle.LateralVelocity - personSideways);
+                float cosmetic = Tuning.Economy.CosmeticContactMs;
+                bool graze = overlapLat < 0.25f;
+                bool lethal = atTheNose ? Mathf.Abs(vehicle.Speed) >= cosmetic
+                                        : !graze && (flankClosing >= cosmetic || Mathf.Abs(vehicle.Speed) >= 3f);
+                if (!lethal)
+                {
+                    if (Mathf.Abs(vehicle.Speed) < 0.3f && flankClosing < 0.3f) return;   // standing still: nothing happened
+                    float push = (overlapLat + 0.1f) * (person.Lateral >= vehicle.Lateral ? 1f : -1f);
+                    person.Lateral += push;
+                    person.Position = person.Corridor.PositionAt(person.S, person.Lateral);
+                    // One brush per person per second, not one per frame of being pushed along.
+                    if (vehicle.IsPlayerOrGhost && Metrics.Time - person.LastContactTime > 1f) Metrics.Brushes++;
+                    person.LastContactTime = Metrics.Time;
+                    return;
+                }
                 if (vehicle.IsPlayerOrGhost) Metrics.PersonHit = true;
                 else Metrics.NpcPersonHits++;
                 return;

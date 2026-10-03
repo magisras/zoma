@@ -272,6 +272,51 @@ in the headless runner and in the browser. Entries below are appended as steps l
 - Tests: `SwerveTests` (5), 98 in all. Headless days are the instrument for all of this; the
   `Dump` and junction/cross-street prints grew to make the chains readable.
 
+**Step 18 — the first junction locked: blocking the box** (done)
+
+- Asked: "I keep getting stuck at the same cross." A scripted hand on the wheel in the browser build
+  showed it, and a new `--watch S0 S1` option in the headless runner showed why: the queue before the
+  first junction did not move even with the cane open. One cross-street rickshaw sat inside the main
+  road's box. The second carriageway's cross stop line lies inside the first carriageway's box (the
+  median is narrower than the setback), so a rickshaw let into the first box stopped there for the
+  second's cane; the main queue waited for it (a full box is physics); the oncoming stream never gave
+  it a gap. Everyone sat, every lap, at the same junction.
+- The street's rule: a cross vehicle that is through the first box is committed; it crosses the second
+  whatever the cane says, no rope holds it, and the second carriageway's traffic stops at its line
+  while a committed vehicle waits between the boxes (`Junction.Partner`, `CrossCommitted`). Test in
+  `OncomingTests`; 99 tests. With the cane open the stretch before the junction now drains from 27
+  vehicles to 10 within a phase.
+- The one hit left in six careful days was a bus easing into a stand at 4 km/h, its flank pushing a
+  person standing beside it; the rule counted any contact at over 0.5 m/s as a death. Now the nose
+  at speed kills, a flank moving at someone fast or passing at speed kills, and a flank at a crawl
+  shoves them clear (`Metrics.Brushes`). Six careful days: 0 hits, three in profit. 100 tests.
+- Also learned on the way: the officer's first phase was already random, so a restart does not start
+  closed; the long waits that remain are the real ones (a 20–90 s phase, a rope, the start-of-day
+  column) and the stand at Block 11 just before the junction, where a bus loading for 25 s blocks the
+  kerb band for everyone behind it who will not overtake.
+
+**Step 19 — the first test report, worked through** (done)
+
+- A separate test session wrote `docs/test-reports/2026-10-03_0535.md` (twelve findings, three pinned
+  as `[Explicit]` tests) and a rule in `CLAUDE.md`: read every open report at the start of a session
+  and mark it when dealt with. Dealt with here; the three pinned tests now pass and guard.
+- Fixed: the rope pulled a vehicle already in the box back onto the line (now it pins only a nose at
+  the line); the helper shouted "go, go" at a bus on its side or under a sergeant's hand; the end-of-
+  day card showed the first day's ledger forever (keyed on the clock, every shift ends at 20:00; now
+  keyed on the day); the autopilots never answered a rollover (they pay the ropes; the batch table has
+  a rolls column); a crew said "today" about a grudge carried from earlier days (`terminal-carried`);
+  the rope hold pulsed as the bus slowed (sticky until the cane turns); keyboard hints on touch
+  screens; the `street` HUD row explained what the pole and the conductor already say (removed).
+- The Dhaka driver now takes the wrong side when there is room: standing oncoming traffic counts as
+  a wall only within 25 m. That exposed that its person check ignored people on the median, which it
+  then drove through. Fixed: kerb and median people count when the bus is leaving the road on their side.
+- People, like paint: a touch below walking pace or a graze of a few centimetres is a shout
+  (`Metrics.Brushes`, once per person per second), a real impact kills. Before this, a bus creeping
+  at 0.8 m/s into someone frozen at its nose, or a one-centimetre flank graze at 3 m/s, ended the day.
+- Decided, not changed: the HUD's counters stay (the sandbox HUD is an instrument, not the game's
+  UI); a parked bus still collects paid scrapes (that is Dhaka); the helper's seat out-earning both
+  autopilots goes to the tuning pass.
+
 **Where this leaves the project**
 
 Everything in README milestones 3–6 now exists as engine-free C# with tests, runs in the browser
