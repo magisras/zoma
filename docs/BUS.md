@@ -89,3 +89,46 @@ ostad" once a day, as he does.
 
 Not yet modelled, on purpose: gears (the Unity vehicle physics will carry them), engine braking,
 the retarder none of these buses have, and the CNG/diesel choice.
+
+## 4. Fuel: who pays, when, how much (added 3 Oct 2026)
+
+- **Who pays.** Under the daily-deposit system the crew does. The owner is guaranteed the zoma;
+  the crew keeps what is left after the zoma, fuel and the roadside payments, and the loss from a
+  slow day is theirs. Gross takings in the city are around Tk 3,000 a day before those deductions.
+  Owners who run buses "on trips" pay the crew per completed trip instead and fuel the bus
+  themselves; the Mirpur buses in this game are the first kind. Sources:
+  [why blaming drivers misses the problem](https://www.thedailystar.net/slow-reads/big-picture/news/why-blaming-dhakas-bus-drivers-misses-the-real-problem-4244066),
+  [unstable income](https://www.dhakatribune.com/bangladesh/dhaka/319002/dhaka-bus-drivers-plagued-by-unstable-income-lack),
+  [trip-to-trip contracts](https://m.theindependentbd.com/arcprint/details/183243/2019-01-15).
+- **How much.** Diesel Tk 135 a litre (21 Sep 2026; Tk 115 before, Tk 100 before April). The
+  BRTA fare committee's rule of thumb is that every Tk 1 on a litre of diesel adds about one paisa
+  per passenger-kilometre to the fare; on a 52-seat basis that implies the committee's bus burns
+  roughly 0.35 litres a kilometre, about 2.8 km per litre, which is what operators say of an AK1J in
+  Dhaka traffic (3–4 km/l, worse in jams). A 15-trip day on a 3 km route is ~90 km and 30 litres:
+  about Tk 4,000 of diesel against Tk 3,000–5,000 of fares before the zoma, which is why the Raida
+  driver in RESEARCH.md ends with under Tk 1,000. CNG: Tk 43 a cubic metre at the pump (Tk 38 of
+  gas), with a rise to about Tk 65 proposed; a cubic metre does roughly the work of a litre of
+  diesel, so a gas bus's fuel bill is a third of a diesel one's, which is why the fare rules treat
+  them separately and why so many were converted. Sources:
+  [one paisa per taka](https://www.tbsnews.net/bangladesh/transport/brta-proposes-20-paisa-km-fare-hike-intercity-buses-18-paisa-city-buses-1549666),
+  [diesel Tk 135](https://www.thedailystar.net/news/power-and-energy/news/fuel-prices-hiked-tk-20-litre-4278041),
+  [CNG Tk 43, Tk 65 proposed](https://bdnews24.com/bangladesh/e49fe8fe622c).
+- **When.** There is no depot fuelling: the crew buys at a filling station on or near the route, in
+  cash from the day's takings, and chooses when. Diesel buses fill before the first trip or when the
+  gauge says so; a diesel fill is minutes. CNG buses are different: the tanks hold a few trips'
+  worth, a fill takes a quarter of an hour at the dispenser plus the queue, and the stations are
+  closed by order every evening (6–9 pm since January 2025; 3–9 pm through Ramadan 2026) to save
+  gas for the power plants, so gas buses queue before the closure and again at 9 pm. In this April's
+  diesel crunch (import shipments lost to the Iran war, panic buying), queues ran to a thousand
+  vehicles at one Dhaka pump, drivers spent four to five hours at CNG stations for a handful of
+  trips, and on some corridors a gas bus made a single morning trip after a night in the queue.
+  Sources: [CNG stations closed 6–9 pm](https://en.prothomalo.com/bangladesh/tv91ikups8),
+  [Ramadan 2026 closure](https://en.prothomalo.com/bangladesh/n4cjgpt2j1),
+  [1,011 vehicles at one pump](https://en.prothomalo.com/bangladesh/kn9slg0amt),
+  [queues empty Dhaka's roads](https://www.dhakatribune.com/bangladesh/dhaka/416133/fuel-queues-empty-dhaka%E2%80%99s-roads-as-ride-fares),
+  [hours-long waits](https://www.france24.com/en/live-news/20260421-bangladesh-fuel-crunch-forces-hours-long-wait-at-the-pump).
+- **What the game should do with it.** Today fuel is a line on the ledger charged per metre, which
+  nobody sees. The street's version: a tank that empties with distance and idling, a pump on the
+  route where a fill costs cash out of the box and minutes out of the day, a queue on a bad day, and
+  a bus that stops where it runs dry, with the helper's line. The choice of when to fill is the
+  crew's, as it is. Not built yet; see PROGRESS.
