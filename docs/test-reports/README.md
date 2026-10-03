@@ -13,9 +13,9 @@ Each report goes through three steps, and its `Status:` line says which one it i
 | `answered` | the next tester | Retests every finding answered "fixed", fills the **Retest** column, then sets `closed`, or back to `open` if any fix did not hold. |
 | `closed` | nobody | Done. Findings answered "later" are copied into the next report that still sees them. |
 
-- **"Check the new test reports"** (the builder): `grep -l "^Status: open" docs/test-reports/*.md`
+- **"Check the new test reports"** (the builder): `grep -l "^Status: open" docs/test-reports/2*.md`
 - **"Retest the answers"** (a tester, before testing anything new):
-  `grep -l "^Status: answered" docs/test-reports/*.md`
+  `grep -l "^Status: answered" docs/test-reports/2*.md`
 
 Testers write a new file for their own findings and only touch an older report to fill its Retest
 column and status. The builder only touches the Response column and the status.
