@@ -51,11 +51,16 @@ namespace TwentyTons.Core
                 // Standing in the road waiting for a gap wears thin: after a while the hand goes up and they step
                 // out in front of the light traffic, which brakes (Steering: a person ahead in the band).
                 bool impatient = p.MidRoadSeconds > tuning.MidRoadPatienceSeconds;
+                p.AlarmTimer -= dt;
                 Verdict verdict = Decide(sim, p, p.CrossDirection, tuning, impatient);
                 // Caught in a moving vehicle's strip nearer the edge I came from: the way out is back, not
                 // across its bonnet. Turn round; the kerb and another try are what is left of this crossing.
                 if (verdict == Verdict.HurryBack) { p.CrossDirection = -p.CrossDirection; verdict = Verdict.Hurry; }
-                p.Speed = verdict == Verdict.Stop ? 0f : verdict == Verdict.Hurry ? tuning.WalkSpeed * 1.6f : tuning.WalkSpeed;
+                if (verdict == Verdict.RunBack) { p.CrossDirection = -p.CrossDirection; verdict = Verdict.Run; }
+                // Honked at: whatever I was doing, I do it at a run (a Stop stays a Stop: the strip I was
+                // waiting for is still there).
+                if (p.AlarmTimer > 0f && verdict != Verdict.Stop) verdict = Verdict.Run;
+                p.Speed = verdict == Verdict.Stop ? 0f : verdict == Verdict.Run ? tuning.RunSpeed : verdict == Verdict.Hurry ? tuning.WalkSpeed * 1.6f : tuning.WalkSpeed;
                 if (verdict == Verdict.Stop && Mathf.Abs(p.Lateral) < corridor.HalfWidth) p.MidRoadSeconds += dt;
                 else if (verdict != Verdict.Stop) p.MidRoadSeconds = 0f;
                 // Taking too long: give up, go back to the kerb, try again later. Without a backstop one
@@ -79,7 +84,7 @@ namespace TwentyTons.Core
             p.Yaw = corridor.YawAt(p.S) + (p.PedState == PedestrianState.Crossing ? p.CrossDirection * Mathf.PI * 0.5f : 0f);
         }
 
-        private enum Verdict { Walk, Stop, Hurry, HurryBack }
+        private enum Verdict { Walk, Stop, Hurry, HurryBack, Run, RunBack }
 
         /// <summary>
         /// Is a moving vehicle beside or coming at this kerb with its side reaching the kerb line? Where it
@@ -109,7 +114,10 @@ namespace TwentyTons.Core
         /// </summary>
         private static Verdict Decide(TrafficSim sim, Agent p, float direction, PedestrianSettings tuning, bool impatient)
         {
+            // Verdicts are collected, not returned at the first: something about to hit me (Run) beats a
+            // strip I would rather not step into (Stop). Freezing in front of a bus is what a box does, not a person.
             Verdict verdict = Verdict.Walk;
+            bool mustStop = false, run = false, runBack = false;
             for (int i = 0; i < sim.Agents.Count; i++)
             {
                 Agent v = sim.Agents[i];
@@ -126,14 +134,14 @@ namespace TwentyTons.Core
                         bool body = Mathf.Abs(ds) < v.HalfLength - 0.3f;
                         if (!body) continue;
                         if (Inside(p, v)) { verdict = Verdict.Hurry; continue; }   // overlapping a standing body: out of it
-                        if (StripIsAhead(p, v, direction)) return Verdict.Stop;      // its body is across my path: wait
+                        if (StripIsAhead(p, v, direction)) mustStop = true;         // its body is across my path: wait
                         continue;
                     }
                     // Already in its strip with its nose on me: freezing is death, so get out, fast, by the
                     // nearer edge of the strip: on, or back the way I came (seed 6 at half crowd: a man off the
                     // median hurried on into the flank of the bus he could have stepped back from).
-                    if (Inside(p, v)) { verdict = NearerEdgeIsBehind(p, v, direction) ? Verdict.HurryBack : Verdict.Hurry; continue; }
-                    if (StripIsAhead(p, v, direction)) return Verdict.Stop;
+                    if (Inside(p, v)) { run = true; runBack = NearerEdgeIsBehind(p, v, direction); continue; }
+                    if (StripIsAhead(p, v, direction)) mustStop = true;
                     continue;
                 }
                 if (ds > 0f) continue;                                    // already past
@@ -157,8 +165,9 @@ namespace TwentyTons.Core
 
                 if (Inside(p, v))
                 {
-                    // Already in its strip: get out of it, now, by the nearer edge.
-                    if (secondsAway < 4f) verdict = NearerEdgeIsBehind(p, v, direction) ? Verdict.HurryBack : Verdict.Hurry;
+                    // Already in its strip: get out of it, by the nearer edge. Close enough to hit me: run.
+                    if (secondsAway < tuning.DangerSeconds) { run = true; runBack = NearerEdgeIsBehind(p, v, direction); }
+                    else if (secondsAway < 4f) verdict = NearerEdgeIsBehind(p, v, direction) ? Verdict.HurryBack : Verdict.Hurry;
                     continue;
                 }
                 if (!StripIsAhead(p, v, direction)) continue;             // its strip is behind me
@@ -173,8 +182,10 @@ namespace TwentyTons.Core
                 // brake; only the time to get out of its way is demanded, no margin.
                 if (impatient && v.Mass < tuning.HesitateAboveMass && speed < 6f) { margin = 0f; secondsToClear *= 0.5f; }
 
-                if (secondsAway < secondsToClear + margin) return Verdict.Stop;
+                if (secondsAway < secondsToClear + margin) mustStop = true;
             }
+            if (run) return runBack ? Verdict.RunBack : Verdict.Run;
+            if (mustStop) return Verdict.Stop;
             return verdict;
         }
 

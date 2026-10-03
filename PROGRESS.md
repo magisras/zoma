@@ -403,6 +403,27 @@ in the headless runner and in the browser. Entries below are appended as steps l
   day over careful, nobody hit, no rollovers); at 0.5 it does not (careful ahead on 4 of 6, Tk +82).
   `docs/PLAYTEST.md`. Next: the owner's approved getting-off and fare design (report 1131). 110 tests.
 
+**Step 24 — people get out of the way; a hit under 30 km/h knocks down, not kills** (done)
+
+- Owner: "too easy to kill someone; humans are not so unaware of a bus; at 20-40 km/h they see me
+  and move, especially when I horn." Crossers now run (3.5 m/s) for the nearer edge of a vehicle's
+  strip when it will reach them within 2.5 s, and a horn in their direction sets them running;
+  running beats waiting for the next lane. A nose hit between 11 and 29 km/h knocks the person
+  down: carried to the kerb, the crowd, Tk 8,000 (scaled) on the spot, a long hold, and it counts
+  toward the second injury that ends the day; 29 km/h and up at the nose, or dragged along the
+  flank, kills and ends the day as before. `docs/BUS.md` §7. Headless batch has a `down` column.
+  `PedestrianDanger` tests (3). 113 tests.
+- Batch with people running: at crowd rate 1.0 careful +482, Dhaka +587 (+105, ahead on 4 of 6), at 0.5
+  careful +164, Dhaka +50; nobody knocked down, nobody hit, on either side, in 24 days. The autopilots
+  never needed the new rules; a human at the wheel does.
+- Then the owner's next two: "I should be able to push someone at slow speed, not kill" (the nose
+  under 11 km/h shoves, see above) and "push lighter cars, rickshaws, bikes: what's the point of
+  twenty tons otherwise". Nose to tail the two now share momentum by mass: a rickshaw is shoved along
+  at the bus's pace and the bus barely slows; into a truck the bus is the one that slows. The old rule
+  held the one behind to the one in front's speed whatever the masses. `MassTests` (2). 115 tests.
+- Batch with the momentum rule: at crowd rate 1.0 careful +469, Dhaka +539 (+70, ahead on 5 of 6);
+  at 0.5 careful +161, Dhaka +154. Nobody knocked down, nobody hit, in 24 days.
+
 **Where this leaves the project**
 
 Everything in README milestones 3–6 now exists as engine-free C# with tests, runs in the browser

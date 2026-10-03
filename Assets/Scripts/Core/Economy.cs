@@ -118,11 +118,26 @@ namespace TwentyTons.Core
         /// </summary>
         public void OnInjury(bool alighting)
         {
-            Injuries++;
             float tk = _e.InjuryCompensationTk * _e.MoneyScale;
+            Injury((alighting ? "A passenger fell getting off" : "A passenger fell at the door") + " at speed. The crowd. Tk " + tk.ToString("0") + " on the spot.", tk, _e.InjuryHoldSeconds);
+        }
+
+        /// <summary>
+        /// The nose put someone on the ground under the death speed. Same path as a fall: the crowd holds the
+        /// bus, the crew pays, the second injury of the day ends it. More money and a longer hold than a fall.
+        /// </summary>
+        public void OnPedestrianKnockedDown(float speedMs)
+        {
+            float tk = _e.KnockDownTk * _e.MoneyScale;
+            Injury("A person under the nose at " + Mathf.RoundToInt(speedMs * 3.6f) + " km/h. Down, not dead. The crowd closes in. Tk " + tk.ToString("0") + " on the spot, and the hospital.", tk, _e.InjuryHoldSeconds * 2f);
+        }
+
+        private void Injury(string what, float tk, float holdSeconds)
+        {
+            Injuries++;
             Ledger.CaseTk += tk;
-            Ledger.Log((alighting ? "A passenger fell getting off" : "A passenger fell at the door") + " at speed. The crowd. Tk " + tk.ToString("0") + " on the spot.");
-            InjuryHoldUntil = _sim.Metrics.Time + _e.InjuryHoldSeconds;
+            Ledger.Log(what);
+            InjuryHoldUntil = _sim.Metrics.Time + holdSeconds;
             _sim.Bus.Held = true;
             if (Injuries >= _e.InjuriesBeforeArrest)
             {

@@ -167,7 +167,7 @@ namespace TwentyTons.Tests
             sim.Bus.Throttle = 1f;
             Agent ped = sim.SpawnPedestrian(130f, -1);
             ped.PedState = PedestrianState.Crossing; ped.CrossDirection = 1f; ped.Lateral = 0f;
-            sim.Tuning.Pedestrians.WalkSpeed = 0f;
+            sim.Tuning.Pedestrians.WalkSpeed = 0f; sim.Tuning.Pedestrians.RunSpeed = 0f;   // frozen in the path
             Run(sim, 15f);
             Assert.IsTrue(sim.Economy.DayOver);
             Assert.IsTrue(sim.Economy.Ledger.Arrested);

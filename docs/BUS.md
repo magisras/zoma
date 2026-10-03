@@ -170,3 +170,27 @@ is slow enough (under the jump speed; walking pace for an ordinary boarding), at
 company that comes to a crowd. "First door" now means the first bus to arrive slow at a kerb. The
 E key is the helper's call ("stop here, stop here!") in the helper role and nothing in the driver's
 seat. A sitting-service bus with a real door, if one is ever modelled, gets the field back.
+
+## 7. Hitting someone: what speed does to a body, and what people do first (owner, 3 Oct 2026)
+
+"It's too easy to kill someone. Humans are not so unaware of the danger of a bus. At 20–40 km/h a
+person in the street, or near the pavement, sees me and moves away, especially when I horn."
+
+- **People move.** A pedestrian who sees a bus closing does not freeze; they run for the nearer
+  edge of its path, three to four metres a second for a few strides, and a horn aimed at them gets
+  the same. The Dhaka street runs on this: the horn is a request to move and it is obeyed. In the
+  sim a crosser whose strip a vehicle will reach within `DangerSeconds` (2.5 s) runs at `RunSpeed`
+  (3.5 m/s) for the nearer edge, back the way they came if that is closer, and a horn in their
+  direction (`HornSystem`, the cone) sets them running for `HornAlarmSeconds` whatever else they
+  were doing. Running beats waiting: a person about to be hit no longer stands still because the
+  next lane is busy.
+- **Speed decides what the hit is.** Pedestrian fatality rises steeply with impact speed: for cars
+  roughly 10 % at 30 km/h, 50 % at 50 km/h; a flat-fronted bus is worse at every speed because the
+  body takes the whole front instead of going over a bonnet. Under about 30 km/h most are knocked
+  down and hurt, not killed. In the sim: nose contact under `CosmeticContactMs` (3 m/s, 11 km/h) is
+  a shove; from there to `PedestrianDeathSpeedMs` (8 m/s, 29 km/h) the person is **knocked down**:
+  carried to the kerb, the crowd closes in, the crew pays `KnockDownTk` (Tk 8,000, scaled) on the
+  spot, the bus is held twice as long as for a fall, and it counts as an injury toward the second
+  one that ends the day; at or above 29 km/h at the nose, or dragged along the flank at that
+  speed, the person is killed and the day is over as before. Figures are published ranges for
+  cars adjusted for a flat front, not Dhaka measurements.

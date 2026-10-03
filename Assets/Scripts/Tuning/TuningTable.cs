@@ -402,6 +402,18 @@ namespace TwentyTons.Tuning
         [Tooltip("Walking speed, m/s. placeholder")]
         public float WalkSpeed = 1.3f;
 
+        [Tooltip("Running speed, m/s: what a person does when a bus will reach them within DangerSeconds, or when it " +
+                 "honks at them. People are not unaware of a bus (owner, 3 Oct 2026): at 20-40 km/h they see it and " +
+                 "move. placeholder")]
+        public float RunSpeed = 3.5f;
+
+        [Tooltip("A vehicle that will reach my strip within this many seconds makes me run for the nearer edge, whatever " +
+                 "else I was waiting for. placeholder")]
+        public float DangerSeconds = 2.5f;
+
+        [Tooltip("How long a crosser runs after a horn in their direction, seconds. placeholder")]
+        public float HornAlarmSeconds = 3f;
+
         [Tooltip("Shortest and longest pause on the kerb between crossings, seconds. placeholder")]
         public float WaitMinSeconds = 3f;
         public float WaitMaxSeconds = 12f;
@@ -680,6 +692,14 @@ namespace TwentyTons.Tuning
 
         [Tooltip("Injuries in one day before the police end it. RESEARCH: only injuries escalate. placeholder")]
         public int InjuriesBeforeArrest = 2;
+
+        [Tooltip("A bus nose at or above this speed kills, m/s. Below it (and above CosmeticContactMs) the person is knocked down: " +
+                 "an injury the crowd answers, the crew pays on the spot, the second one ends the day. Pedestrian deaths climb " +
+                 "steeply past 30 km/h for a flat-fronted vehicle; 8 m/s is 29 km/h. docs/BUS.md §7. placeholder")]
+        public float PedestrianDeathSpeedMs = 8f;
+
+        [Tooltip("What knocking a person down costs on the spot, Tk: the hospital, the crowd's price. placeholder")]
+        public float KnockDownTk = 8000f;
 
         [Tooltip("The case after hitting a person, Tk. RESEARCH: non-bailable; the day's money is gone too. placeholder")]
         public float PersonHitCaseTk = 20000f;

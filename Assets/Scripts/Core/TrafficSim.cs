@@ -18,6 +18,7 @@ namespace TwentyTons.Core
         public int Contacts;                     // player scrapes, light and hard
         public int HardContacts;                 // the ones that cost money
         public int NpcPersonHits;                // NPCs hitting pedestrians (it happens; counted, not fatal)
+        public int PeopleKnockedDown;            // the player's nose or flank put someone on the ground, under the death speed
         public int Brushes;                      // the player's flank shoved someone aside at a crawl: a shout, not a death
         public int CaneRuns;                     // times the player crossed a closed stop line
         public float RopeHeldSeconds;            // time the player's bus spent held at a constable's rope
@@ -865,9 +866,14 @@ namespace TwentyTons.Core
                 float flankClosing = Mathf.Abs(vehicle.LateralVelocity - personSideways);
                 float cosmetic = Tuning.Economy.CosmeticContactMs;
                 bool graze = overlapLat < 0.25f;
-                bool lethal = atTheNose ? Mathf.Abs(vehicle.Speed) >= cosmetic
-                                        : !graze && (flankClosing >= cosmetic || Mathf.Abs(vehicle.Speed) >= 3f);
-                if (!lethal)
+                float speedAbs = Mathf.Abs(vehicle.Speed);
+                bool hit = atTheNose ? speedAbs >= cosmetic
+                                     : !graze && (flankClosing >= cosmetic || speedAbs >= 3f);
+                // Hit by the nose at speed, or dragged along the flank at speed, kills. Hit slower, the person
+                // goes down: an injury, the crowd, the crew paying on the spot (owner, 3 Oct 2026: it was far too
+                // easy to kill someone; docs/BUS.md §7 on what speed does to a body).
+                bool killed = hit && speedAbs >= Tuning.Economy.PedestrianDeathSpeedMs;
+                if (!hit)
                 {
                     if (Mathf.Abs(vehicle.Speed) < 0.3f && flankClosing < 0.3f) return;   // standing still: nothing happened
                     float push = (overlapLat + 0.1f) * (person.Lateral >= vehicle.Lateral ? 1f : -1f);
@@ -878,7 +884,21 @@ namespace TwentyTons.Core
                     person.LastContactTime = Metrics.Time;
                     return;
                 }
-                if (vehicle.IsPlayerOrGhost) Metrics.PersonHit = true;
+                if (killed)
+                {
+                    if (vehicle.IsPlayerOrGhost) Metrics.PersonHit = true;
+                    else Metrics.NpcPersonHits++;
+                    return;
+                }
+                // Knocked down: carried to the kerb they were nearer, where they sit for a long while.
+                float kerbSide = person.Lateral >= 0f ? 1f : -1f;
+                person.Lateral = kerbSide * (Corridor.HalfWidth + Tuning.Spawn.KerbOffsetMetres);
+                person.Position = Corridor.PositionAt(person.S, person.Lateral);
+                person.PedState = PedestrianState.Waiting;
+                person.Speed = 0f;
+                person.WaitTimer = 120f;
+                person.LastContactTime = Metrics.Time;
+                if (vehicle.IsPlayerOrGhost) { Metrics.PeopleKnockedDown++; Economy.OnPedestrianKnockedDown(speedAbs); }
                 else Metrics.NpcPersonHits++;
                 return;
             }
@@ -891,10 +911,19 @@ namespace TwentyTons.Core
             bool headOn = (a.GhostOf != null || b.GhostOf != null) && (a.Speed < -0.5f || b.Speed < -0.5f);
             float aSpeedBefore = a.Speed, bSpeedBefore = b.Speed;
 
-            // The one behind can't go faster than the one in front.
+            // Nose to tail, the two share their momentum: twenty tons running into a rickshaw barely slow and
+            // the rickshaw is shoved along at the bus's pace (owner, 3 Oct 2026: "what's the point of my
+            // twenty tons if I cannot push lighter cars, rickshaws, bikes"); a bus into a truck is the one
+            // that slows. The old rule made the one behind take the one in front's speed whatever the masses.
             Agent behind = ds > 0f ? a : b;
             Agent front = ds > 0f ? b : a;
-            if (!headOn) behind.Speed = Mathf.Min(behind.Speed, front.Speed);
+            if (!headOn && behind.Speed > front.Speed)
+            {
+                float shared = (behind.Mass * behind.Speed + front.Mass * front.Speed) / Mathf.Max(0.1f, behind.Mass + front.Mass);
+                behind.Speed = shared;
+                front.Speed = shared;
+                if (front.IsPlayerOrGhost && front.GhostOf != null) RealPlayer(front).Speed = Mathf.Max(RealPlayer(front).Speed, shared);
+            }
 
             // Separate along whichever axis penetrates least. The lighter one moves: a
             // sideswipe pushes it aside, a rear-ender shoves it forward (or holds it back).

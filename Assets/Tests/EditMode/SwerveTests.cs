@@ -85,7 +85,7 @@ namespace TwentyTons.Tests
         }
 
         [Test]
-        public void AFlankEasingIntoSomeoneShovesThemAsideButAFastFlankKills()
+        public void AFlankEasingIntoSomeoneShovesThemAsideButAFastFlankPutsThemDown()
         {
             // Easing in: the bus crawls and drifts a little; the person beside it is pushed clear.
             var sim = Road();
@@ -105,7 +105,9 @@ namespace TwentyTons.Tests
             Agent q = fast.SpawnPedestrian(100f, -1);
             q.Lateral = -3.1f; q.PedState = PedestrianState.Crossing; q.CrossDirection = 1f; q.Speed = 1.3f;   // a real step in, not a graze
             fast.Step(1f / 60f);
-            Assert.IsTrue(fast.Metrics.PersonHit);
+            // 6 m/s is under the death speed: she goes down, not dead. (PedestrianDangerTests has the death.)
+            Assert.IsFalse(fast.Metrics.PersonHit, "knocked down, not killed, at 22 km/h");
+            Assert.AreEqual(1, fast.Metrics.PeopleKnockedDown);
         }
 
         [Test]

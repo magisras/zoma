@@ -218,6 +218,7 @@ namespace TwentyTons.Tests
             ped.CrossDirection = 1f;
             ped.Lateral = 0f;
             sim.Tuning.Pedestrians.WalkSpeed = 0f;   // cannot get out of the way: frozen in the bus's path
+            sim.Tuning.Pedestrians.RunSpeed = 0f;    // (people run from a bus now; this one cannot)
 
             Run(sim, 15f);
 

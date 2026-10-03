@@ -18,7 +18,7 @@ public static class Headless
         public int Seed;
         public float Net, Fares, Km, Scrapes, NearMisses, StopsLost, WrongSide, Trips, Boarded, CaneRuns;
         public bool PersonHit;
-        public int Rollovers;
+        public int Rollovers, KnockedDown;
     }
 
     private static float RateScale = 1f;
@@ -205,14 +205,14 @@ public static class Headless
         var careful = new List<DayResult>();
         var dhaka = new List<DayResult>();
         Console.WriteLine($"Thesis report: {seeds} seeds x {seconds:0} s, careful vs Dhaka driving, crowd rate x{RateScale:0.00}, traffic x{Density:0.00}");
-        Console.WriteLine("seed  policy   net Tk  fares   km  scrapes  nearMiss  stopsLost  wrongSide  caneRuns  trips  rolls  hit");
+        Console.WriteLine("seed  policy   net Tk  fares   km  scrapes  nearMiss  stopsLost  wrongSide  caneRuns  trips  rolls  down  hit");
         for (int seed = 1; seed <= seeds; seed++)
         {
             foreach (Policy policy in new[] { Policy.Careful, Policy.Dhaka })
             {
                 DayResult r = RunDay(seed, seconds, policy);
                 (policy == Policy.Careful ? careful : dhaka).Add(r);
-                Console.WriteLine($"{seed,4}  {policy,-7} {r.Net,7:0} {r.Fares,6:0} {r.Km,5:0.00} {r.Scrapes,8:0} {r.NearMisses,9:0} {r.StopsLost,10:0} {r.WrongSide,9:0}s {r.CaneRuns,9:0} {r.Trips,6:0} {r.Rollovers,6}  {(r.PersonHit ? "YES" : "")}");
+                Console.WriteLine($"{seed,4}  {policy,-7} {r.Net,7:0} {r.Fares,6:0} {r.Km,5:0.00} {r.Scrapes,8:0} {r.NearMisses,9:0} {r.StopsLost,10:0} {r.WrongSide,9:0}s {r.CaneRuns,9:0} {r.Trips,6:0} {r.Rollovers,6} {r.KnockedDown,5}  {(r.PersonHit ? "YES" : "")}");
             }
         }
         Console.WriteLine();
@@ -244,14 +244,14 @@ public static class Headless
         {
             Seed = seed, Net = l.CrewNetTk, Fares = l.FaresTk, Km = m.DistanceMetres / 1000f, Scrapes = m.Contacts,
             NearMisses = m.NearMisses, StopsLost = m.StopsLost, WrongSide = m.WrongSideSeconds, Trips = l.Trips,
-            Boarded = sim.Player.Load.Boarded, CaneRuns = m.CaneRuns, PersonHit = m.PersonHit, Rollovers = sim.Rollover.Count,
+            Boarded = sim.Player.Load.Boarded, CaneRuns = m.CaneRuns, PersonHit = m.PersonHit, Rollovers = sim.Rollover.Count, KnockedDown = m.PeopleKnockedDown,
         };
     }
 
     private static void Summ(string name, List<DayResult> rs)
     {
-        int hits = 0; foreach (DayResult r in rs) if (r.PersonHit) hits++;
-        Console.WriteLine($"{name,-8} mean net Tk {Mean(rs, r => r.Net),6:0}  fares {Mean(rs, r => r.Fares),5:0}  km {Mean(rs, r => r.Km),4:0.00}  scrapes {Mean(rs, r => r.Scrapes),4:0.0}  nearMiss {Mean(rs, r => r.NearMisses),4:0.0}  stopsLost {Mean(rs, r => r.StopsLost),4:0.0}  wrongSide {Mean(rs, r => r.WrongSide),4:0}s  people hit {hits}/{rs.Count}");
+        int hits = 0, down = 0; foreach (DayResult r in rs) { if (r.PersonHit) hits++; down += r.KnockedDown; }
+        Console.WriteLine($"{name,-8} mean net Tk {Mean(rs, r => r.Net),6:0}  fares {Mean(rs, r => r.Fares),5:0}  km {Mean(rs, r => r.Km),4:0.00}  scrapes {Mean(rs, r => r.Scrapes),4:0.0}  nearMiss {Mean(rs, r => r.NearMisses),4:0.0}  stopsLost {Mean(rs, r => r.StopsLost),4:0.0}  wrongSide {Mean(rs, r => r.WrongSide),4:0}s  knocked down {down}  people hit {hits}/{rs.Count}");
     }
 
     private static float Mean(List<DayResult> rs, Func<DayResult, float> f)

@@ -39,6 +39,10 @@ namespace TwentyTons.Core
                     {
                         listener.WaitTimer = Mathf.Max(listener.WaitTimer, 1.5f);
                     }
+                    else
+                    {
+                        listener.AlarmTimer = sim.Tuning.Pedestrians.HornAlarmSeconds;   // in the road: run for the nearer edge
+                    }
                     continue;
                 }
 

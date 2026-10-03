@@ -270,3 +270,13 @@ narrowed it in the thin one (the careful bus, stopping for anyone who steps on, 
 the fuller kerb). The next lever is the owner's approved getting-off design (`2026-10-03_1131.md`):
 fares collected in the ride and settled at the door, riders carried past paying short, which
 changes what each stop is worth.
+
+## After the owner's street notes (3 Oct 2026, 6 seeds × 900 s)
+
+People run from a bus bearing down and from the horn; a nose hit under 29 km/h knocks down instead of
+killing; nose to tail the two share momentum by mass (a bus shoves a rickshaw along, a truck slows the
+bus). `docs/BUS.md` §7. Batch at crowd rate 1.0: careful +469, Dhaka +539 (+70 a day, ahead on 5 of
+6); at 0.5: careful +161, Dhaka +154. Nobody knocked down, nobody hit, no rollovers in 24 days: the
+autopilots never needed the new pedestrian rules; a human at the wheel at 30 km/h does. The absolute
+premise (a careful crew cannot eat) is still not in these numbers: that is the economics decision in
+report 1639.
