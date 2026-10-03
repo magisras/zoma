@@ -108,6 +108,8 @@ namespace TwentyTons.Core
                     // and I go. (Its body itself stays a wall: nobody walks through a parked bus.)
                     bool body = Mathf.Abs(ds) < v.HalfLength + 0.2f;
                     if (v.Speed < 0.3f && !body) continue;
+                    // Already in its strip with its nose on me: freezing is death, so get out, fast.
+                    if (Inside(p, v) && !body) { verdict = Verdict.Hurry; continue; }
                     if (StripIsAhead(p, v, direction) || Inside(p, v)) return Verdict.Stop;
                     continue;
                 }

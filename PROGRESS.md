@@ -317,6 +317,31 @@ in the headless runner and in the browser. Entries below are appended as steps l
   UI); a parked bus still collects paid scrapes (that is Dhaka); the helper's seat out-earning both
   autopilots goes to the tuning pass.
 
+**Step 20 — the bus, researched** (done)
+
+- Asked: was the bus itself researched (engine, fuel, how fast it speeds up and slows)? It was not;
+  its numbers were placeholders. `docs/BUS.md` now has it, with sources: the Hino AK1J is the common
+  Dhaka chassis (7.96 l J08C diesel, 210 PS / 155 kW, 554 Nm, 14.2 t design weight) with a local
+  steel body; Tata 1618 and Leyland Viking are the others; 36 seats local, 52–58 counter, standing
+  unlimited in practice; diesel, Tk 135 since 21 Sep 2026 (CNG buses declared diesel again); 40 km/h
+  city limit since the 2024 guideline; one bus in four without fitness; brakes fail from worn
+  linings and from no air after a cold start (the Padma bus). Acceleration: a laden bus does 0–50 in
+  14 s, sudden starts average 2.0 m/s², standing passengers fall above 2.0. Braking: 1.2–3 m/s² in
+  service, ~5 in the R13 test, peak 0.35 s after the pedal.
+- In the sim: 155 kW, 1.8 m/s² cap, 65 kg a passenger (twenty tons with ninety aboard), rolling
+  0.15, drag 0.0003, steering 45°/s. New: `BrakeLagSeconds` (the drums follow the pedal in 0.35 s)
+  and `AirPressure` (the day starts at 0.4, the compressor fills in 45 s, each application spends
+  0.03, braking scales with it). The first stop after a cold start is soft; pumping in a jam empties
+  the tanks. The rope hold and the autopilots reckon stopping distance with both. `BusTests` (3).
+- First try charged air per second held, so the autopilots, standing on the pedal in queues, ran
+  out of brakes and coasted into people (4 hits in 6 days). A held application costs nothing more;
+  per application it is.
+- Found underneath: the sandbox ring's second arc was drawn from the wrong centre, so the road jumped
+  200 m sideways and closed with an 81° kink at the School stand, where every autopilot left the road
+  and hit the kerb crowd, and which was the zigzag in the phone screenshot. Fixed: the ring is the
+  rounded rectangle it was meant to be (1,588 m, not 1,949).
+- Six days: no hits, 1.8–2.5 km, careful in profit on all three seeds tried.
+
 **Where this leaves the project**
 
 Everything in README milestones 3–6 now exists as engine-free C# with tests, runs in the browser

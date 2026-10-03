@@ -54,8 +54,11 @@ namespace TwentyTons.Sandbox
 
         private static void AddArc(List<Vector3> points, Vector3 start, float startAngle, float radius, SeededRandom random)
         {
-            // Semicircle to the right of travel, centre offset from the start.
-            Vector3 centre = start + new Vector3(radius, 0f, 0f);
+            // Semicircle to the right of travel. The centre sits one radius from the start, on the side
+            // the start angle says: +x for the top arc (start angle 0), -x for the bottom one (π). The
+            // bottom arc used to take +x for both, which threw the road 200 m sideways into a kink with
+            // an 81° corner at the School stand. Every bus left the road there.
+            Vector3 centre = start + new Vector3(Mathf.Cos(startAngle) * radius, 0f, 0f);
             for (int i = 0; i <= 8; i++)
             {
                 float a = startAngle + Mathf.PI * i / 8f;

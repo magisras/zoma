@@ -208,7 +208,8 @@ namespace TwentyTons.Sandbox
         /// </summary>
         private static bool PersonInTheWay(TrafficSim sim, Agent bus)
         {
-            float decel = sim.Tuning.Bus.BrakeDecelNewMs2 * (1f - sim.Tuning.Bus.BrakeWearLoss * sim.Bus.BrakeWear);
+            // What the brakes will actually do: worn pads, and only as much air as the tanks hold.
+            float decel = sim.Tuning.Bus.BrakeDecelNewMs2 * (1f - sim.Tuning.Bus.BrakeWearLoss * sim.Bus.BrakeWear) * sim.Bus.AirPressure;
             for (int i = 0; i < sim.Agents.Count; i++)
             {
                 Agent p = sim.Agents[i];
@@ -225,7 +226,7 @@ namespace TwentyTons.Sandbox
                 float ds = sim.Corridor.DeltaS(bus.S, p.S) - bus.HalfLength;
                 // Beside the bus counts too: steering across someone standing at the door is a sideswipe.
                 if (ds < -bus.Shape.Length || ds > 45f) continue;
-                float canStopIn = bus.Speed * bus.Speed / (2f * Mathf.Max(0.5f, decel));
+                float canStopIn = bus.Speed * sim.Tuning.Bus.BrakeLagSeconds + bus.Speed * bus.Speed / (2f * Mathf.Max(0.5f, decel));
                 // Standing, give them room to finish crossing before pulling away: they will cross in
                 // front of a stopped bus, as everyone does, and the bus must not start into them.
                 float margin = bus.Speed < 1f ? 6f : 3f;
@@ -262,7 +263,7 @@ namespace TwentyTons.Sandbox
         /// </summary>
         public static float SteerToHold(Agent bus, Corridor corridor, float wantedLateral)
         {
-            float lookAhead = 8f + bus.Speed * 1.0f;
+            float lookAhead = 10f + bus.Speed * 1.5f;      // a driver looks further ahead than a bus length
             Vector3 aim = corridor.PositionAt(bus.S + lookAhead, wantedLateral);
             Vector3 to = aim - bus.Position;
             float wantedYaw = Mathf.Atan2(to.x, to.z);

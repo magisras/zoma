@@ -39,7 +39,7 @@ namespace TwentyTons.Tests
             float added = sim.Condition.BrakeWear - start;
             float scale = 1f / sim.Tuning.Economy.MoneyScale;                 // the short day stands for a whole one
             Assert.Greater(added, 0.001f * scale);
-            Assert.Less(added, 0.004f * scale, "about 0.002 per real stop, so a racing day of 150 stops adds ~0.3");
+            Assert.Less(added, 0.0046f * scale, "about 0.002 per real stop, so a racing day of 150 stops adds ~0.3 (the air-brake lag lengthens each stop a little)");
             Assert.AreEqual(added, sim.Condition.BrakeWearToday, 1e-6f);
             Assert.AreEqual(sim.Condition.BrakeWear, sim.Bus.BrakeWear, 1e-6f, "the controller fades with it");
         }

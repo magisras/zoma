@@ -404,11 +404,12 @@ namespace TwentyTons.Tuning
     [Serializable]
     public sealed class BusSettings
     {
-        [Tooltip("Empty weight, tonnes. With a crush load it reaches the twenty tons of the title. placeholder")]
+        [Tooltip("Empty weight, tonnes: a Hino AK1J chassis (~5.5 t) with a heavy local steel body. With ninety aboard " +
+                 "it is the twenty tons of the title, on a chassis designed for 14.2 t. docs/BUS.md. estimate")]
         public float TareTonnes = 12f;
 
-        [Tooltip("Weight per passenger, kg. placeholder")]
-        public float PassengerKg = 70f;
+        [Tooltip("Weight per passenger, kg, with the bag. estimate")]
+        public float PassengerKg = 65f;
 
         [Tooltip("Seats. RESEARCH: fares are set on a 52-seat basis.")]
         public int Seats = 52;
@@ -416,35 +417,55 @@ namespace TwentyTons.Tuning
         [Tooltip("Most people the crew will pack in, standing included. RESEARCH: overloading is routine. placeholder")]
         public int CrushCapacity = 90;
 
-        [Tooltip("Engine power, kW. Acceleration = power / (mass × speed), so a full bus is slow. placeholder")]
-        public float EnginePowerKw = 180f;
+        [Tooltip("Engine power, kW. Hino J08C: 210 PS = 155 kW at 2,900 rpm, 554 Nm at 1,500. Acceleration = power / " +
+                 "(mass × speed), so a full bus is slow. docs/BUS.md")]
+        public float EnginePowerKw = 155f;
 
-        [Tooltip("Acceleration cap at low speed, m/s². placeholder")]
-        public float MaxAccelMs2 = 1.5f;
+        [Tooltip("Acceleration cap at low speed, m/s². Measured sudden starts average 2.0 on asphalt; standing " +
+                 "passengers fall above 2.0. A laden chassis gives about 1.8. docs/BUS.md")]
+        public float MaxAccelMs2 = 1.8f;
 
-        [Tooltip("Top speed, km/h. placeholder")]
+        [Tooltip("Top speed, km/h. The chassis does 90–100; the 2024 city limit for buses is 40. docs/BUS.md. estimate")]
         public float MaxSpeedKmh = 80f;
 
-        [Tooltip("Braking with new brakes, m/s². placeholder")]
+        [Tooltip("Braking with new brakes and full air, m/s². UN R13 cold test: ~5 for the service brake. docs/BUS.md")]
         public float BrakeDecelNewMs2 = 5f;
+
+        [Tooltip("Air brakes: seconds for the braking force to reach what the pedal asks. Peak deceleration comes " +
+                 "~0.35 s after the pedal. docs/BUS.md")]
+        public float BrakeLagSeconds = 0.35f;
+
+        [Header("Air (docs/BUS.md: pressure drops with the engine off; pumping the pedal spends it)")]
+        [Tooltip("Air pressure at the start of the day, 0..1: the bus was not left idling. Brakes are this fraction of " +
+                 "themselves until the compressor catches up. placeholder")]
+        [Range(0f, 1f)] public float AirPressureAtDayStart = 0.4f;
+
+        [Tooltip("Seconds of running for the compressor to fill the tanks from empty. placeholder")]
+        public float AirBuildSeconds = 45f;
+
+        [Tooltip("Pressure spent by one full application of the pedal. Holding it costs nothing more; pumping it " +
+                 "in a jam is what empties the tanks. placeholder")]
+        public float AirPerApplication = 0.03f;
 
         [Tooltip("Fraction of braking lost at brake wear = 1. At 0.6, fully worn brakes keep 40%. placeholder")]
         [Range(0f, 1f)] public float BrakeWearLoss = 0.6f;
 
-        [Tooltip("Rolling resistance, m/s² lost when coasting. placeholder")]
-        public float RollingDecelMs2 = 0.3f;
+        [Tooltip("Rolling resistance plus driveline losses, m/s² lost when coasting. Tyres alone are ~0.1. docs/BUS.md. estimate")]
+        public float RollingDecelMs2 = 0.15f;
 
-        [Tooltip("Air drag, m/s² lost per (m/s)². placeholder")]
-        public float AirDragPerMs2 = 0.0015f;
+        [Tooltip("Air drag, m/s² lost per (m/s)²: Cd ~0.7, 8.5 m², 15 t. docs/BUS.md. estimate")]
+        public float AirDragPerMs2 = 0.0003f;
 
-        [Tooltip("Distance between axles, metres. Longer = wider turns. placeholder")]
+        [Tooltip("Distance between axles, metres. Hino AK1J: 5.2–6.0 m. Longer = wider turns. docs/BUS.md")]
         public float WheelbaseMetres = 6f;
 
-        [Tooltip("Full lock, degrees. placeholder")]
+        [Tooltip("Full lock at the road wheel, degrees. estimate")]
         public float MaxSteerAngleDeg = 35f;
 
-        [Tooltip("How fast the wheel turns at a standstill, degrees per second. placeholder")]
-        public float SteerRateDegPerSec = 70f;
+        [Tooltip("How fast the road wheel turns at a standstill, degrees per second. Five turns lock to lock at one and " +
+                 "a half turns a second gives ~20; a driver who anticipates a bend needs less lock, and the bicycle " +
+                 "model has no tyre slip to forgive, so 45 stands for both. docs/BUS.md. estimate")]
+        public float SteerRateDegPerSec = 45f;
 
         [Tooltip("Speed (m/s) at which the steering rate halves. Lower = heavier steering. placeholder")]
         public float SteerHeavinessSpeed = 8f;
@@ -559,10 +580,10 @@ namespace TwentyTons.Tuning
         public float ZomaTk = 3000f;
 
         [Header("Fuel")]
-        [Tooltip("Diesel, Tk per litre. placeholder (2026 pump price to confirm)")]
-        public float DieselTkPerLitre = 105f;
+        [Tooltip("Diesel, Tk per litre: 135 since 21 Sep 2026 (was 115). docs/BUS.md")]
+        public float DieselTkPerLitre = 135f;
 
-        [Tooltip("City bus fuel economy, km per litre. placeholder")]
+        [Tooltip("City bus fuel economy, km per litre. Operators quote 3–4 for an AK1J in Dhaka traffic. docs/BUS.md. estimate")]
         public float BusKmPerLitre = 3.5f;
 
         [Header("Roadside payments (RESEARCH: 8–10 points per route; lineman, sergeant, party man)")]

@@ -179,6 +179,7 @@ namespace TwentyTons.Core
             bus.Load = new BusLoad();
             Condition.BrakeWear = Tuning.Bus.StartingBrakeWear;
             Bus.BrakeWear = Condition.BrakeWear;
+            Bus.AirPressure = Tuning.Bus.AirPressureAtDayStart;   // nobody left it idling: the first stop is soft
             Player = bus;
             SetPassengerCount(bus, Tuning.Bus.StartingPassengers);
             if (Oncoming != null && PlayerGhost == null) MakeGhost();
@@ -685,8 +686,8 @@ namespace TwentyTons.Core
         {
             OfficerSettings officer = Tuning.Officer;
             BusSettings b = Tuning.Bus;
-            float decel = b.BrakeDecelNewMs2 * (1f - b.BrakeWearLoss * Mathf.Clamp01(Bus.BrakeWear));
-            float stopping = bus.Speed * bus.Speed / (2f * Mathf.Max(0.5f, decel)) + 1.5f;
+            float decel = b.BrakeDecelNewMs2 * (1f - b.BrakeWearLoss * Mathf.Clamp01(Bus.BrakeWear)) * Bus.AirPressure;
+            float stopping = bus.Speed * b.BrakeLagSeconds + bus.Speed * bus.Speed / (2f * Mathf.Max(0.5f, decel)) + 1.5f;
             Junction holding = null;
             for (int i = 0; i < Junctions.Count; i++)
             {

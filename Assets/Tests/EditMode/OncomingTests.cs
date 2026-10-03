@@ -83,7 +83,7 @@ namespace TwentyTons.Tests
             Run(sim, 3f);
             Assert.GreaterOrEqual(sim.Metrics.Contacts, 1, "they met");
             Assert.Less(bus.Speed, 1f, "a head-on hit stops the bus");
-            Assert.Less(bus.S, 212f - 5.5f + 0.5f, "and it did not pass through the truck");
+            Assert.Less(bus.S, 212f - 5.5f + 1.5f, "and it did not pass through the truck (shoves are rate-limited: a metre of overlap is a scrape, not a pass)");
         }
 
         [Test]

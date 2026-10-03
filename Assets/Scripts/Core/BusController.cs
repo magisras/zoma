@@ -25,6 +25,8 @@ namespace TwentyTons.Core
         public bool Held;              // a sergeant's hand, or the end of the day: the bus does not move
         public bool HeldByRope;        // a constable's rope across the road ahead: brake, whatever the pedal says
         public float LastYawRate;      // rad/s this step; speed × yaw rate is the lateral acceleration that tips a bus
+        public float AirPressure = 1f; // 0..1 in the tanks; braking force scales with it (docs/BUS.md)
+        public float BrakeApplied;     // 0..1 what the drums are actually doing, lagging the pedal
 
         public float MassKg(BusSettings b) => b.TareTonnes * 1000f + Passengers * b.PassengerKg;
 
@@ -41,8 +43,15 @@ namespace TwentyTons.Core
             float powerLimited = (b.EnginePowerKw * 1000f) / (mass * Mathf.Max(speed, 1f));
             float engine = Mathf.Min(b.MaxAccelMs2, powerLimited) * Mathf.Clamp01(throttleIn);
 
+            // Air brakes: the drums follow the pedal with a lag, and only as hard as the air in the tanks
+            // allows. The compressor refills while the engine runs; each application spends some (holding
+            // the pedal down costs nothing more; pumping it does).
+            float before = BrakeApplied;
+            BrakeApplied = Mathf.MoveTowards(BrakeApplied, Mathf.Clamp01(brakeIn), dt / Mathf.Max(0.01f, b.BrakeLagSeconds));
+            float applied = Mathf.Max(0f, BrakeApplied - before);
+            AirPressure = Mathf.Clamp01(AirPressure + dt / Mathf.Max(1f, b.AirBuildSeconds) - applied * b.AirPerApplication);
             // Brakes: worn pads keep only part of their bite. This is the loan against tomorrow.
-            float brake = b.BrakeDecelNewMs2 * (1f - b.BrakeWearLoss * Mathf.Clamp01(BrakeWear)) * Mathf.Clamp01(brakeIn);
+            float brake = b.BrakeDecelNewMs2 * (1f - b.BrakeWearLoss * Mathf.Clamp01(BrakeWear)) * BrakeApplied * AirPressure;
 
             // Losses: rolling resistance, air, and the market stalls if you leave the road.
             float drag = b.RollingDecelMs2 + b.AirDragPerMs2 * speed * speed;
