@@ -166,7 +166,6 @@ namespace TwentyTons.Core
                 bool passed = sim.Corridor.DeltaS(zone.S, bus.S) > p.ZoneHalfLengthMetres;
                 if (done || brain.Dwell > maxDwell || passed)
                 {
-                    load.DoorOpen = false;
                     brain.Stopping = false;
                     brain.LastLeft = zone;
                 }
@@ -174,11 +173,6 @@ namespace TwentyTons.Core
                 {
                     bus.DesiredSpeed = 0f;
                     bus.LateralOverride = -(sim.Corridor.HalfWidth - bus.HalfWidth);
-                    if (bus.Speed < 0.5f && !load.DoorOpen)
-                    {
-                        load.DoorOpen = true;
-                        load.DoorOpenedAt = sim.Metrics.Time;
-                    }
                 }
             }
             else if (wantsStop && ds > -p.ZoneHalfLengthMetres && ds < u.ApproachMetres)

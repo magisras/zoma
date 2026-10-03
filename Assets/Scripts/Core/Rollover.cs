@@ -17,6 +17,7 @@ namespace TwentyTons.Core
         public float RightingUntil = -1f;
         public int HurtPassengers;
         public int Count;               // rollovers today
+        public float OverLimitSeconds;  // how long the lateral acceleration has been above the tipping figure
         public string Cause;
     }
 
@@ -42,8 +43,13 @@ namespace TwentyTons.Core
                 offRoad = Mathf.Abs(sim.PlayerGhost.Lateral) - (sim.Oncoming.HalfWidth + b.OffRoadToleranceMetres);
 
             bool kerbAtSpeed = offRoad > b.OffRoadRolloverMetres && bus.Speed >= b.RolloverSpeedMs;
+            // Untripped: the lateral acceleration has to stay above the tipping figure for a while at speed. The
+            // tyres cap it just above that figure (BusController), so this is a sustained swerve near the limit
+            // at 36 km/h or more, not a yank of the wheel at a stand (docs/BUS.md §5: a bus slides before it rolls).
             float lateralAccel = Mathf.Abs(bus.Speed * sim.Bus.LastYawRate);
-            bool thrown = lateralAccel >= b.RolloverLateralAccelMs2 && bus.Speed >= b.RolloverSpeedMs;
+            bool overLimit = lateralAccel >= b.RolloverLateralAccelMs2 && bus.Speed >= b.RolloverSpeedMs;
+            r.OverLimitSeconds = overLimit ? r.OverLimitSeconds + dt : 0f;
+            bool thrown = r.OverLimitSeconds >= b.RolloverHoldSeconds;
 
             if (kerbAtSpeed) Tip(sim, sim.Fatigue.Asleep ? "drifted into the railing asleep" : "left the road at speed");
             else if (thrown) Tip(sim, "turned too hard for twenty tons");
@@ -69,7 +75,6 @@ namespace TwentyTons.Core
             // Everyone inside tumbles. Some are hurt; all of them get out and leave.
             r.HurtPassengers = Mathf.RoundToInt(load.Count * e.TumbleHurtFraction);
             load.Aboard.Clear();
-            load.DoorOpen = false;
             load.AtDoor = null; load.Leaving = null;
             load.Injuries += r.HurtPassengers;
 

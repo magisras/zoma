@@ -35,13 +35,17 @@ namespace TwentyTons.Core
     }
 
     /// <summary>
-    /// Passengers aboard a bus and the state of its door. Attached to any bus agent, player or AI.
+    /// Passengers aboard a bus and its doorway. Attached to any bus agent, player or AI. A Dhaka local bus
+    /// has no door to speak of: the doorway is open all day with the helper hanging in it, and people get
+    /// on and off whenever the bus is slow enough (owner, 3 Oct 2026; docs/ROLLING_DOOR.md). So DoorOpen
+    /// is always true, kept as a field for the day a sitting-service bus with a real door is modelled.
     /// </summary>
     public sealed class BusLoad
     {
         public readonly List<Passenger> Aboard = new List<Passenger>();
-        public bool DoorOpen;
-        public float DoorOpenedAt = -1f;       // sim time; earliest door at a zone gets the next passenger
+        public bool DoorOpen = true;
+        public float DoorOpenedAt = -1f;       // sim time this bus arrived slow at the zone it is in; the earliest gets the next passenger
+        public DemandZone ArrivedZone;         // the zone that arrival time is for
         public float BoardingTimer;            // seconds left on the person getting on
         public Passenger AtDoor;               // who is getting on right now (the helper's hand on them)
         public Passenger Leaving;              // who is getting off right now; both can happen at once

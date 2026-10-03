@@ -41,18 +41,32 @@ namespace TwentyTons.Core
             PassengerSettings p = sim.Tuning.Passengers;
             if (load == null) return;
 
-            // Door shut, or flying: nobody can get on or off. Whoever was on the step is still on it.
-            if (!load.DoorOpen || bus.Speed > p.JumpSpeedMs)
+            // Flying: nobody can get on or off (there is no door to shut; the doorway is always open). Whoever
+            // was on the step is still on it.
+            if (bus.Speed > p.JumpSpeedMs)
             {
                 return;
             }
 
-            bool rolling = bus.Speed > p.DoorSpeedMs;        // faster than a crawl: the helper's trick
+            // Rolling at a walk, the helper pulls and nobody dawdles: quicker than at a standstill. Getting off
+            // happens up to the jump speed (RESEARCH: forced off running buses); getting on only up to the door
+            // speed, a crawl: nobody runs alongside a bus doing 20 km/h and climbs in, and with no door on the
+            // bus that is the rule that keeps a passing bus from scooping people up at speed and dropping them.
+            bool rolling = bus.Speed > 1f;
             float pace = rolling ? p.MovingDoorTimeFactor : 1f;
-            if (bus.IsPlayer && sim.Condition.DoorBent) pace *= 1.3f;   // a bent door after the rollover
+            if (bus.IsPlayer && sim.Condition.DoorBent) pace *= 1.3f;   // a bent doorframe after the rollover
             DemandZone zone = ZoneInReach(sim, bus);
+            // Arriving slow at a zone is what "first door" means now: the first bus to be here under the jump
+            // speed gets the crowd until it leaves.
+            if (zone != load.ArrivedZone) { load.ArrivedZone = zone; load.DoorOpenedAt = zone != null ? sim.Metrics.Time : -1f; }
 
-            // ---- Getting off: finish the one on the step, then pick the next one for this zone.
+            // ---- Getting off: finish the one on the step, then pick the next one for this zone. At a crawl
+            // people step off as they please. Faster than that, nobody chooses to: they are forced off a
+            // running bus only when it is about to carry them past (the last metres of the zone's reach),
+            // the helper shouting them down the step (RESEARCH: forced off running buses). A driver who slows
+            // never puts anyone in that position; one who rolls through does, and the fall rules answer.
+            bool crawling = bus.Speed <= p.DoorSpeedMs;
+            bool aboutToPass = zone != null && sim.Corridor.DeltaS(zone.S, bus.S) > p.ZoneHalfLengthMetres - p.ForcedOffMetres;
             if (load.Leaving != null)
             {
                 load.LeavingTimer -= dt;
@@ -64,7 +78,7 @@ namespace TwentyTons.Core
                     load.Leaving = null;
                 }
             }
-            else if (zone != null)
+            else if (zone != null && (crawling || aboutToPass))
             {
                 for (int i = 0; i < load.Aboard.Count; i++)
                 {
@@ -100,6 +114,7 @@ namespace TwentyTons.Core
             }
 
             if (zone == null || zone.Waiting.Count == 0) return;
+            if (bus.Speed > p.DoorSpeedMs) return;           // too fast to step onto
             load.LastServed = zone;
             if (load.Count >= TooFullCount(sim)) return;
             if (!IsFirstDoor(sim, bus, zone)) return;
@@ -172,7 +187,7 @@ namespace TwentyTons.Core
             return Mathf.Min(sim.Tuning.Bus.CrushCapacity, Mathf.RoundToInt(sim.Tuning.Bus.Seats * sim.Tuning.Passengers.TooFullLoad));
         }
 
-        /// <summary>Is this the bus whose door has been open longest at this zone (and able to take people)?</summary>
+        /// <summary>Is this the bus that has been at this zone longest, slow enough to load, with room aboard?</summary>
         private static bool IsFirstDoor(TrafficSim sim, Agent bus, DemandZone zone)
         {
             float reach = sim.Tuning.Passengers.ZoneHalfLengthMetres;
@@ -180,11 +195,12 @@ namespace TwentyTons.Core
             for (int i = 0; i < sim.Agents.Count; i++)
             {
                 Agent other = sim.Agents[i];
-                if (other == bus || other.Load == null || !other.Load.DoorOpen) continue;
+                if (other == bus || other.Load == null || other.Load.ArrivedZone != zone) continue;
                 if (other.Speed > sim.Tuning.Passengers.JumpSpeedMs) continue;
                 if (other.Load.Count >= tooFull) continue;
                 if (Mathf.Abs(sim.Corridor.DeltaS(zone.S, other.S)) > reach) continue;
                 if (other.Load.DoorOpenedAt < bus.Load.DoorOpenedAt) return false;
+                if (other.Load.DoorOpenedAt == bus.Load.DoorOpenedAt && other.Id < bus.Id) return false;   // the same step: the older agent
             }
             return true;
         }

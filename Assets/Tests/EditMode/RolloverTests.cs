@@ -49,13 +49,30 @@ namespace TwentyTons.Tests
         }
 
         [Test]
-        public void TurningTooHardAtSpeedTipsIt()
+        public void FullLockAtCitySpeedScrubsTheTyresAndDoesNotTip()
+        {
+            // Owner, 3 Oct 2026: real buses take far steeper manoeuvres than the sandbox allowed and never
+            // roll unless something extreme happens. On tarmac the tyres give before the body does.
+            var sim = Road();
+            sim.Tuning.Bus.OffRoadRolloverMetres = 99f;         // a wide field: the turn alone is on trial
+            sim.Player.Speed = 8f;                              // 29 km/h
+            sim.Bus.Throttle = 1f;
+            sim.Bus.Steer = 1f;                                 // full lock, held
+            Run(sim, 4f);
+            Assert.IsFalse(sim.Rollover.Active, "a hard turn at city speed is a plough, not a rollover");
+            float lateral = Mathf.Abs(sim.Player.Speed * sim.Bus.LastYawRate);
+            Assert.LessOrEqual(lateral, sim.Tuning.Bus.TyreGripMs2 + 0.1f, "the tyres cap what the wheel asks for");
+        }
+
+        [Test]
+        public void ASustainedSwerveAtSpeedStillTipsIt()
         {
             var sim = Road();
-            sim.Player.Speed = 14f;                             // 50 km/h
+            sim.Tuning.Bus.OffRoadRolloverMetres = 99f;
+            sim.Player.Speed = 16f;                             // 58 km/h
             sim.Bus.Throttle = 1f;
-            sim.Bus.Steer = 1f;                                 // full lock
-            Run(sim, 3f);
+            sim.Bus.Steer = 1f;                                 // full lock, held for seconds: the extreme case
+            Run(sim, 4f);
             Assert.IsTrue(sim.Rollover.Active);
             StringAssert.Contains("too hard", sim.Rollover.Cause);
         }

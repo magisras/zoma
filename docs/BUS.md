@@ -132,3 +132,41 @@ the retarder none of these buses have, and the CNG/diesel choice.
   route where a fill costs cash out of the box and minutes out of the day, a queue on a bad day, and
   a bus that stops where it runs dry, with the helper's line. The choice of when to fill is the
   crew's, as it is. Not built yet; see PROGRESS.
+
+## 5. Rollover: how hard it really is to tip a bus (3 Oct 2026)
+
+The owner, after driving the sandbox: it rolled far too easily; a real bus takes much steeper
+manoeuvres and goes over only when something extreme happens. The physics agrees.
+
+- **Static stability factor.** A loaded city bus has a track of about 2.0 m and a centre of gravity
+  around 1.2–1.5 m up with standing passengers: SSF (half track over CG height) of 0.65–0.85, so the
+  body would tip at roughly 0.4–0.5 g *if the tyres held that long*. (NHTSA SSF method; coach and
+  transit figures in the 0.6–0.9 range are widely published; the Dhaka load is at the heavy end.)
+- **The tyres give first.** Bus tyres on dry tarmac hold about 0.7 g before they scrub. Asked for
+  more, the front washes out and the bus runs wide: a plough, not a roll. Wet or dusty tarmac holds
+  less, which makes a rollover on flat road *harder*, not easier. Untripped rollovers of buses on
+  flat road are rare in every crash database that separates them; nearly all are **tripped**: a kerb
+  or ditch catches the outer wheels, a railing, a soft verge, a steep camber, or another vehicle.
+- **It takes time.** Twenty tons rolls onto its outer springs before the inner wheels lift; a flick
+  of the wheel for a tenth of a second is a lurch, not a rollover. Sustained lateral acceleration at
+  speed is what does it, or a trip.
+
+In the sim: the bicycle model now has a grip cap (`TyreGripMs2` 7 m/s²: past it the yaw rate is what
+the tyres allow and the bus runs wide); the untripped rollover needs the lateral acceleration above
+`RolloverLateralAccelMs2` (6.5, just under the grip) for `RolloverHoldSeconds` (0.8 s) at or above
+`RolloverSpeedMs` (10 m/s, 36 km/h); the tripped one is still the kerb or the railing beyond
+`OffRoadRolloverMetres` at that speed, which is the Fraser film's set piece and the fatigue meter's
+payoff. Full lock at 30 km/h in the sandbox now ploughs and scrubs; full lock held for seconds at
+60 km/h still tips. Figures for the SSF are published ranges, not a measurement of a Dhaka bus:
+confirm against the real bus when it is modelled in Unity.
+
+## 6. The door that is not there (owner, 3 Oct 2026)
+
+"Have you seen the buses they have? They don't have doors at all, or they are always open so the
+passengers just jump in, jump out." Confirmed by the ride-along footage and `docs/ROLLING_DOOR.md`:
+the front doorway stands open all day with the helper hanging in it; many local buses have had the
+leaves removed. In the sim there is nothing to open or shut: people get on and off whenever the bus
+is slow enough (under the jump speed; walking pace for an ordinary boarding), at any bus of any
+company that comes to a crowd. "First door" now means the first bus to arrive slow at a kerb. The
+E key is the helper's call ("stop here, stop here!") in the helper role and nothing in the driver's
+seat. A sitting-service bus with a real door, if one is ever modelled, gets the field back.

@@ -71,6 +71,8 @@ namespace TwentyTons.Sandbox
             float coast;
             bool tooClose = TooCloseBehind(sim, bus, 4f, out coast);
             bool closing = h < 2f || g < 12f || tooClose || PersonInTheWay(sim, bus);
+            // No door on this bus: people step on whenever it is slow. The careful driver stops for them.
+            if (bus.Load.AtDoor != null || bus.Load.Leaving != null) closing = true;
             float stop = sim.StopDistanceAhead(bus, 60f);
             if (stop < 60f) closing = closing || Steering.AllowedSpeed(stop, 2f, 1f) < bus.Speed;   // respects the cane
 
@@ -102,15 +104,13 @@ namespace TwentyTons.Sandbox
             bool boxBlocked = stop < 60f && Steering.AllowedSpeed(stop, 0.8f, 1f) < bus.Speed;
 
             float cap = 45f;
-            // Pulled away with someone still on the step: the helper holds them, the bus holds walking pace
-            // until they are in, then the door goes and the right foot goes down (above the door speed nobody
-            // boards anyway; a fall at speed is the injury the street answers).
-            if (!HelperMode && bus.Load.DoorOpen && _working == null)
+            // Pulled away with someone still on the step: the helper holds them and the bus holds walking pace
+            // until they are in, then the right foot goes down (above the door speed nobody boards anyway; a
+            // fall at speed is the injury the street answers). Under the injury speed with a margin, not at it.
+            if (!HelperMode && _working == null && (bus.Load.AtDoor != null || bus.Load.Leaving != null))
             {
-                // Under the injury speed with a margin, not at it: at the door speed itself a fall is an injury (Tk 2,000 and the crowd).
                 float stepMs = Mathf.Min(sim.Tuning.Passengers.DoorSpeedMs, sim.Tuning.Passengers.InjurySpeedMs - 0.6f);
-                if (bus.Load.AtDoor != null || bus.Load.Leaving != null) cap = Mathf.Min(cap, stepMs * 3.6f);
-                else if (bus.Speed > sim.Tuning.Passengers.DoorSpeedMs * 0.8f) sim.SetDoor(false);
+                cap = Mathf.Min(cap, stepMs * 3.6f);
             }
             if (HelperMode)
             {
@@ -263,10 +263,9 @@ namespace TwentyTons.Sandbox
             }
             if (done || _dwell > maxDwell)
             {
-                // The Dhaka driver pulls away with the door open and the helper on the pole: whoever is on the
-                // step gets pulled in on the move (RESEARCH: picking up without stopping is common). The door
-                // shuts itself at the jump speed. The careful driver shuts it before the wheels turn.
-                if (!(Current == Policy.Dhaka && !HelperMode && bus.Load.AtDoor != null)) sim.SetDoor(false);
+                // There is no door. The Dhaka driver pulls away with someone still on the step and the helper
+                // holding them (RESEARCH: picking up without stopping is common); the careful driver waits for
+                // the step to clear (done requires it) and holds the bus if anyone steps on as it moves.
                 _lastLeft = _working;
                 _working = null;
                 _dropOnly = false;
@@ -277,10 +276,6 @@ namespace TwentyTons.Sandbox
             sim.Bus.Brake = 1f;
             // Stand where we are: the pulling in happened on the approach; a stopped bus does not sidle.
             sim.Bus.Steer = SteerToHold(bus, sim.Corridor, float.IsNaN(_stopLateral) ? bus.Lateral : _stopLateral);
-            // The door: the careful driver opens it standing; the Dhaka driver's helper has it open as the bus
-            // rolls in, and the first people are on the step before the wheels stop.
-            float doorSpeed = Current == Policy.Dhaka ? sim.Tuning.Passengers.DoorSpeedMs : 0.5f;
-            if (!HelperMode && bus.Speed < doorSpeed) sim.SetDoor(true);   // as helper, the door is the player's
             return true;
         }
 
@@ -416,7 +411,7 @@ namespace TwentyTons.Sandbox
                 // A bus with a door open at this kerb: Boarding gives it everyone until it leaves (first door takes
                 // the crowd), so standing behind it earns nothing for as long as it stays. Another company's bus
                 // takes six and goes within fifteen seconds: not worth passing a full kerb for.
-                if (o.Load == null || !o.Load.DoorOpen || o.Load.Count >= Boarding.TooFullCount(sim)) continue;
+                if (o.Load == null || o.Speed > sim.Tuning.Passengers.DoorSpeedMs || o.Load.Count >= Boarding.TooFullCount(sim)) continue;   // slow at the kerb: loading
                 if (Mathf.Abs(sim.Corridor.DeltaS(zone.S, o.S)) <= reach) return true;
             }
             return false;

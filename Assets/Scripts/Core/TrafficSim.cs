@@ -538,11 +538,12 @@ namespace TwentyTons.Core
         }
 
         /// <summary>Open or close the player's door (the helper's job). Opening stamps the time: first door wins the crowd.</summary>
+        /// <summary>
+        /// Kept for old callers. The bus has no door: the doorway is open all day and people get on and off
+        /// whenever it is slow enough (owner, 3 Oct 2026). Nothing to open or shut.
+        /// </summary>
         public void SetDoor(bool open)
         {
-            if (Player == null || Player.Load.DoorOpen == open) return;
-            Player.Load.DoorOpen = open;
-            if (open) Player.Load.DoorOpenedAt = Metrics.Time;
         }
 
         private DemandZone _playerZone;        // the zone the player is currently within reach of

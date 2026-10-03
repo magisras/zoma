@@ -78,7 +78,7 @@ namespace TwentyTons.Core
             if (_silence > _sim.Tuning.Horn.SilenceComplaintSeconds && gap < 30f && bus.Speed > 2f)
                 Say("silence", v.SilenceCooldownSeconds);
 
-            if (load.DoorOpen && bus.Speed > _sim.Tuning.Passengers.JumpSpeedMs)
+            if (load.AtDoor != null && bus.Speed > _sim.Tuning.Passengers.JumpSpeedMs)   // someone on the step and we are flying
                 Say("door", v.DoorCooldownSeconds);
             if (load.LastFallTime > _fallSeen)
             {
@@ -120,7 +120,7 @@ namespace TwentyTons.Core
             if (load.MissedAlights > _missedSeen) { _missedSeen = load.MissedAlights; Say("missed", 0f); }
 
             bool clear = gap > 35f;
-            _slowWithClearRoad = clear && bus.Speed < v.SlowKmh / 3.6f && !load.DoorOpen ? _slowWithClearRoad + dt : 0f;
+            _slowWithClearRoad = clear && bus.Speed < v.SlowKmh / 3.6f && load.AtDoor == null && load.Leaving == null ? _slowWithClearRoad + dt : 0f;
             if (_slowWithClearRoad > v.SlowSecondsBeforeComplaint && load.Count > 5)
                 Say("faster", v.PassengerCooldownSeconds);
 

@@ -301,9 +301,8 @@ namespace TwentyTons.Sandbox
             ScriptedDriver.Current = helper || (keys & KeyDhaka) != 0 ? Policy.Dhaka : Policy.Careful;
             if (helper)
             {
-                ScriptedDriver.HelperCalls = input.Door;
+                ScriptedDriver.HelperCalls = input.Door;          // the helper's call: "stop here, stop here!" (there is no door)
                 ScriptedDriver.HelperSignal = input.Throttle > 0f ? 1 : input.Brake > 0f ? -1 : 0;
-                _sim.SetDoor(input.Door);                         // the helper's own hands, no delay line
             }
             if ((keys & KeyPay) != 0) { _sim.Economy.AnswerSergeant(true); Rollover.Answer(_sim, true); }
             if ((keys & KeyRefuse) != 0) { _sim.Economy.AnswerSergeant(false); Rollover.Answer(_sim, false); }
@@ -406,7 +405,7 @@ namespace TwentyTons.Sandbox
                 if (a.GhostOf != null) continue;                  // the ghost is the player, already drawn
                 int flags = (a.IsPlayer ? 1 : 0) | (a.IsHorning ? 2 : 0) | (a.IsYielding ? 4 : 0)
                           | (a.PedState == PedestrianState.Crossing ? 8 : 0) | (a.BluffTimer > 0f ? 16 : 0)
-                          | (a.Brain != null && a.Brain.OwnCompany ? 32 : 0) | (a.Load != null && a.Load.DoorOpen ? 64 : 0)
+                          | (a.Brain != null && a.Brain.OwnCompany ? 32 : 0) | (a.Load != null && (a.Load.AtDoor != null || a.Load.Leaving != null) ? 64 : 0)
                           | (a.Rolled ? 128 : 0);
                 data[k++] = a.Id;
                 data[k++] = (int)a.Class;

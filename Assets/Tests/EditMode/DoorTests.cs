@@ -53,7 +53,7 @@ namespace TwentyTons.Tests
             sim.SetPassengerCount(bus, 0);
             sim.Zones[0].Waiting.Add(new Passenger { BoardingSeconds = 4f, DestinationZone = 1 });
             sim.SetDoor(true);
-            bus.Speed = 5f; sim.Bus.Throttle = 0.4f;                      // rolling at ~18 km/h
+            bus.Speed = 2.5f; sim.Bus.Throttle = 0.2f;                    // rolling at a brisk walk
             Run(sim, 0.1f);
             Assert.IsNotNull(bus.Load.AtDoor, "the helper pulls them aboard on the move");
             Assert.AreEqual((4f + 0.6f) * 0.7f, bus.Load.BoardingTimer, 0.2f, "quicker than at a standstill (walk time included)");
@@ -63,9 +63,9 @@ namespace TwentyTons.Tests
             fast.SetPassengerCount(bus2, 0);
             fast.Zones[0].Waiting.Add(new Passenger { BoardingSeconds = 4f, DestinationZone = 1 });
             fast.SetDoor(true);
-            bus2.Speed = 8f; fast.Bus.Throttle = 1f;                      // flying
+            bus2.Speed = 5f; fast.Bus.Throttle = 1f;                      // 18 km/h: nobody climbs onto that
             Run(fast, 0.5f);
-            Assert.IsNull(bus2.Load.AtDoor, "too fast for anyone");
+            Assert.IsNull(bus2.Load.AtDoor, "too fast for anyone to get on");
         }
 
         [Test]
@@ -79,7 +79,7 @@ namespace TwentyTons.Tests
             sim.SetDoor(true);
             bus.Speed = 2f; sim.Bus.Throttle = 0.25f;
             Run(sim, 2.5f);
-            Assert.AreEqual(1, bus.Load.Stumbles);
+            Assert.GreaterOrEqual(bus.Load.Stumbles, 1, "fell, went back to the kerb, tried again");
             Assert.AreEqual(0, bus.Load.Injuries);
             Assert.AreEqual(0, bus.Load.Count, "did not make it aboard");
             Assert.IsFalse(sim.Bus.Held);
@@ -91,9 +91,9 @@ namespace TwentyTons.Tests
             var sim = World();
             sim.Tuning.Passengers.FallChancePerMs = 1f;
             sim.Tuning.Economy.InjuryHoldSeconds = 5f;
-            Agent bus = sim.SpawnPlayerBus(100f, -3.5f);
+            Agent bus = sim.SpawnPlayerBus(114f, -3.5f);                                       // the last metres of zone A's reach
             sim.SetPassengerCount(bus, 0);
-            bus.Load.Aboard.Add(new Passenger { BoardingSeconds = 1f, DestinationZone = 0 });  // getting off at 5 m/s
+            bus.Load.Aboard.Add(new Passenger { BoardingSeconds = 1f, DestinationZone = 0 });  // forced off at 5 m/s as the bus carries them past
             sim.SetDoor(true);
             bus.Speed = 5f; sim.Bus.Throttle = 0.5f;
             Run(sim, 1.5f);

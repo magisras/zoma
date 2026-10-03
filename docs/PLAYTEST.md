@@ -205,3 +205,68 @@ itself a fall was an injury, Tk 2,000 and the crowd, and one such day cost Tk 77
 
 Instruments added for this: `--crowd X` and `--density X` on single runs and the batch, a contact
 log and per-stop takings with `-v`, and every junction's cross and oncoming queue in the report.
+
+## After the owner drove it: no door, a bus that does not tip (3 Oct 2026, 6 seeds × 900 s)
+
+Two corrections from the owner at the wheel. The bus rolled far too easily (one frame of lateral
+acceleration above 6 m/s² at 29 km/h): now the tyres hold 0.7 g and scrub past it, and an untripped
+rollover takes 0.8 s above 6.5 m/s² at 36 km/h or more (`docs/BUS.md` §5). And the bus has no door:
+people get on at any bus at a crawl, get off at a crawl or, if the bus is about to carry them past,
+are forced off at up to the jump speed with the fall rules answering (`docs/BUS.md` §6). The first
+doorless batch scooped people onto the step at 20 km/h and dropped them, and dropped riders off
+careful buses at speed too; four days ended with the second injury. Boarding is a crawl-only thing,
+alighting at speed only in the last metres of a place.
+
+### `./tools/headless.sh --batch 6 900`
+
+| seed | policy | net Tk | fares | km | scrapes | stopsLost | caneRuns | hit |
+|---|---|---|---|---|---|---|---|---|
+| 1 | Careful | 547 | 905 | 1.42 | 2 | 2 | 0 | 0 |
+| 1 | Dhaka | 566 | 980 | 1.97 | 8 | 3 | 2 | 0 |
+| 2 | Careful | 401 | 785 | 1.96 | 7 | 3 | 0 | 0 |
+| 2 | Dhaka | 508 | 935 | 1.80 | 4 | 1 | 1 | 0 |
+| 3 | Careful | 114 | 775 | 1.64 | 6 | 5 | 2 | 0 |
+| 3 | Dhaka | 378 | 815 | 1.80 | 3 | 4 | 1 | 0 |
+| 4 | Careful | 399 | 805 | 1.50 | 3 | 3 | 1 | 0 |
+| 4 | Dhaka | 375 | 795 | 1.60 | 1 | 3 | 0 | 0 |
+| 5 | Careful | 455 | 820 | 1.61 | 4 | 3 | 0 | 0 |
+| 5 | Dhaka | 640 | 1070 | 2.00 | 2 | 2 | 1 | 0 |
+| 6 | Careful | 251 | 655 | 1.59 | 3 | 2 | 1 | 0 |
+| 6 | Dhaka | 583 | 1025 | 1.91 | 5 | 0 | 1 | 0 |
+
+```
+careful  mean net Tk    361  fares   791  km 1.62  scrapes  4.2  nearMiss  1.5  stopsLost  3.0  wrongSide    0s  people hit 0/6
+dhaka    mean net Tk    508  fares   937  km 1.85  scrapes  3.8  nearMiss  2.8  stopsLost  2.2  wrongSide    0s  people hit 0/6
+VERDICT: the trap holds. Dhaka driving nets Tk 147 more per day than careful driving.
+```
+
+### `./tools/headless.sh --batch 6 900 0.5`
+
+| seed | policy | net Tk | fares | km | scrapes | stopsLost | caneRuns | hit |
+|---|---|---|---|---|---|---|---|---|
+| 1 | Careful | 316 | 695 | 1.83 | 3 | 3 | 0 | 0 |
+| 1 | Dhaka | 43 | 435 | 2.17 | 4 | 4 | 0 | 0 |
+| 2 | Careful | 9 | 405 | 2.28 | 5 | 3 | 0 | 0 |
+| 2 | Dhaka | 74 | 485 | 2.59 | 5 | 3 | 1 | 0 |
+| 3 | Careful | -36 | 425 | 2.16 | 3 | 3 | 2 | 0 |
+| 3 | Dhaka | 111 | 525 | 1.98 | 4 | 2 | 1 | 0 |
+| 4 | Careful | 287 | 665 | 1.81 | 1 | 2 | 0 | 0 |
+| 4 | Dhaka | 141 | 535 | 1.97 | 3 | 3 | 0 | 0 |
+| 5 | Careful | 203 | 580 | 1.78 | 3 | 2 | 0 | 0 |
+| 5 | Dhaka | 81 | 580 | 2.55 | 6 | 1 | 2 | 0 |
+| 6 | Careful | 225 | 630 | 1.73 | 2 | 2 | 1 | 0 |
+| 6 | Dhaka | 66 | 455 | 2.09 | 5 | 3 | 1 | 0 |
+
+```
+careful  mean net Tk    168  fares   567  km 1.93  scrapes  2.8  nearMiss  1.0  stopsLost  2.5  wrongSide    0s  people hit 0/6
+dhaka    mean net Tk     86  fares   503  km 2.23  scrapes  4.5  nearMiss  2.8  stopsLost  2.7  wrongSide    0s  people hit 0/6
+VERDICT: polite driving still wins (careful net >= Dhaka net). RESEARCH says: rivals too timid, or the street too kind.
+```
+
+**At full crowds the acceptance is met: Dhaka ahead on 5 of 6 seeds, Tk +147 a day, nobody hit, no
+rollovers.** At half crowds it is not: careful ahead on 4 of 6, by Tk 82 a day. The doorless bus
+widened the gap in the rich market (the Dhaka driver's rolling pickups now load without a stop) and
+narrowed it in the thin one (the careful bus, stopping for anyone who steps on, trails and finds
+the fuller kerb). The next lever is the owner's approved getting-off design (`2026-10-03_1131.md`):
+fares collected in the ride and settled at the door, riders carried past paying short, which
+changes what each stop is worth.

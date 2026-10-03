@@ -61,16 +61,20 @@ namespace TwentyTons.Tests
         }
 
         [Test]
-        public void NobodyBoardsWithTheDoorShutOrAtSpeed()
+        public void NobodyBoardsAtSpeedAndAnyoneBoardsASlowBus()
         {
+            // There is no door: a bus standing at a crowd is boarded, whether the driver meant to stop or not.
             var sim = QuietWithZones();
             Agent bus = sim.SpawnPlayerBus(100f, -2f);
             sim.SetPassengerCount(bus, 0);
             for (int i = 0; i < 5; i++) sim.Zones[0].Waiting.Add(new Passenger { BoardingSeconds = 2f, DestinationZone = 1 });
             Run(sim, 10f);
-            Assert.AreEqual(0, bus.Load.Count, "door shut");
+            Assert.Greater(bus.Load.Count, 0, "standing at the crowd, people got on");
 
-            sim.SetDoor(true);
+            sim = QuietWithZones();                               // and a bus flying past the same crowd
+            bus = sim.SpawnPlayerBus(100f, -2f);
+            sim.SetPassengerCount(bus, 0);
+            for (int i = 0; i < 5; i++) sim.Zones[0].Waiting.Add(new Passenger { BoardingSeconds = 2f, DestinationZone = 1 });
             bus.Speed = 6f;                       // rolling too fast; BusController keeps it there with no drag? No: just test one step.
             sim.Bus.Throttle = 1f;
             sim.Step(1f / 60f);

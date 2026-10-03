@@ -21,7 +21,7 @@
     <div class="row"><span class="label">wrong side</span><span id="wrongSide">0 s</span></div>
     <div class="row"><span class="label">horn</span><span id="hornPresses">0</span><span class="dim" id="yields"></span></div>
     <div class="row"><span class="label">zone</span><span id="zone">—</span></div>
-    <div class="row"><span class="label">door (E)</span><span id="door">shut</span></div>
+    <div class="row"><span class="label">step</span><span id="door">—</span></div>
     <div class="row"><span class="label">passengers</span><span id="passengers">0</span></div>
     <div class="row"><span class="label">fares</span><span id="fares">Tk 0</span><span class="dim" id="paidOut"></span></div>
     <div class="row"><span class="label">clock</span><span id="clock">06:00</span></div>
@@ -62,7 +62,7 @@
 
   <div id="help">
     <b>W/↑</b> throttle · <b>S/↓</b> brake · <b>A D / ← →</b> steer · <b>H</b> or <b>space</b> horn (hold = blast) ·
-    <b>E</b> door · <b>1</b>/<b>2</b> pay / refuse · <b>C</b> camera · <b>T</b> tuning · <b>P</b> autopilot (careful / Dhaka) · <b>O</b> be the helper · <b>R</b> restart
+    <b>E</b> call the stop (as helper) · <b>1</b>/<b>2</b> pay / refuse · <b>C</b> camera · <b>T</b> tuning · <b>P</b> autopilot (careful / Dhaka) · <b>O</b> be the helper · <b>R</b> restart
   </div>
 
   <!-- Touch controls: shown only on coarse-pointer devices (phones, tablets). Same key bits as the keyboard. -->
@@ -72,7 +72,7 @@
       <button class="tbtn" data-key="8" aria-label="steer right">&#9654;</button>
     </div>
     <div class="pad right">
-      <button class="tbtn small" id="touch-door">DOOR</button>
+      <button class="tbtn small" id="touch-door">CALL</button>
       <button class="tbtn horn" data-key="16" aria-label="horn">HORN</button>
       <button class="tbtn" data-key="2" aria-label="brake">BRAKE</button>
       <button class="tbtn go" data-key="1" aria-label="throttle">GO</button>

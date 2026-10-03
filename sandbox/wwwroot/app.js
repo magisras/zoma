@@ -287,7 +287,7 @@ function bindInput() {
       else if (!(keys & KEY.dhaka)) keys |= KEY.dhaka;
       else keys &= ~(KEY.autopilot | KEY.dhaka);
     }
-    if (e.code === 'KeyE') keys ^= KEY.door;                   // the helper opens or shuts the door
+    if (e.code === 'KeyE') keys ^= KEY.door;                   // as helper: the call, "stop here, stop here!"
     if (e.code === 'KeyO') keys ^= KEY.helper;                 // swap seats: driver, or helper with the ostad driving
     if (e.code === 'KeyT') document.getElementById('tuning').classList.toggle('hidden');
     if (e.code === 'KeyR') { seed++; buildWorld(DotNet.invokeMethod(ASSEMBLY, 'Reset', seed)); }
@@ -396,7 +396,7 @@ function updateAgents(data) {
 
     // State tints: a horn flashes, a yielder goes pale blue, a bluffer goes red.
     let colour = m.userData.base;
-    if (flags & 64) colour = 0xffffff;              // door open: white while loading
+    if (flags & 64) colour = 0xffffff;              // someone on the step: white while loading
     if (flags & 2) colour = 0xfff2b0;
     else if (flags & 16) colour = BLUFF_TINT;
     else if (flags & 4) colour = YIELD_TINT;
@@ -451,8 +451,8 @@ function updateHud(f, dt) {
   el('yields').textContent = f.yieldsToHorn + ' moved';
   el('passengers').textContent = f.passengers + ' / ' + f.seats + ' seats';
   el('fares').textContent = 'Tk ' + f.faresTk.toFixed(0);
-  el('door').textContent = f.doorOpen ? (f.atDoor ? 'open · ' + f.atDoor : 'open') : 'shut';
-  el('door').className = f.doorOpen ? 'warn' : '';
+  el('door').textContent = f.atDoor ? f.atDoor : '—';   // no door on this bus: the step is what there is
+  el('door').className = f.atDoor ? 'warn' : '';
   el('zone').textContent = f.zoneName ? f.zoneName + ' · ' + f.zoneWaiting + ' waiting' : '—';
   el('missed').textContent = f.missedAlights;
   el('falls').textContent = f.stumbles + ' stumbles · ' + f.injuries + ' hurt';

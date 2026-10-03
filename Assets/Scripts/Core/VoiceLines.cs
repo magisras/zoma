@@ -35,7 +35,7 @@ namespace TwentyTons.Core
             new VoiceLineText("gap-ahead", Speaker.Helper, "{0} is far ahead. Easy. Let them fill us up.", "The bus ahead has pulled away: slow and gather the crowd it leaves behind."),
             new VoiceLineText("crowd", Speaker.Helper, "{0}! {1} people! Stop here, stop here!", "Shouted at the driver as a crowd comes into view."),
             new VoiceLineText("silence", Speaker.Helper, "Why aren't you honking? Nobody moves for a quiet bus!", "After 20 s without a horn with traffic ahead. The game's one explicit lesson, said by a person."),
-            new VoiceLineText("door", Speaker.Helper, "Door's open and we're flying. Nobody can get on like this!", "Door open above the jump speed."),
+            new VoiceLineText("door", Speaker.Helper, "Someone's on the step and we're flying. Slow down, ostad!", "A passenger on the step above the jump speed."),
             new VoiceLineText("fall-stumble", Speaker.Helper, "She slipped. Slow down, ostad, slow down.", "Someone stumbled at the door at low speed."),
             new VoiceLineText("fall-injury", Speaker.Helper, "He's down! He's down! Stop the bus, stop!", "Someone fell at speed. The crowd follows."),
             new VoiceLineText("sleep", Speaker.Helper, "Ostad! Ostad! Wake up!", "The driver's eyes closed for a moment."),

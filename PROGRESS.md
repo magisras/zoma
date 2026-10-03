@@ -383,6 +383,26 @@ in the headless runner and in the browser. Entries below are appended as steps l
 - Owner decision recorded in README: the game is played from the driver's seat (wheel, mirrors,
   the saloon in the interior mirror); on foot only when the body leaves the bus.
 
+**Step 23 — the owner drives: no door, and a bus that does not tip** (done)
+
+- "It rolls over far too often. Real buses take much steeper manoeuvres and never roll unless
+  something extremely dangerous happens." The bicycle model had no tyres: the lock asked for any
+  lateral acceleration and got it, and one frame above 6 m/s² at 29 km/h tipped twenty tons. Now
+  the tyres hold 0.7 g and past that the front scrubs and the bus runs wide; an untripped rollover
+  needs the lateral acceleration held above 6.5 m/s² for 0.8 s at 36 km/h or more; the tripped one
+  (kerb, railing, asleep) stays. `docs/BUS.md` §5 has the static-stability figures. Two tests.
+- "Have you seen the buses they have? They don't have doors at all, or they are always open so the
+  passengers just jump in, jump out." The doorway is open all day: people get on whenever a bus is
+  at a crawl (under `DoorSpeedMs`), get off up to the jump speed, at any company's bus, and "first
+  door" means the first bus to arrive slow at the kerb. `SetDoor` is a no-op kept for old callers;
+  the E key is the helper's call in the helper role; the HUD shows who is on the step. The careful
+  autopilot stops when someone steps onto a moving bus, the Dhaka one holds walking pace with the
+  helper on them. `docs/BUS.md` §6. The first batch without a door scooped people up at 20 km/h and
+  dropped them (four Dhaka days ended by the second injury): boarding is a crawl-only thing now.
+- Batch on this commit: at crowd rate 1.0 the acceptance holds (Dhaka ahead on 5 of 6 seeds, Tk +147 a
+  day over careful, nobody hit, no rollovers); at 0.5 it does not (careful ahead on 4 of 6, Tk +82).
+  `docs/PLAYTEST.md`. Next: the owner's approved getting-off and fare design (report 1131). 110 tests.
+
 **Where this leaves the project**
 
 Everything in README milestones 3–6 now exists as engine-free C# with tests, runs in the browser

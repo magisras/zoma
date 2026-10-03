@@ -75,6 +75,14 @@ namespace TwentyTons.Core
 
             // Bicycle model: yaw rate = v / L × tan(δ).
             float yawRate = speed / Mathf.Max(0.5f, b.WheelbaseMetres) * (float)System.Math.Tan(SteerAngle);
+            // Tyres: the wheel can ask for more than the rubber holds. Past the grip the front scrubs and the bus
+            // runs wide at the lateral acceleration the tyres allow, which is what a hard turn at speed does to a
+            // bus on tarmac: it ploughs, it does not tip. Rollover.Check reads LastYawRate for what is left.
+            if (speed > 0.5f)
+            {
+                float maxYaw = b.TyreGripMs2 / speed;
+                yawRate = Mathf.Clamp(yawRate, -maxYaw, maxYaw);
+            }
             LastYawRate = yawRate;
             bus.Yaw += yawRate * dt;
 

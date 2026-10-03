@@ -62,10 +62,10 @@ namespace TwentyTons.Tests
         {
             var sim = World();
             Agent bus = sim.SpawnPlayerBus(300f, 0f);
-            bus.Speed = 5f;
-            sim.Bus.Throttle = 0.3f;
-            // A truck: too heavy to be pushed aside by a bus, so it stays in the way.
-            Agent slow = sim.SpawnVehicle(VehicleClass.Truck, 322f, 0f, 0.5f);
+            bus.Speed = 4f;
+            sim.Bus.Throttle = 0.09f;                          // holds about 4 m/s against rolling and air drag
+            // A truck 25 m ahead at the same speed: traffic in the way for the whole run, no ramming.
+            Agent slow = sim.SpawnVehicle(VehicleClass.Truck, 335f, 0f, 0.5f);
             slow.DesiredSpeed = 4f; slow.Speed = 4f;
             Run(sim, 25f);                                     // past the 20 s silence threshold
             Assert.AreEqual(1, Count(sim, "honking"));

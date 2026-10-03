@@ -506,11 +506,22 @@ namespace TwentyTons.Tuning
         [Header("The rollover (RESEARCH: the Fraser film)")]
         [Tooltip("Further off the road than this (beyond the tolerance) at speed, the railing catches the wheels, metres. placeholder")]
         public float OffRoadRolloverMetres = 1.5f;
-        [Tooltip("Speed at or above which leaving the road tips the bus, m/s. placeholder")]
-        public float RolloverSpeedMs = 8f;
-        [Tooltip("Lateral acceleration that tips a top-heavy twenty tons, m/s². Real buses go at ~0.4–0.5 g, but the " +
-                 "bicycle model has no tyre slip, so 0.6 g here stands for that. placeholder")]
-        public float RolloverLateralAccelMs2 = 6f;
+        [Tooltip("Speed at or above which leaving the road tips the bus, m/s. docs/BUS.md §5: tripped rollovers (a kerb, a " +
+                 "ditch, a railing) are how buses go over; at a crawl the kerb is a bump. placeholder")]
+        public float RolloverSpeedMs = 10f;
+
+        [Tooltip("What the tyres hold before they scrub, m/s². Dry tarmac gives a bus about 0.7 g; asked for more, the front " +
+                 "washes out and the bus runs wide instead of turning (or tipping). docs/BUS.md §5.")]
+        public float TyreGripMs2 = 7f;
+
+        [Tooltip("A turn has to hold the lateral acceleration above the tipping figure this long before the bus goes over, " +
+                 "seconds: a twenty-ton body rolls onto its outer springs first. A flick of the wheel is not a rollover. docs/BUS.md §5.")]
+        public float RolloverHoldSeconds = 0.8f;
+        [Tooltip("Lateral acceleration that tips a top-heavy twenty tons, m/s², held for RolloverHoldSeconds at or above " +
+                 "RolloverSpeedMs. Just under the tyres' grip: on flat tarmac a bus slides before it rolls, and an untripped " +
+                 "rollover takes a sustained swerve at speed with a high load (docs/BUS.md §5). Nearly every rollover is " +
+                 "tripped: the kerb at speed, the railing asleep.")]
+        public float RolloverLateralAccelMs2 = 6.5f;
     }
 
     /// <summary>
@@ -1005,13 +1016,19 @@ namespace TwentyTons.Tuning
         [Range(0f, 2f)] public float TooFullLoad = 1.3f;
 
         [Header("Doors and zones")]
-        [Tooltip("Fastest the bus may roll while people get on or off, m/s. RESEARCH: picking up without stopping is common. placeholder")]
+        [Tooltip("Fastest the bus may roll for someone to get on, m/s: a crawl, the helper's hand out. RESEARCH: picking up " +
+                 "without stopping is common. There is no door, so this is also what stops a passing bus scooping people up. placeholder")]
         public float DoorSpeedMs = 3f;
 
-        [Tooltip("Above the door speed and up to this, people still jump on and off, m/s. RESEARCH: forced off running buses. placeholder")]
+        [Tooltip("Up to this speed people still get off (and whoever is already on the step finishes), m/s. RESEARCH: forced " +
+                 "off running buses. placeholder")]
         public float JumpSpeedMs = 6f;
 
-        [Tooltip("Boarding and alighting time factor while rolling: the helper pulls, nobody dawdles. placeholder")]
+        [Tooltip("Above the door speed, a rider is forced off a running bus only in the last metres of their zone's reach, when " +
+                 "the bus is about to carry them past. Earlier in the zone they wait for a crawl that may not come. placeholder")]
+        public float ForcedOffMetres = 8f;
+
+        [Tooltip("Boarding and alighting time factor while rolling above walking pace: the helper pulls, nobody dawdles. placeholder")]
         [Range(0.2f, 1f)] public float MovingDoorTimeFactor = 0.7f;
 
         [Tooltip("Chance of a fall per m/s above walking pace, per person. 0.05 → 20% at 5 m/s. placeholder")]
