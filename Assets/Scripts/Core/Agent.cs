@@ -34,6 +34,8 @@ namespace TwentyTons.Core
         public float Lateral;
         public float Speed;          // m/s along +S. Pedestrians use it for their crossing speed.
         public float TargetLateral;  // where steering wants to be
+        public float LateralVelocity; // m/s across the road, built up and shed with a limit: a swerve, never a jump
+        public bool HeldAhead;        // standing with something standing right in front: it is not pulling away any moment
         public float DesiredSpeed;   // how fast the driver would go on an empty road
 
         // World pose, derived.
@@ -57,6 +59,7 @@ namespace TwentyTons.Core
         public PedestrianState PedState = PedestrianState.Waiting;
         public float CrossDirection;     // +1 = walking toward +Lateral, −1 toward −Lateral
         public float WaitTimer;          // seconds before considering the next crossing
+        public float FlinchTimer;        // seconds left standing back from the kerb edge because something overhangs it
 
         public bool IsPedestrian => Class == VehicleClass.Pedestrian;
         public bool IsPlayerOrGhost => IsPlayer || (GhostOf != null && GhostOf.IsPlayer);

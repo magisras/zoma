@@ -47,6 +47,16 @@ money in six days at the default chances and no camera was on yet (day 1). The r
 queue at the first junction, not the day: over ten minutes the Dhaka driver covers 1.2 km with or
 without it. **Verdict unchanged: polite driving still wins.**
 
+## After the swerve (3 Oct 2026, 6 seeds × 900 s)
+
+A yield is now driven, not slid (PROGRESS step 17), and the standoffs that sliding had hidden are
+fixed: careful +2 Tk with fares 420, 1.68 km and 0 people hit in six days (two days in profit, the
+first ever); Dhaka −656 with fares 151, 1.04 km, 21.7 scrapes and 1 person hit, killed while
+overtaking along the median strip at 34 km/h where people stand. The Dhaka driver's stopsLost fell
+below the careful driver's (2.5 vs 3.8): it gets to the crowds first and still earns less, because
+it leaves them half-loaded. **Verdict unchanged: polite driving still wins.** The gap is now about
+what happens at the stand, not on the road.
+
 ## Why, and what to tune
 
 The numbers say the aggressive policy loses money three ways, none of them the way the research

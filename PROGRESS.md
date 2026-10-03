@@ -249,6 +249,29 @@ in the headless runner and in the browser. Entries below are appended as steps l
   from the top-down view. New metrics `CaneWaitSeconds` / `RopeHeldSeconds` in the headless report:
   the Dhaka driver spends ~70 s of a 600 s run stopped at closed canes, most of it at ropes.
 
+**Step 17 — a yield is a swerve, not a jump; the standoffs it uncovered** (done)
+
+- Asked: a horn made nearby cars flick sideways by a few degrees. Two causes: a vehicle could
+  "drift" sideways at 0.3 m/s while standing still, and its nose angle was computed straight from
+  that sideways speed, so it snapped ~17° the instant a yield began and snapped back when it ended;
+  contact resolution also shoved the lighter vehicle by the whole overlap in one frame. Now sideways
+  speed is a state (`Agent.LateralVelocity`) that builds and dies under a lateral acceleration limit,
+  is tied to forward speed by a crab ratio (full lock at a crawl, ~20° at speed), the nose follows it,
+  and shoves are rate-limited and never push anyone off the road (the NPC gives way on a mass tie).
+- Driven, not slid, a blocked car must angle out while it still has room: drivers now look for a
+  freer band when something slow is within 3 s ahead, roll into it at a crawl (`AngleOutMs`), and
+  close on slower traffic under a comfortable-braking cap instead of the headway rule alone.
+- That honesty exposed four standoffs that sliding had hidden, each fixed by a rule the street has:
+  people cross in front of a vehicle that has stopped for them (`StoppedForMeMetres`); a vehicle boxed
+  in behind something standing cannot pull away, so people weave past it (`Agent.HeldAhead`); people
+  standing on the kerb are not obstacles to a bus hugging it; and nobody closes on a person in their
+  path the way they close on a car (`ClearanceAheadMetres`, the autopilots keep 6 m when standing).
+- And one new way to kill someone: a bus swinging wide on a bend clipped people waiting with a
+  shoulder at the kerb line. People now step back from a vehicle about to overhang the kerb and
+  return when it has passed (`FlinchBackMetres`). Six careful days: 0 hits, 1.2–2.1 km, two in profit.
+- Tests: `SwerveTests` (5), 98 in all. Headless days are the instrument for all of this; the
+  `Dump` and junction/cross-street prints grew to make the chains readable.
+
 **Where this leaves the project**
 
 Everything in README milestones 3–6 now exists as engine-free C# with tests, runs in the browser

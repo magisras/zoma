@@ -28,7 +28,17 @@ namespace TwentyTons.Core
             {
                 p.WaitTimer -= dt;
                 float direction = p.Lateral > 0f ? -1f : 1f;              // toward the other kerb
-                if (p.WaitTimer <= 0f && Decide(sim, p, direction, tuning) == Verdict.Walk)
+                float side = -direction;
+
+                // People at the kerb step back from a vehicle about to overhang it (a bus swinging wide on
+                // a bend) and come back when it has gone. On the median there is less room to step to.
+                if (OverhangComing(sim, p, side, kerb, tuning)) p.FlinchTimer = tuning.FlinchSeconds;
+                else p.FlinchTimer -= dt;
+                float stand = kerb + (p.FlinchTimer > 0f ? tuning.FlinchBackMetres : 0f);
+                if (side > 0f && sim.Oncoming != null) stand = Mathf.Min(stand, corridor.HalfWidth + sim.Tuning.Spawn.MedianMetres - 0.3f);
+                p.Lateral = Mathf.MoveTowards(p.Lateral, stand * side, 2f * dt);   // a step, not a jump
+
+                if (p.WaitTimer <= 0f && p.FlinchTimer <= 0f && Decide(sim, p, direction, tuning) == Verdict.Walk)
                 {
                     p.PedState = PedestrianState.Crossing;
                     p.CrossDirection = direction;
@@ -58,6 +68,26 @@ namespace TwentyTons.Core
         private enum Verdict { Walk, Stop, Hurry }
 
         /// <summary>
+        /// Is a moving vehicle beside or coming at this kerb with its side reaching the kerb line? Where it
+        /// will be across the road when it arrives counts, not only where it is now.
+        /// </summary>
+        private static bool OverhangComing(TrafficSim sim, Agent p, float side, float kerb, PedestrianSettings tuning)
+        {
+            for (int i = 0; i < sim.Agents.Count; i++)
+            {
+                Agent v = sim.Agents[i];
+                if (v.IsPedestrian || v.Corridor != p.Corridor || v.Speed < 0.5f) continue;
+                float ds = p.Corridor.DeltaS(p.S, v.S);                 // negative = still coming
+                if (ds > v.HalfLength + 1f || ds < -25f) continue;
+                float arrive = Mathf.Clamp(-ds / v.Speed, 0f, 3f);
+                float lateralThen = v.Lateral + v.LateralVelocity * arrive;
+                float reach = side * lateralThen + v.HalfWidth;          // its side nearest my kerb, as a distance from the centreline
+                if (reach > kerb - tuning.FlinchReachMetres) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
         /// Look at every approaching vehicle. Each one owns a strip of road (its lateral band). For the
         /// strips still ahead of the pedestrian: will they be past that strip's far side before the
         /// vehicle arrives, with the margin they demand of that kind of vehicle? For the strip they are
@@ -74,6 +104,10 @@ namespace TwentyTons.Core
                 if (Mathf.Abs(ds) < v.HalfLength + 1f)
                 {
                     // Alongside the crossing point right now: its strip is a wall until it has passed.
+                    // Unless it is standing and I am past its nose or tail: then it is waiting for me,
+                    // and I go. (Its body itself stays a wall: nobody walks through a parked bus.)
+                    bool body = Mathf.Abs(ds) < v.HalfLength + 0.2f;
+                    if (v.Speed < 0.3f && !body) continue;
                     if (StripIsAhead(p, v, direction) || Inside(p, v)) return Verdict.Stop;
                     continue;
                 }
@@ -86,6 +120,11 @@ namespace TwentyTons.Core
                 if (speed < 0.3f)
                 {
                     if (distance > tuning.PullAwayWatchMetres) continue;
+                    // Right in front of me and not moving: it has stopped for me. Go, as everyone does.
+                    if (distance <= tuning.StoppedForMeMetres) continue;
+                    // Boxed in behind something else that stands: it is going nowhere. In a jam people
+                    // weave between the vehicles; without this they would wait for the jam to end.
+                    if (v.HeldAhead) continue;
                     speed = tuning.PullAwayAssumedSpeed;
                 }
 

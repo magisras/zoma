@@ -41,6 +41,7 @@ namespace TwentyTons.Tests
             sim.SpawnPlayerBus(300f, -2f);
             Agent jamal = sim.SpawnRivalBus("Jamal", DriverPersonality.Spiteful(), 250f, -2f);
             jamal.DesiredSpeed = 0f; jamal.Speed = 0f;
+            jamal.Shape.Acceleration = 0f;                    // his engine is dead for the test: he stays 50 m behind
             Run(sim, 20f);
             Assert.AreEqual(2, Count(sim, "Jamal is"), "at 0 s and after the 15 s cooldown");
             Assert.AreEqual(Speaker.Helper, sim.Voice.Lines[0].Speaker);

@@ -70,6 +70,7 @@ namespace TwentyTons.Core
         private bool _inputsThisStep;
 
         private int _nextId = 1;
+        private float _stepDt = 1f / 60f;     // the current step, for contact resolution
         private float _nearMissCooldown;
         private float _hornHeld;              // how long the player's horn has been held this press
         private Junction _playerRanCane;      // which closed junction the player is currently inside
@@ -307,6 +308,7 @@ namespace TwentyTons.Core
             if (Metrics.PersonHit && Economy.DayOver) return;   // the day ended; nothing moves until a reset
             if (Economy.DayOver) return;
             Metrics.Time += dt;
+            _stepDt = dt;
 
             for (int i = 0; i < Junctions.Count; i++) Junctions[i].Tick(dt, Tuning.Officer, Random);
             CountBoxes();
@@ -775,19 +777,30 @@ namespace TwentyTons.Core
 
             // Separate along whichever axis penetrates least. The lighter one moves: a
             // sideswipe pushes it aside, a rear-ender shoves it forward (or holds it back).
-            Agent light = a.Mass <= b.Mass ? a : b;
+            // The lighter one moves. On a tie (bus against bus) the NPC gives way: the player's bus is
+            // driven by its own physics and must not be walked across the pavement by a rival's shoves.
+            Agent light = a.Mass < b.Mass ? a : b.Mass < a.Mass ? b : a.IsPlayerOrGhost ? b : a;
             Agent heavy = light == a ? b : a;
+            // Pushes are rate-limited: two boxes that overlap slide apart over a few frames instead of
+            // jumping, which is what a scrape looks like from the cab.
+            float maxShove = Tuning.Gap.ContactShoveMs * _stepDt;
             if (overlapLat <= overlapS)
             {
-                float push = (overlapLat + 0.05f) * (light.Lateral >= heavy.Lateral ? 1f : -1f);
+                float push = Mathf.Min(overlapLat + 0.05f, maxShove) * (light.Lateral >= heavy.Lateral ? 1f : -1f);
+                // Nobody is shoved off the road: the kerb is where people stand. (Driving onto it yourself
+                // is another matter, and the player's own doing.)
+                float limit = light.Corridor.HalfWidth - light.HalfWidth;
+                if (push > 0f && light.Lateral + push > limit) push = Mathf.Max(0f, limit - light.Lateral);
+                if (push < 0f && light.Lateral + push < -limit) push = Mathf.Min(0f, -limit - light.Lateral);
                 light.Lateral += push;
                 light.TargetLateral = light.Lateral;
+                light.LateralVelocity = 0f;
                 if (light.IsPlayerOrGhost) RealPlayer(light).Position += light.Corridor.RightAt(light.S) * push;
             }
             else
             {
                 bool lightInFront = light.Corridor.DeltaS(heavy.S, light.S) >= 0f;
-                float push = (overlapS + 0.05f) * (lightInFront ? 1f : -1f);
+                float push = Mathf.Min(overlapS + 0.05f, maxShove) * (lightInFront ? 1f : -1f);
                 light.S = light.Corridor.Wrap(light.S + push);
                 if (lightInFront) light.Speed = Mathf.Max(light.Speed, heavy.Speed);   // shoved along
                 else light.Speed = Mathf.Min(light.Speed, heavy.Speed);               // held back
@@ -855,8 +868,9 @@ namespace TwentyTons.Core
         private void UpdatePlayerMetrics(float dt)
         {
             _nearMissCooldown = Mathf.Max(0f, _nearMissCooldown - dt);
-            Steering.FindAhead(Agents, Player, Player.Lateral, 200f, out float gap);
+            Agent ahead = Steering.FindAhead(Agents, Player, Player.Lateral, 200f, out float gap);
             Metrics.GapAheadMetres = gap;
+            Player.HeldAhead = ahead != null && gap < 2.5f && Player.Speed < 0.3f && ahead.Speed < 0.5f;
             Metrics.HeadwayAheadSeconds = Player.Speed > 0.5f ? gap / Player.Speed : 99f;
             if (Player.Speed > 3f)
             {

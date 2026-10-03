@@ -213,9 +213,13 @@ namespace TwentyTons.Sandbox
                 float hi = Mathf.Max(bus.Lateral, _wantLateral) + bus.HalfWidth + 1.2f;
                 if (p.Lateral < lo || p.Lateral > hi) continue;
                 float ds = sim.Corridor.DeltaS(bus.S, p.S) - bus.HalfLength;
-                if (ds < -1f || ds > 45f) continue;
+                // Beside the bus counts too: steering across someone standing at the door is a sideswipe.
+                if (ds < -bus.Shape.Length || ds > 45f) continue;
                 float canStopIn = bus.Speed * bus.Speed / (2f * Mathf.Max(0.5f, decel));
-                if (ds < canStopIn + 3f) return true;
+                // Standing, give them room to finish crossing before pulling away: they will cross in
+                // front of a stopped bus, as everyone does, and the bus must not start into them.
+                float margin = bus.Speed < 1f ? 6f : 3f;
+                if (ds < canStopIn + margin) return true;
             }
             return false;
         }

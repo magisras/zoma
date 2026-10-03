@@ -40,6 +40,8 @@ namespace TwentyTons.Core
             {
                 Agent other = agents[i];
                 if (other == self || other.Corridor != self.Corridor) continue;
+                // Someone standing on the kerb is not on the road, however close a bus hugs it.
+                if (other.IsPedestrian && Mathf.Abs(other.Lateral) >= self.Corridor.HalfWidth) continue;
                 if (!self.WouldOverlapLaterally(lateral, other, LateralMargin)) continue;
 
                 float ds = self.Corridor.DeltaS(self.S, other.S);
@@ -115,6 +117,26 @@ namespace TwentyTons.Core
 
         // ---------------------------------------------------------------- actions
 
+        /// <summary>The nearest pedestrian on the carriageway in my current or target band, within lookAhead. Gap is nose to person.</summary>
+        public static bool FindPersonAhead(List<Agent> agents, Agent self, out float personGap, float lookAhead, PedestrianSettings pedestrians)
+        {
+            personGap = lookAhead;
+            bool found = false;
+            float lo = Mathf.Min(self.Lateral, self.TargetLateral), hi = Mathf.Max(self.Lateral, self.TargetLateral);
+            for (int i = 0; i < agents.Count; i++)
+            {
+                Agent p = agents[i];
+                if (!p.IsPedestrian || p.Corridor != self.Corridor) continue;
+                if (Mathf.Abs(p.Lateral) >= self.Corridor.HalfWidth) continue;              // on the kerb
+                if (p.Lateral < lo - self.HalfWidth - 0.4f || p.Lateral > hi + self.HalfWidth + 0.4f) continue;
+                float ds = self.Corridor.DeltaS(self.S, p.S) - self.HalfLength - p.HalfLength;
+                if (ds < -0.5f || ds >= personGap) continue;
+                personGap = Mathf.Max(0f, ds);
+                found = true;
+            }
+            return found;
+        }
+
         /// <summary>
         /// Move aside for <paramref name="to"/>: pick the side away from them and hold it for a while.
         /// Called by the mass rule and by the horn.
@@ -144,10 +166,17 @@ namespace TwentyTons.Core
             // 1. Follow: how fast may I go given what is ahead in my band?
             float headway = tuning.Gap.CriticalGapSeconds(a.Nerve);
             Agent ahead = FindAhead(sim.Agents, a, a.Lateral, tuning.Gap.LookAheadMetres, out float gap);
+            a.HeldAhead = ahead != null && gap < 2.5f && a.Speed < 0.3f && ahead.Speed < 0.5f;
             float allowed = a.DesiredSpeed;
             if (ahead != null)
             {
                 allowed = Mathf.Min(allowed, AllowedSpeed(gap, headway, tuning.Gap.FollowDistanceFloorMetres));
+                // Physics under the headway rule: closing on something slower, v² = v_ahead² + 2·a·gap at a
+                // braking rate the driver is comfortable with. A nervy driver still brakes late, not never.
+                float comfortable = a.Shape.Braking * tuning.Gap.ComfortableBrakingShare;
+                float room = Mathf.Max(0f, gap - tuning.Gap.FollowDistanceFloorMetres);
+                float aheadForward = Mathf.Max(0f, ahead.Speed);
+                allowed = Mathf.Min(allowed, Mathf.Sqrt(aheadForward * aheadForward + 2f * comfortable * room));
                 if (ahead.Speed < -0.5f)
                 {
                     // Head-on: something is coming the wrong way down my road. The gap closes at both
@@ -160,6 +189,31 @@ namespace TwentyTons.Core
                 }
             }
 
+            // 1b. Angling out: steering toward another band, a driver rolls on into it at a crawl, as
+            // fast as that band allows, while there is still room ahead to get out at this angle. This
+            // is how a car gets round a parked truck without sliding sideways on the spot.
+            if (!float.IsNaN(a.LateralOverride)) a.TargetLateral = a.LateralOverride;   // the decision layer owns it
+            float toTarget = Mathf.Clamp(a.TargetLateral, -edge - 1f, edge + 1f) - a.Lateral;
+            if (Mathf.Abs(toTarget) > 0.3f && ahead != null)
+            {
+                float roomNeeded = Mathf.Abs(toTarget) / tuning.Gap.CrabRatioAt(a.Speed);   // forward metres to clear the band
+                if (roomNeeded < gap)
+                {
+                    Agent aheadThere = FindAhead(sim.Agents, a, a.TargetLateral, tuning.Gap.LookAheadMetres, out float gapThere);
+                    float allowedThere = aheadThere == null ? a.DesiredSpeed : AllowedSpeed(gapThere, headway, tuning.Gap.FollowDistanceFloorMetres);
+                    allowed = Mathf.Max(allowed, Mathf.Min(allowedThere, tuning.Gap.AngleOutMs));
+                }
+            }
+
+            // 1c. A person on the road ahead is not a car: nobody closes on them to half a metre. Stop
+            // short and wait for them to clear, whatever band we are angling into.
+            float personGap;
+            if (FindPersonAhead(sim.Agents, a, personGap: out personGap, lookAhead: 20f, pedestrians: tuning.Pedestrians))
+            {
+                float room = Mathf.Max(0f, personGap - tuning.Pedestrians.ClearanceAheadMetres);
+                allowed = Mathf.Min(allowed, Mathf.Sqrt(2f * a.Shape.Braking * tuning.Gap.ComfortableBrakingShare * room));
+            }
+
             // 2. The officer: a closed stop line (or a box full of cross traffic) is an obstacle too.
             float stopLine = sim.StopDistanceAhead(a, tuning.Gap.LookAheadMetres);
             if (stopLine < tuning.Gap.LookAheadMetres)
@@ -167,8 +221,11 @@ namespace TwentyTons.Core
                 allowed = Mathf.Min(allowed, AllowedSpeed(stopLine, headway, tuning.Gap.FollowDistanceFloorMetres));
             }
 
-            // 3. Seek gap: blocked by the vehicle ahead? Look for a band with more free road.
-            bool blocked = ahead != null && allowed < a.DesiredSpeed * tuning.Gap.BlockedFraction;
+            // 3. Seek gap: blocked by the vehicle ahead, or about to be? Look for a band with more free road
+            // while there is still room to move into it.
+            bool slowAhead = ahead != null && ahead.Speed < a.DesiredSpeed * tuning.Gap.BlockedFraction
+                          && gap < a.Speed * tuning.Gap.SeekGapSecondsAhead;
+            bool blocked = ahead != null && (allowed < a.DesiredSpeed * tuning.Gap.BlockedFraction || slowAhead);
             if (blocked && !a.IsYielding)
             {
                 SeekGap(sim, a, gap, edge);
@@ -197,20 +254,27 @@ namespace TwentyTons.Core
             a.Speed = Mathf.Max(0f, a.Speed + accel * dt);
             a.S = corridor.Wrap(a.S + a.Speed * dt);
 
-            // Sideways: you can't drift much when standing still.
-            float lateralRate = Mathf.Min(a.Shape.LateralSpeed, 0.3f + a.Speed * 0.3f);
+            // Sideways: a vehicle crosses the road only as it rolls along it (a crab angle), and standing
+            // still it can barely shuffle. The sideways speed builds up and dies away under a lateral
+            // acceleration limit, so a yield to the horn is a swerve the eye can follow, not a jump.
+            GapSettings g = tuning.Gap;
+            float lateralRate = Mathf.Min(a.Shape.LateralSpeed, g.LateralCreepMs + a.Speed * g.CrabRatioAt(a.Speed));
             // The target may sit up to a metre onto the pavement: a vehicle shoved there by a bus
             // stays put until it picks a new target, instead of fighting its way back into the bus.
             // Targets chosen by SeekGap and Yield are always on the road.
-            if (!float.IsNaN(a.LateralOverride)) a.TargetLateral = a.LateralOverride;   // the decision layer owns it
             float target = Mathf.Clamp(a.TargetLateral, -edge - 1f, edge + 1f);
+            float remaining = target - a.Lateral;
+            // Fast enough to get there, slow enough to stop there: v² = 2·a·d keeps the arrival smooth.
+            float arrival = Mathf.Sqrt(2f * g.LateralAccelMs2 * Mathf.Abs(remaining));
+            float wanted = Mathf.Sign(remaining) * Mathf.Min(lateralRate, arrival);
+            a.LateralVelocity = Mathf.MoveTowards(a.LateralVelocity, wanted, g.LateralAccelMs2 * dt);
             float before = a.Lateral;
-            a.Lateral = Mathf.MoveTowards(a.Lateral, target, lateralRate * dt);
-            float lateralVelocity = dt > 0f ? (a.Lateral - before) / dt : 0f;
+            a.Lateral += a.LateralVelocity * dt;
+            if ((target - before) * (target - a.Lateral) <= 0f) { a.Lateral = target; a.LateralVelocity = 0f; }   // arrived
 
-            // 6. World pose for rendering: on the corridor, nose slightly turned into the drift.
+            // 6. World pose for rendering: on the corridor, nose turned into the drift by the crab angle.
             a.Position = corridor.PositionAt(a.S, a.Lateral);
-            a.Yaw = corridor.YawAt(a.S) + Mathf.Atan2(lateralVelocity, Mathf.Max(a.Speed, 1f));
+            a.Yaw = corridor.YawAt(a.S) + Mathf.Atan2(a.LateralVelocity, Mathf.Max(a.Speed, 1f));
         }
 
         private static void TickTimers(Agent a, float dt)

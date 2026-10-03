@@ -192,6 +192,40 @@ namespace TwentyTons.Tuning
         [Tooltip("Sideways step between the positions a driver considers, metres. placeholder")]
         public float LateralStepMetres = 1.0f;
 
+        [Tooltip("How much sideways speed a vehicle gets per m/s of forward speed at cruising speed (a crab angle of " +
+                 "~20° at 0.4). A yield is driven, not slid: standing still, nobody moves aside. placeholder")]
+        public float CrabRatio = 0.4f;
+
+        [Tooltip("The same at a crawl, where the wheel can go to full lock (~40° at 0.8). placeholder")]
+        public float CrabRatioCrawl = 0.8f;
+
+        [Tooltip("A driver starts looking for a freer band when something slower than BlockedFraction of their desired " +
+                 "speed is within this many seconds ahead: the move is planned while there is still room, not from a " +
+                 "standstill. placeholder")]
+        public float SeekGapSecondsAhead = 3f;
+
+        [Tooltip("Share of the vehicle's full braking a driver uses to close on something slower ahead. Caps the " +
+                 "headway rule so nobody arrives at a parked truck at full speed and stops in half a second. placeholder")]
+        [Range(0.1f, 1f)] public float ComfortableBrakingShare = 0.6f;
+
+        [Tooltip("Steering into another band, a driver rolls on into it at up to this speed (m/s) even though the " +
+                 "band ahead is blocked: angling out, as long as there is room to do it. placeholder")]
+        public float AngleOutMs = 2.5f;
+
+        /// <summary>Sideways speed per unit of forward speed: full lock at a crawl, a gentle crab at speed.</summary>
+        public float CrabRatioAt(float speed) => Mathf.Lerp(CrabRatioCrawl, CrabRatio, Mathf.Clamp01(speed / 8f));
+
+        [Tooltip("Sideways shuffle allowed while standing still, m/s (a rickshaw puller can walk it a little). placeholder")]
+        public float LateralCreepMs = 0.05f;
+
+        [Tooltip("How fast sideways speed can build up or die away, m/s². Keeps a swerve a swerve and lets the nose " +
+                 "turn into it smoothly instead of snapping. placeholder")]
+        public float LateralAccelMs2 = 2.5f;
+
+        [Tooltip("How fast two overlapping vehicles are pushed apart, m/s. Lower means a scrape is seen as a scrape; " +
+                 "higher means boxes never overlap but jump. placeholder")]
+        public float ContactShoveMs = 2.0f;
+
         /// <summary>
         /// The headway a given driver accepts. Nerve 0 gives the cautious maximum, nerve 1 the brave
         /// minimum. Linear for now; playtesting may want a curve.
@@ -208,6 +242,8 @@ namespace TwentyTons.Tuning
             FollowDistanceFloorMetres = Mathf.Max(0f, FollowDistanceFloorMetres);
             LookAheadMetres = Mathf.Max(5f, LookAheadMetres);
             LateralStepMetres = Mathf.Max(0.1f, LateralStepMetres);
+            LateralAccelMs2 = Mathf.Max(0.1f, LateralAccelMs2);
+            ContactShoveMs = Mathf.Max(0.1f, ContactShoveMs);
         }
     }
 
@@ -332,6 +368,25 @@ namespace TwentyTons.Tuning
 
         [Tooltip("...at this assumed speed, m/s. placeholder")]
         public float PullAwayAssumedSpeed = 2f;
+
+        [Tooltip("People waiting at the kerb step back this far when a moving vehicle is about to overhang it (a bus " +
+                 "swinging wide on a bend), metres. Nobody waits with a shoulder at the road edge. placeholder")]
+        public float FlinchBackMetres = 0.8f;
+
+        [Tooltip("How close to the kerb line a vehicle's side may come before people step back, metres. placeholder")]
+        public float FlinchReachMetres = 0.6f;
+
+        [Tooltip("Seconds people stay back after the last threat passed. placeholder")]
+        public float FlinchSeconds = 2f;
+
+        [Tooltip("A driver keeps this much road between the nose and a person crossing ahead, metres: nobody closes " +
+                 "on a pedestrian the way they close on a car. placeholder")]
+        public float ClearanceAheadMetres = 2f;
+
+        [Tooltip("A vehicle standing still with its nose this close has stopped for me: I cross in front of it. " +
+                 "Without this a pedestrian and a stopped bus wait for each other forever. Must reach past the " +
+                 "distance drivers keep from people when standing (6 m in the autopilots), or the standoff returns. placeholder")]
+        public float StoppedForMeMetres = 7f;
 
         [Tooltip("Walking speed, m/s. placeholder")]
         public float WalkSpeed = 1.3f;

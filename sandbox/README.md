@@ -38,7 +38,8 @@ A day lasts 15 minutes (slider). At the end: the ledger, where to sleep, work or
 ## What to look at
 
 - Headway in seconds, colour-coded. Dhaka drivers hold 0.5–1.5 s; Western sims 4–6 s.
-- Pale blue vehicles are yielding; red ones are bluffing ("I'm not moving"); a flash is a horn.
+- Pale blue vehicles are yielding; red ones are bluffing ("I'm not moving"); a flash is a horn. A
+  yield is driven: the car angles out as it rolls, and a car that is standing still cannot move aside.
 - Pedestrians (tall thin boxes) step out in front of cars with a hand up and hesitate for buses.
   Hit one and the day is over.
 - Officers at the two cross streets: green cane along the road = you may go. Nobody stops you

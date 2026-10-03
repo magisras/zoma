@@ -117,6 +117,10 @@ public static class Headless
             int crossNear = 0;
             foreach (Agent a in sim.Agents) if (a.Corridor == j.Cross && !a.IsPedestrian && Math.Abs(j.Cross.DeltaS(j.CrossS, a.S)) < 40f) crossNear++;
             Console.WriteLine($"  junction S={j.MainS:0} {(j.Mirror != null ? "(mirror)" : "        ")} open={j.Open} timer={j.Timer:0}s roped={j.Roped} camera={j.Camera} inBox main={j.MainInBox} cross={j.CrossInBox} crossNear={crossNear} leakers={j.LeakersLeft}");
+            if (j.Mirror == null)
+                foreach (Agent a in sim.Agents)
+                    if (a.Corridor == j.Cross && !a.IsPedestrian && Math.Abs(j.Cross.DeltaS(j.CrossS, a.S)) < 25f)
+                        Console.WriteLine($"      cross {a.Class,-8} #{a.Id,-4} crossS-boxCentre={j.Cross.DeltaS(j.CrossS, a.S),6:0.0} lat={a.Lateral,5:0.00} v={a.Speed:0.0} want={a.DesiredSpeed:0.0} inBox={j.InBox(j.Cross, a.S, a.HalfLength)}");
         }
         foreach (string e in l.Events) Console.WriteLine("    " + e);
         Console.WriteLine($"  wrong side {m.WrongSideSeconds:0} s  waited at closed canes {m.CaneWaitSeconds:0} s  of which at a rope {m.RopeHeldSeconds:0} s");
