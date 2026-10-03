@@ -119,7 +119,7 @@ public static class Headless
             Console.WriteLine($"  junction S={j.MainS:0} {(j.Mirror != null ? "(mirror)" : "        ")} open={j.Open} timer={j.Timer:0}s roped={j.Roped} camera={j.Camera} inBox main={j.MainInBox} cross={j.CrossInBox} crossNear={crossNear} leakers={j.LeakersLeft}");
         }
         foreach (string e in l.Events) Console.WriteLine("    " + e);
-        Console.WriteLine($"  wrong side {m.WrongSideSeconds:0} s");
+        Console.WriteLine($"  wrong side {m.WrongSideSeconds:0} s  waited at closed canes {m.CaneWaitSeconds:0} s  of which at a rope {m.RopeHeldSeconds:0} s");
         if (sim.Rollover.Count > 0) Console.WriteLine($"  ROLLOVER x{sim.Rollover.Count}: {sim.Rollover.Cause}, {sim.Rollover.HurtPassengers} hurt");
         Console.WriteLine($"  bus: brake wear {sim.Condition.BrakeWear:0.00} (+{sim.Condition.BrakeWearToday:0.000} today)  dents {sim.Condition.Dents}  papers {(sim.Condition.PapersValid(sim.Day) ? "ok" : "none")}");
         Console.WriteLine($"  fatigue at end {sim.Fatigue.Level:0.00}  micro-sleeps {sim.Fatigue.MicroSleeps}");

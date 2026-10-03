@@ -199,7 +199,7 @@ function updateJunctions(list) {
     const body = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0x2f4f8f }));
     body.scale.set(0.6, 1.8, 0.6);
     const cane = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0xf0e68c }));
-    cane.scale.set(0.15, 0.15, 3.0);
+    cane.scale.set(0.35, 0.35, 4.5);                     // thick enough to read from a phone's top-down view
     const pole = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0x3a3a3a }));
     pole.scale.set(0.2, 4.5, 0.2);
     const lamp = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0x2a2a2a }));
@@ -237,28 +237,36 @@ function updateJunctions(list) {
   });
 }
 
-// Ropes: a bar across a closed approach, a constable at the kerb end. Nothing drives through it.
+// Ropes: a bar across a closed approach with a constable at each end. Nothing drives through it.
+// It has to be seen from a phone's top-down view, so it is a fat, bright bar, not a string.
 const ropes = [];
 function updateRopes(data) {
   const want = data.length / 4;
   while (ropes.length < want) {
-    const bar = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0xe8d9a0 }));
-    const man = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0x2f4f8f }));
-    man.scale.set(0.55, 1.7, 0.55);
-    world.add(bar); world.add(man);
-    ropes.push({ bar, man });
+    const bar = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0xf7e9a6 }));
+    const men = [0, 1].map(() => {
+      const m = new THREE.Mesh(geometryBox, new THREE.MeshLambertMaterial({ color: 0x2f4f8f }));
+      m.scale.set(0.6, 1.8, 0.6);
+      world.add(m);
+      return m;
+    });
+    world.add(bar);
+    ropes.push({ bar, men });
   }
   ropes.forEach((r, i) => {
     const on = i < want;
-    r.bar.visible = r.man.visible = on;
+    r.bar.visible = r.men[0].visible = r.men[1].visible = on;
     if (!on) return;
     const [x, z, yaw, width] = data.slice(i * 4, i * 4 + 4);
-    r.bar.scale.set(width, 0.08, 0.08);
-    r.bar.position.set(x, 0.9, z);
+    r.bar.scale.set(width, 0.3, 0.3);
+    r.bar.position.set(x, 1.0, z);
     r.bar.rotation.y = yaw;
     const rx = Math.cos(yaw), rz = -Math.sin(yaw);
-    r.man.position.set(x - rx * (width / 2 + 0.5), 0.85, z - rz * (width / 2 + 0.5));
-    r.man.rotation.y = yaw;
+    r.men.forEach((m, k) => {
+      const side = k === 0 ? -1 : 1;
+      m.position.set(x + rx * side * (width / 2 + 0.6), 0.9, z + rz * side * (width / 2 + 0.6));
+      m.rotation.y = yaw;
+    });
   });
 }
 

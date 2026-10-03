@@ -244,6 +244,10 @@ in the headless runner and in the browser. Entries below are appended as steps l
   the bus drove on the right with oncoming traffic on its left, and a right turn looked like a left
   turn. The page now draws everything in a group mirrored in x and negates the camera's x. Checked
   top-down: the kerb and the stands are on the left, a right turn goes right. Unity will not need this.
+- "It keeps getting stuck" (phone): the bus was held at a constable's rope drawn one pixel thick.
+  The rope is now a fat bright bar with a constable at each end and the cane is thick enough to read
+  from the top-down view. New metrics `CaneWaitSeconds` / `RopeHeldSeconds` in the headless report:
+  the Dhaka driver spends ~70 s of a 600 s run stopped at closed canes, most of it at ropes.
 
 **Where this leaves the project**
 

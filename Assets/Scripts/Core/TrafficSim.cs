@@ -19,6 +19,8 @@ namespace TwentyTons.Core
         public int HardContacts;                 // the ones that cost money
         public int NpcPersonHits;                // NPCs hitting pedestrians (it happens; counted, not fatal)
         public int CaneRuns;                     // times the player crossed a closed stop line
+        public float RopeHeldSeconds;            // time the player's bus spent held at a constable's rope
+        public float CaneWaitSeconds;            // time the player's bus spent stopped before a closed stop line, rope or not
         public int StopsLost;                    // a rival took a crowd the player was about to reach
         public float WrongSideSeconds;           // time spent on the oncoming carriageway
         public bool WrongSideNow;
@@ -317,6 +319,8 @@ namespace TwentyTons.Core
                 ApplyPlayerInputs(dt);
                 Bus.Passengers = Player.Load.Count;
                 Bus.HeldByRope = RopeAhead(Player);
+                if (Bus.HeldByRope) Metrics.RopeHeldSeconds += dt;
+                if (Player.Speed < 0.3f && ClosedLineAhead(Player) < 8f) Metrics.CaneWaitSeconds += dt;
                 // The sandbox day stands for a whole day's driving: wear is scaled like the money is.
                 Condition.Brake(Bus.Held ? 0f : Bus.Brake, Player.Speed, dt / Mathf.Max(0.01f, Tuning.Economy.MoneyScale), Tuning.Bus);
                 Bus.BrakeWear = Condition.BrakeWear;
@@ -659,6 +663,20 @@ namespace TwentyTons.Core
                 if (ds <= stopping) return true;
             }
             return false;
+        }
+
+        /// <summary>Distance from the bus's nose to the nearest closed stop line ahead on its road, or a large number.</summary>
+        private float ClosedLineAhead(Agent bus)
+        {
+            float nearest = 9999f;
+            for (int i = 0; i < Junctions.Count; i++)
+            {
+                Junction j = Junctions[i];
+                if (j.Main != bus.Corridor || j.IsOpenFor(bus.Corridor)) continue;
+                float ds = bus.Corridor.DeltaS(bus.S, j.StopLineOn(bus.Corridor, Tuning.Officer.StopLineSetbackMetres)) - bus.HalfLength;
+                if (ds >= -1f && ds < nearest) nearest = ds;
+            }
+            return nearest;
         }
 
         /// <summary>Count the player crossing a closed stop line (the sergeant will care later).</summary>
