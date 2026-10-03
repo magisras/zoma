@@ -493,8 +493,11 @@ function updateHud(f, dt) {
   // The end of the day.
   const ov = el('overlay');
   ov.classList.toggle('on', f.dayOver);
-  if (f.dayOver && ov.dataset.shown !== String(f.day)) {     // every shift ends at the same clock; the day number is the key
-    ov.dataset.shown = String(f.day);
+  // Every shift ends at the same clock and R on the card restarts the same day number, so the key
+  // is the day plus the restart count (seed changes on every R and every new day).
+  const cardKey = f.day + '/' + seed;
+  if (f.dayOver && ov.dataset.shown !== cardKey) {
+    ov.dataset.shown = cardKey;
     const L = f.ledger;
     el('day-headline').textContent = L.arrested ? 'You hit a person.' : f.seized ? 'The bus is gone.' : 'End of the shift, ' + f.clock + '.';
     el('day-sub').textContent = L.arrested ? 'The crowd gathers. The police take the bus and the day\'s money. A case follows.'

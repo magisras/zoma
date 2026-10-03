@@ -140,7 +140,8 @@ namespace TwentyTons.Sandbox
 
             sim.Bus.Throttle = closing ? 0f : (v > cap ? 0f : 1f);
             sim.Bus.Brake = closing ? 1f : 0f;
-            sim.Bus.Steer = SteerToHold(bus, sim.Corridor, _wantLateral);
+            // Hard, but not harder than the bus takes: the Dhaka driver corners at 0.6 of what tips it.
+            sim.Bus.Steer = SteerToHold(bus, sim.Corridor, _wantLateral, SafeLock(sim, bus, sim.Tuning.Bus.RolloverLateralAccelMs2 * 0.6f));
         }
 
         private static bool OncomingClear(TrafficSim sim, float metres)
@@ -153,9 +154,12 @@ namespace TwentyTons.Sandbox
                 if (a.Corridor != sim.Oncoming || a.GhostOf != null) continue;
                 float ds = sim.Oncoming.DeltaS(g.S, a.S);
                 if (ds >= 0f) continue;                        // on their road, "behind" the ghost is what we will meet
-                // Something coming within the look is a reason not to go. Something standing (their
-                // queue at the junction) is a wall only if it is close; a standing queue 60 m off is room.
-                float reach = a.Speed > 1f ? metres : Mathf.Min(metres, 25f);
+                // What a Dhaka driver actually looks for: nothing heavy within the look (a bus or truck
+                // will not yield to a bus), nothing light coming within a few seconds (a rickshaw or car
+                // will swerve, as the research says: the heavier vehicle takes the road), and nothing
+                // standing right there. A standing queue 40 m off is room.
+                bool heavy = a.Mass >= sim.Tuning.Mass.Bus * 0.9f;
+                float reach = heavy ? metres : a.Speed > 1f ? Mathf.Min(metres, 35f) : Mathf.Min(metres, 20f);
                 if (-ds < reach) return false;
             }
             return true;
@@ -263,12 +267,32 @@ namespace TwentyTons.Sandbox
         /// </summary>
         public static float SteerToHold(Agent bus, Corridor corridor, float wantedLateral)
         {
+            return SteerToHold(bus, corridor, wantedLateral, 1f);
+        }
+
+        /// <summary>
+        /// Steer toward a line, never asking the wheel for more lock than the speed allows. A driver who
+        /// has done this route for years does not tip the bus: at speed v the lock is capped so that
+        /// v² · tan(lock) / wheelbase stays under a comfortable lateral acceleration.
+        /// </summary>
+        public static float SteerToHold(Agent bus, Corridor corridor, float wantedLateral, float maxSteer)
+        {
             float lookAhead = 10f + bus.Speed * 1.5f;      // a driver looks further ahead than a bus length
             Vector3 aim = corridor.PositionAt(bus.S + lookAhead, wantedLateral);
             Vector3 to = aim - bus.Position;
             float wantedYaw = Mathf.Atan2(to.x, to.z);
             float error = Mathf.DeltaAngle(bus.Yaw * Mathf.Rad2Deg, wantedYaw * Mathf.Rad2Deg) * Mathf.Deg2Rad;
-            return Mathf.Clamp(error * 3f, -1f, 1f);
+            return Mathf.Clamp(error * 3f, -maxSteer, maxSteer);
+        }
+
+        /// <summary>The share of full lock that keeps the lateral acceleration under the given limit at this speed.</summary>
+        private static float SafeLock(TrafficSim sim, Agent bus, float lateralAccelLimit)
+        {
+            float wheelbase = sim.Tuning.Bus.WheelbaseMetres;
+            float maxLockDeg = Mathf.Max(1f, sim.Tuning.Bus.MaxSteerAngleDeg);
+            float v2 = Mathf.Max(1f, bus.Speed * bus.Speed);
+            float lockRad = (float)System.Math.Atan(lateralAccelLimit * wheelbase / v2);
+            return Mathf.Clamp01(lockRad * Mathf.Rad2Deg / maxLockDeg);
         }
     }
 }

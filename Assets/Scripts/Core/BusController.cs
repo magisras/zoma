@@ -32,6 +32,13 @@ namespace TwentyTons.Core
 
         public void Step(Agent bus, Corridor corridor, BusSettings b, float dt)
         {
+            Step(bus, corridor, b, dt, corridor.HalfWidth);
+        }
+
+        /// <param name="roadFarEdge">Lateral of the far edge of the road on the +side: the oncoming carriageway's
+        /// outer edge where there is one, so the wrong side is road, not market stalls.</param>
+        public void Step(Agent bus, Corridor corridor, BusSettings b, float dt, float roadFarEdge)
+        {
             float mass = MassKg(b);
             float speed = bus.Speed;
             // Held (a sergeant's hand, the end of the day): the pedals are overridden, not overwritten.
@@ -55,7 +62,8 @@ namespace TwentyTons.Core
 
             // Losses: rolling resistance, air, and the market stalls if you leave the road.
             float drag = b.RollingDecelMs2 + b.AirDragPerMs2 * speed * speed;
-            if (Mathf.Abs(bus.Lateral) > corridor.HalfWidth + b.OffRoadToleranceMetres) drag += b.OffRoadDecelMs2;
+            bool offRoad = bus.Lateral < -corridor.HalfWidth - b.OffRoadToleranceMetres || bus.Lateral > roadFarEdge + b.OffRoadToleranceMetres;
+            if (offRoad) drag += b.OffRoadDecelMs2;
 
             speed += (engine - brake - (speed > 0f ? drag : 0f)) * dt;
             speed = Mathf.Clamp(speed, 0f, b.MaxSpeedKmh / 3.6f);

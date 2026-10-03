@@ -329,7 +329,9 @@ namespace TwentyTons.Core
                 Condition.Brake(Bus.Held ? 0f : Bus.Brake, Player.Speed, dt / Mathf.Max(0.01f, Tuning.Economy.MoneyScale), Tuning.Bus);
                 Bus.BrakeWear = Condition.BrakeWear;
                 float lateralBefore = Player.Lateral;
-                Bus.Step(Player, Corridor, Tuning.Bus, dt);
+                // The wrong side is still road: the far edge is the oncoming carriageway's outer edge.
+                float farEdge = Oncoming != null ? Corridor.HalfWidth + Tuning.Spawn.MedianMetres + Oncoming.Width : Corridor.HalfWidth;
+                Bus.Step(Player, Corridor, Tuning.Bus, dt, farEdge);
                 Player.LateralVelocity = (Player.Lateral - lateralBefore) / dt;   // for the flank rule in contacts
                 Metrics.DistanceMetres += Player.Speed * dt;
                 Player.HornTimer = Mathf.Max(0f, Player.HornTimer - dt);
@@ -833,10 +835,16 @@ namespace TwentyTons.Core
 
             CountScrape(a, b);
 
+            // Nose to nose (the player's ghost against the flow of the other road) is never resolved
+            // sideways, however deep the overlap: two vehicles head-on do not slip past each other, and
+            // neither takes the other's speed.
+            bool headOn = (a.GhostOf != null || b.GhostOf != null) && (a.Speed < -0.5f || b.Speed < -0.5f);
+            float aSpeedBefore = a.Speed, bSpeedBefore = b.Speed;
+
             // The one behind can't go faster than the one in front.
             Agent behind = ds > 0f ? a : b;
             Agent front = ds > 0f ? b : a;
-            behind.Speed = Mathf.Min(behind.Speed, front.Speed);
+            if (!headOn) behind.Speed = Mathf.Min(behind.Speed, front.Speed);
 
             // Separate along whichever axis penetrates least. The lighter one moves: a
             // sideswipe pushes it aside, a rear-ender shoves it forward (or holds it back).
@@ -847,7 +855,7 @@ namespace TwentyTons.Core
             // Pushes are rate-limited: two boxes that overlap slide apart over a few frames instead of
             // jumping, which is what a scrape looks like from the cab.
             float maxShove = Tuning.Gap.ContactShoveMs * _stepDt;
-            if (overlapLat <= overlapS)
+            if (overlapLat <= overlapS && !headOn)
             {
                 float push = Mathf.Min(overlapLat + 0.05f, maxShove) * (light.Lateral >= heavy.Lateral ? 1f : -1f);
                 // Nobody is shoved off the road: the kerb is where people stand. (Driving onto it yourself
@@ -863,15 +871,28 @@ namespace TwentyTons.Core
             else
             {
                 bool lightInFront = light.Corridor.DeltaS(heavy.S, light.S) >= 0f;
-                float push = Mathf.Min(overlapS + 0.05f, maxShove) * (lightInFront ? 1f : -1f);
+                // Head-on, the lighter one is shoved only as fast as the mass ratio allows: a bus moves a
+                // truck a little and a rickshaw a lot.
+                float shoveShare = headOn ? Mathf.Clamp01(1f - light.Mass / Mathf.Max(0.1f, heavy.Mass)) : 1f;
+                float push = Mathf.Min(overlapS + 0.05f, maxShove * shoveShare) * (lightInFront ? 1f : -1f);
                 light.S = light.Corridor.Wrap(light.S + push);
-                if (lightInFront) light.Speed = Mathf.Max(light.Speed, heavy.Speed);   // shoved along
+                if (headOn) light.Speed = Mathf.Clamp(light.Speed, 0f, 0.5f);          // stopped where it stands
+                else if (lightInFront) light.Speed = Mathf.Max(light.Speed, heavy.Speed);   // shoved along
                 else light.Speed = Mathf.Min(light.Speed, heavy.Speed);               // held back
                 if (light.IsPlayerOrGhost)
                 {
                     Agent real = RealPlayer(light);
                     real.Position += light.Corridor.TangentAt(light.S) * push;
                     if (light.GhostOf != null) real.Speed = Mathf.Min(real.Speed, Mathf.Abs(heavy.Speed) + 0.5f);   // a head-on hit stops you
+                }
+                else if (heavy.GhostOf != null)
+                {
+                    // The bus is the heavier one in a head-on: it keeps the share of its speed the mass ratio
+                    // allows. A truck stops it; a rickshaw barely slows it (and is the worse for it).
+                    Agent real = RealPlayer(heavy);
+                    float keep = Mathf.Clamp01(1f - light.Mass / Mathf.Max(0.1f, heavy.Mass));
+                    float lightBefore = Mathf.Abs(light == a ? aSpeedBefore : bSpeedBefore);
+                    real.Speed = Mathf.Min(real.Speed, lightBefore + real.Speed * keep);   // every frame of contact: a truck brings it to rest
                 }
             }
         }

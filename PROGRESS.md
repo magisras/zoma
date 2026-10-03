@@ -342,6 +342,28 @@ in the headless runner and in the browser. Entries below are appended as steps l
   rounded rectangle it was meant to be (1,588 m, not 1,949).
 - Six days: no hits, 1.8–2.5 km, careful in profit on all three seeds tried.
 
+**Step 21 — the second test report, worked through (findings 1–4)** (done)
+
+- `docs/test-reports/2026-10-03_0817.md`: the retest closed ten of the first report's eleven fixes
+  and found four more things, plus a finding 0 relayed as the owner's decision (polite driving must
+  not win; batch acceptance stated). Findings 1–4 are dealt with here; finding 0 is the tuning pass,
+  which waits for the owner's word in this chat before the economics move.
+- The day card went stale after R on the card (same day number): keyed on day plus the restart count.
+- The Dhaka driver never took the wrong side. Two causes: its check wanted 70 m of nothing on the
+  oncoming side (never true with 35 vehicles on the loop), and the bus controller's off-road rule
+  only knew the main road's edges, so the other carriageway was "market stalls" and the drag pinned
+  the bus there at a standstill. Now: heavy traffic within the look, light traffic coming within
+  35 m, or anything standing within 20 m says no; the far edge of the road is the oncoming
+  carriageway's outer edge. It crosses when there is room (73 s on one seed), and comes back.
+- The Dhaka driver rolled the bus on four days in six: its steering asked for full lock at speed.
+  The autopilots now cap lock so the lateral acceleration stays at 0.6 of what tips the bus; a
+  driver who has done the route for years does not tip it. No rollovers in the days since.
+- Underneath, two older rules showed as wrong once the wrong side was real: the head-on test had
+  passed only because the off-road drag stopped the bus, and on contact the "behind cannot go faster
+  than in front" rule handed the truck the ghost's negative speed. Head-on contacts now resolve along
+  the road only, the lighter vehicle is shoved by the mass ratio, and the bus keeps the share of its
+  speed the mass ratio allows: a truck stops it, a rickshaw slows it. 106 tests.
+
 **Where this leaves the project**
 
 Everything in README milestones 3–6 now exists as engine-free C# with tests, runs in the browser
