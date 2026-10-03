@@ -5,6 +5,8 @@ in a pay system that rewards racing and punishes caution.
 
 **Read `README.md` and `RESEARCH.md` first.** They are the source of truth for design, economics and
 the AI method. `PROGRESS.md` says where the last session stopped; read it before touching anything.
+Then read every test report still marked `Status: open` in `docs/test-reports/` (how they work:
+that folder's `README.md`), and mark each one when you have dealt with it.
 
 ## Design principle
 

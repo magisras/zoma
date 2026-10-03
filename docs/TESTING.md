@@ -47,6 +47,17 @@ Everything below runs in a fresh cloud container or on a laptop; no Unity, no GP
 
 ## Reporting
 
-Write findings as a list: what you did (seed, keys, time), what happened, what you expected, with
-the frame JSON or the headless line that shows it. Put nothing on `main`: a test session commits
-only to its own branch, and only playtest notes (`docs/PLAYTEST.md`) and new tests.
+Each test session writes one new file, `docs/test-reports/YYYY-MM-DD_HHMM.md` (UTC, the time
+you write it), with the header in `docs/test-reports/README.md` and `Status: open`. Never edit
+an older report: say what changed in your own.
+
+Write findings as a list, most serious first: what you did (seed, keys, time), what happened, what
+you expected, with the frame JSON or the headless line that shows it. End with what worked as this
+brief says, so the builder knows it was checked.
+
+A bug you can pin in the engine-free core goes in as an NUnit test. If it fails today, mark it
+`[Explicit("Known bug: ...")]` so `check.sh` stays green, and name it in the report.
+
+Commit straight to `main`, and only these: your report file, new tests, and the thesis numbers
+appended to `docs/PLAYTEST.md` when you ran the batch. Run `./tools/check.sh` first. Never change
+game code, the sandbox or tools: that is the builder's job, from your report.
