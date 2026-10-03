@@ -29,3 +29,12 @@ A serious, realistic game about a Dhaka bus crew: you don't play a hero, you pla
 ## Design principle
 
 Don't explain, force it. The world enforces the rules of the street; the UI never does.
+
+**Camera (owner decision, 3 Oct 2026).** The game is played from the driver's seat: windscreen, the
+two door mirrors, the interior mirror that looks back down the saloon, the wheel and the air gauge.
+The inside of the bus is seen in that mirror and heard: the aisle filling, the helper on the pole,
+the bang on the side that means stop. The player leaves the seat only when the body does: the pump,
+the mechanic, tea and food at the stand, the night in the bus, crawling out after the rollover. The
+sergeant comes to the window; the helper runs to the lineman. Act 1 as helper is the same first
+person from the door, looking back into the saloon and out at the kerb. The browser sandbox's chase
+and top-down views are tuning instruments, not the game's camera.

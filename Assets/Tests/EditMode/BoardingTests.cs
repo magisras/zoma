@@ -28,6 +28,27 @@ namespace TwentyTons.Tests
         }
 
         [Test]
+        public void AnotherCompanysBusTakesTheCrowdItReachesFirst()
+        {
+            // RESEARCH: each passenger boards the first bus. The crowd at the Market is anyone's; a bus of
+            // another company that gets there first stands and takes it, and the player arriving later
+            // finds the kerb thinned. Arriving first is the whole race.
+            var sim = QuietWithZones();
+            sim.SpawnPlayerBus(1900f, -2f);                       // far from every zone
+            DemandZone market = sim.Zones[1];
+            market.RatePerMinute = 0f;                             // count only what the other bus takes
+            for (int i = 0; i < 8; i++) market.Waiting.Add(new Passenger { DestinationZone = 2, BoardingSeconds = 3f });
+            Agent other = sim.SpawnVehicle(VehicleClass.Bus, 540f, -3.5f, 0.5f);
+            other.ServesStops = true;
+            other.Persistent = true;                              // the population keeper would recycle a bus this far from the player
+            other.DesiredSpeed = 8f;
+            Run(sim, 40f);
+            Assert.Less(market.Waiting.Count, 8, "the other bus took people");
+            Assert.GreaterOrEqual(market.Waiting.Count, 8 - sim.Tuning.Passengers.OtherBusTakesUpTo, "but only so many");
+            Assert.Greater(other.S, 620f, "and went on its way");
+        }
+
+        [Test]
         public void CrowdsGrowFasterAtHotZones()
         {
             var sim = QuietWithZones();

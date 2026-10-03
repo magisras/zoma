@@ -58,10 +58,14 @@ namespace TwentyTons.Sandbox
             // the start angle says: +x for the top arc (start angle 0), -x for the bottom one (π). The
             // bottom arc used to take +x for both, which threw the road 200 m sideways into a kink with
             // an 81° corner at the School stand. Every bus left the road there.
+            // 32 chords, not 8: traffic lives on the polyline and the player's bus drives the true arc in world
+            // space, so every chord's sagitta is a lateral error between them. Eight chords of a 100 m arc put
+            // that at 1.9 m, a rickshaw's width, and the Dhaka autopilot's fast laps through the bends were a
+            // string of hard side scrapes with traffic that was never really there. 32 chords: 0.12 m.
             Vector3 centre = start + new Vector3(Mathf.Cos(startAngle) * radius, 0f, 0f);
-            for (int i = 0; i <= 8; i++)
+            for (int i = 0; i <= 32; i++)
             {
-                float a = startAngle + Mathf.PI * i / 8f;
+                float a = startAngle + Mathf.PI * i / 32f;
                 points.Add(centre + new Vector3(-Mathf.Cos(a) * radius, 0f, Mathf.Sin(a) * radius));
             }
         }

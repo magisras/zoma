@@ -21,6 +21,9 @@ namespace TwentyTons.Sandbox
         public static float CapKmh = 25f;
         public static float HoldLateral = -2f;
         public static float MaxDwellSeconds = 40f;     // long enough to take an ordinary crowd whole
+        public static int DhakaMinCrowd = 1;           // the Dhaka driver stops for anyone waving (3 was tried: no gain, the bus stops anyway for people getting off)
+        public static bool DhakaSkipsTakenStops = false;   // pass a stop where a crew bus is already loading (tried twice: loses a full kerb for the next one, which the rival behind then takes)
+        public static bool DhakaRaceLeave = false;         // leave a nearly bare kerb when a crew bus is on the tail
 
         // ---- Act 1: the player is the helper, the ostad drives (RESEARCH: "Act 1 as helper is the tutorial").
         // The ostad only stops where the helper calls; the helper's hand says hurry or easy.
@@ -31,9 +34,11 @@ namespace TwentyTons.Sandbox
         public static float HelperDwellSeconds = 40f;
 
         private static DemandZone _working;      // the zone we are stopped at
+        private static bool _dropOnly;           // a crew bus's door owns this kerb: let ours off and go, load nothing
         private static DemandZone _lastLeft;     // don't stop twice at the same zone while still in its reach
         private static float _dwell;
         private static float _stuckFor;          // seconds blocked at low speed
+        private static float _standingFor;       // seconds at a standstill, whatever the reason
         private static float _wrongSideFor;      // seconds spent over the median this excursion
         private static float _lastTap;
         private static float _wantLateral = -2f;
@@ -42,7 +47,7 @@ namespace TwentyTons.Sandbox
 
         public static void Reset()
         {
-            _working = null; _lastLeft = null; _dwell = 0f; _stuckFor = 0f; _wrongSideFor = 0f; _lastTap = -99f; _wantLateral = HoldLateral;
+            _working = null; _lastLeft = null; _dropOnly = false; _dwell = 0f; _stuckFor = 0f; _standingFor = 0f; _wrongSideFor = 0f; _lastTap = -99f; _wantLateral = HoldLateral;
             _stopLateral = float.NaN;
             HelperCalls = false; HelperSignal = 0;
         }
@@ -51,6 +56,7 @@ namespace TwentyTons.Sandbox
         {
             // On its side, the only decision is the men with the ropes: both autopilots pay and wait.
             if (sim.Rollover.Pending) Rollover.Answer(sim, true);
+            _standingFor = sim.Player.Speed < 0.5f ? _standingFor + 1f / 60f : 0f;
             if (Current == Policy.Dhaka) ApplyDhaka(sim);
             else ApplyCareful(sim);
         }
@@ -87,11 +93,25 @@ namespace TwentyTons.Sandbox
             if (sim.Economy.Sergeant.Active) { sim.Economy.AnswerSergeant(true); return; }   // pay now, it's cheaper
             float h = sim.Metrics.HeadwayAheadSeconds, g = sim.Metrics.GapAheadMetres, v = bus.Speed * 3.6f;
 
-            // Only the physical box stops this driver; the cane is a suggestion.
-            float stop = sim.StopDistanceAhead(bus, 60f, ignoreCane: true);
+            // Only the physical box stops this driver; the cane is a suggestion. Except on a drive day: the lineman
+            // said so at the stand, sergeants are at every box with a target each, and a cane run costs a case
+            // or Tk 450. That day everyone drives like the careful man (RESEARCH: special drives, 1,400-2,300
+            // cases a day across the city).
+            bool driveDay = sim.Economy.DriveDay;
+            float stop = sim.StopDistanceAhead(bus, 60f, ignoreCane: !driveDay);
             bool boxBlocked = stop < 60f && Steering.AllowedSpeed(stop, 0.8f, 1f) < bus.Speed;
 
             float cap = 45f;
+            // Pulled away with someone still on the step: the helper holds them, the bus holds walking pace
+            // until they are in, then the door goes and the right foot goes down (above the door speed nobody
+            // boards anyway; a fall at speed is the injury the street answers).
+            if (!HelperMode && bus.Load.DoorOpen && _working == null)
+            {
+                // Under the injury speed with a margin, not at it: at the door speed itself a fall is an injury (Tk 2,000 and the crowd).
+                float stepMs = Mathf.Min(sim.Tuning.Passengers.DoorSpeedMs, sim.Tuning.Passengers.InjurySpeedMs - 0.6f);
+                if (bus.Load.AtDoor != null || bus.Load.Leaving != null) cap = Mathf.Min(cap, stepMs * 3.6f);
+                else if (bus.Speed > sim.Tuning.Passengers.DoorSpeedMs * 0.8f) sim.SetDoor(false);
+            }
             if (HelperMode)
             {
                 cap = HelperSignal > 0 ? OstadHurryKmh : HelperSignal < 0 ? OstadEasyKmh : OstadCapKmh;
@@ -102,16 +122,23 @@ namespace TwentyTons.Sandbox
             {
                 // Grab and go, as the research says: the helper packs them in, the driver leaves the moment the
                 // kerb is bare or a rival is on his tail. Not a fixed ten seconds that leaves money on the kerb.
-                ApproachLateral(sim, bus, 1);
-                if (WorkZone(sim, bus, MaxDwellSeconds, 1)) return;   // anyone waving is a fare
+                // A crowd is worth the stop; one person is not, the rival behind takes the big crowd ahead
+                // while you are braking for a single fare. Anyone aboard who wants off still gets the stop.
+                ApproachLateral(sim, bus, DhakaMinCrowd);
+                if (WorkZone(sim, bus, MaxDwellSeconds, DhakaMinCrowd)) return;
             }
 
             // Tailgating as the research describes it: a hand's breadth, but a driver who knows what his brakes
             // will do today. Closer than that stopping distance is the brake; a bit more is the throttle off.
             float coast;
             bool tooClose = TooCloseBehind(sim, bus, 1.5f, out coast);
-            bool closing = tooClose || boxBlocked || TooFastForZoneAhead(sim, bus, HelperMode ? (HelperCalls ? 0 : int.MaxValue) : 1) || PersonInTheWay(sim, bus);
-            bool blocked = g < 15f && bus.Speed < 5f;
+            bool closing = tooClose || boxBlocked || TooFastForZoneAhead(sim, bus, HelperMode ? (HelperCalls ? 0 : int.MaxValue) : DhakaMinCrowd) || PersonInTheWay(sim, bus);
+            // Blocked, or stuck behind a bus: a bus ahead is the one that takes the next crowd, so it is the
+            // thing to get past (RESEARCH: the race for the stop). Both start the look for a freer band.
+            float gapBus;
+            Agent busAhead = Steering.FindAhead(sim.Agents, bus, bus.Lateral, 40f, out gapBus);
+            bool behindABus = busAhead != null && busAhead.Class == TwentyTons.Tuning.VehicleClass.Bus && busAhead.Speed < bus.Speed + 2f;
+            bool blocked = (g < 15f && bus.Speed < 5f) || behindABus;
             _stuckFor = blocked ? _stuckFor + dt : 0f;
 
             // The horn: tap whenever something is close ahead, blast when stuck.
@@ -133,7 +160,7 @@ namespace TwentyTons.Sandbox
             }
 
             // The wrong side: stuck for a while, nothing coming, go round on their road.
-            if (_stuckFor > 4f && !sim.Metrics.WrongSideNow && sim.Oncoming != null && OncomingClear(sim, 70f))
+            if (_stuckFor > 4f && !driveDay && !sim.Metrics.WrongSideNow && sim.Oncoming != null && OncomingClear(sim, 70f) && MedianClear(sim, bus, 35f))
             {
                 _wantLateral = sim.Corridor.HalfWidth + sim.Tuning.Spawn.MedianMetres + 2.5f;   // just inside their road
                 _wrongSideFor = 0f;
@@ -157,6 +184,20 @@ namespace TwentyTons.Sandbox
             sim.Bus.Brake = closing ? 1f : 0f;
             // Hard, but not harder than the bus takes: the Dhaka driver corners at 0.6 of what tips it.
             sim.Bus.Steer = SteerToHold(bus, sim.Corridor, AimLateral(sim, bus, _wantLateral), SafeLock(sim, bus, sim.Tuning.Bus.RolloverLateralAccelMs2 * 0.6f));
+        }
+
+        /// <summary>Nobody standing on the median ahead: crossing it goes through the people waiting there otherwise.</summary>
+        private static bool MedianClear(TrafficSim sim, Agent bus, float metres)
+        {
+            float half = sim.Corridor.HalfWidth;
+            for (int i = 0; i < sim.Agents.Count; i++)
+            {
+                Agent p = sim.Agents[i];
+                if (!p.IsPedestrian || p.Corridor != bus.Corridor || p.Lateral < half - 0.5f) continue;
+                float ds = sim.Corridor.DeltaS(bus.S, p.S);
+                if (ds > -bus.HalfLength && ds < metres) return false;
+            }
+            return true;
         }
 
         private static bool OncomingClear(TrafficSim sim, float metres)
@@ -201,17 +242,19 @@ namespace TwentyTons.Sandbox
             // The race, as the research has it: a bus already loading at this kerb owns the crowd (Boarding:
             // first door takes them). Queuing behind it earns nothing; the Dhaka driver goes past and takes
             // the next crowd first. Unless someone aboard wants off here.
-            if (Current == Policy.Dhaka && !HelperMode && wantStop && _working == null && AnotherBusLoadingAt(sim, bus, zone) && !AnyoneFor(bus, zone)) wantStop = false;
-            if (_working != null && zone != _working) { _working = null; _dwell = 0f; }
-            if (wantStop && _working == null) { _working = zone; _dwell = 0f; }
+            bool taken = DhakaSkipsTakenStops && Current == Policy.Dhaka && !HelperMode && wantStop && _working == null && AnotherBusLoadingAt(sim, bus, zone);
+            if (taken && !AnyoneFor(bus, zone)) wantStop = false;        // nobody to let off: straight past
+            if (_working != null && zone != _working) { _working = null; _dwell = 0f; _dropOnly = false; }
+            if (wantStop && _working == null) { _working = zone; _dwell = 0f; _dropOnly = taken; }   // someone to let off: drop them and go
             if (_working == null) return false;
 
             // The dwell clock runs once the people getting off are done: that part is not a choice.
             bool stillAlighting = bus.Load.Leaving != null || AnyoneFor(bus, _working);
             if (!stillAlighting) _dwell += 1f / 60f;
             bool done = bus.Load.AtDoor == null && bus.Load.Leaving == null && (_working.Waiting.Count == 0 || bus.Load.Count >= Boarding.TooFullCount(sim)) && !AnyoneFor(bus, _working);
+            if (_dropOnly) done = bus.Load.Leaving == null && bus.Load.AtDoor == null && !AnyoneFor(bus, _working);   // the crowd is the other door's
             if (HelperMode) done = !HelperCalls && bus.Load.AtDoor == null && bus.Load.Leaving == null;   // the helper decides when we go
-            if (Current == Policy.Dhaka && !HelperMode && !done)
+            if (DhakaRaceLeave && Current == Policy.Dhaka && !HelperMode && !done)
             {
                 // The race: with a crew bus closing from behind and the kerb nearly bare, take what is at the door
                 // and go: the next crowd is worth more than the last two here. A full kerb is held, whoever honks.
@@ -220,9 +263,13 @@ namespace TwentyTons.Sandbox
             }
             if (done || _dwell > maxDwell)
             {
-                sim.SetDoor(false);
+                // The Dhaka driver pulls away with the door open and the helper on the pole: whoever is on the
+                // step gets pulled in on the move (RESEARCH: picking up without stopping is common). The door
+                // shuts itself at the jump speed. The careful driver shuts it before the wheels turn.
+                if (!(Current == Policy.Dhaka && !HelperMode && bus.Load.AtDoor != null)) sim.SetDoor(false);
                 _lastLeft = _working;
                 _working = null;
+                _dropOnly = false;
                 _stopLateral = float.NaN;
                 return false;
             }
@@ -230,7 +277,10 @@ namespace TwentyTons.Sandbox
             sim.Bus.Brake = 1f;
             // Stand where we are: the pulling in happened on the approach; a stopped bus does not sidle.
             sim.Bus.Steer = SteerToHold(bus, sim.Corridor, float.IsNaN(_stopLateral) ? bus.Lateral : _stopLateral);
-            if (!HelperMode && bus.Speed < 0.5f) sim.SetDoor(true);   // as helper, the door is the player's
+            // The door: the careful driver opens it standing; the Dhaka driver's helper has it open as the bus
+            // rolls in, and the first people are on the step before the wheels stop.
+            float doorSpeed = Current == Policy.Dhaka ? sim.Tuning.Passengers.DoorSpeedMs : 0.5f;
+            if (!HelperMode && bus.Speed < doorSpeed) sim.SetDoor(true);   // as helper, the door is the player's
             return true;
         }
 
@@ -315,11 +365,25 @@ namespace TwentyTons.Sandbox
                 // bus (Pedestrians), and waiting for them locked the street for whole days. Steering across
                 // someone beside the bus is AimLateral's business: it holds the line while the next band is
                 // taken, people included.
-                if (ds < -0.3f || ds > 45f) continue;
+                if (ds > 45f) continue;
+                if (ds < -0.3f)
+                {
+                    // Beside the body and standing still, or driving straight: not in the way. Moving and steering
+                    // across them (they are in the sweep but not in the band I am in): a sideswipe, so yes.
+                    bool inMyBand = Mathf.Abs(p.Lateral - bus.Lateral) < bus.HalfWidth + 0.6f;
+                    if (bus.Speed < 1f || inMyBand || Mathf.Abs(_wantLateral - bus.Lateral) < 0.3f) continue;
+                }
                 float canStopIn = bus.Speed * sim.Tuning.Bus.BrakeLagSeconds + bus.Speed * bus.Speed / (2f * Mathf.Max(0.5f, decel));
-                // Standing, give them room to finish crossing before pulling away: they will cross in
-                // front of a stopped bus, as everyone does, and the bus must not start into them.
-                float margin = bus.Speed < 1f ? 6f : 3f;
+                // Standing, give someone standing in the road room before pulling away: they will cross in
+                // front of a stopped bus, as everyone does, and the bus must not start into them. Someone
+                // already walking across clears the band in a couple of seconds: less room, or at a crowd
+                // crossing (every stand is one) the bus never gets its six clear metres and stands all day.
+                float margin = bus.Speed < 1f ? (p.Speed < 0.5f ? 6f : 4f) : 3f;
+                // Someone standing in the road ahead while we have stood a while: creep up to them. A bus that
+                // moves is a bus they get out of the way of (Pedestrians: a moving strip is left, a standing
+                // one is waited on); a bus that waits six metres for a person who waits for the bus is a day
+                // gone. The Dhaka driver creeps after five seconds, the careful one after fifteen.
+                if (p.Speed < 0.5f && bus.Speed < 1f && _standingFor > (Current == Policy.Dhaka ? 5f : 15f)) margin = 2f;
                 if (ds < canStopIn + margin) return true;
             }
             return false;
@@ -348,8 +412,11 @@ namespace TwentyTons.Sandbox
             for (int i = 0; i < sim.Agents.Count; i++)
             {
                 Agent o = sim.Agents[i];
-                if (o == bus || o.Load == null || !o.Load.DoorOpen || o.Corridor != bus.Corridor) continue;
-                if (o.Load.Count >= Boarding.TooFullCount(sim)) continue;
+                if (o == bus || o.Corridor != bus.Corridor) continue;
+                // A bus with a door open at this kerb: Boarding gives it everyone until it leaves (first door takes
+                // the crowd), so standing behind it earns nothing for as long as it stays. Another company's bus
+                // takes six and goes within fifteen seconds: not worth passing a full kerb for.
+                if (o.Load == null || !o.Load.DoorOpen || o.Load.Count >= Boarding.TooFullCount(sim)) continue;
                 if (Mathf.Abs(sim.Corridor.DeltaS(zone.S, o.S)) <= reach) return true;
             }
             return false;

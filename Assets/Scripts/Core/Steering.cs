@@ -49,6 +49,11 @@ namespace TwentyTons.Core
                 // A person beside the body, behind the nose, is not ahead either: they are walking round
                 // a standing vehicle (Pedestrians), and waiting for them is the other half of the lock.
                 if (other.IsPedestrian && ds < self.HalfLength - 0.3f) continue;
+                // A vehicle alongside with daylight between us is beside me, not ahead, however little daylight:
+                // in a squeeze two vehicles end up within the band margin of each other, each a hand ahead of
+                // the other, and "following" at a negative gap froze whole columns.
+                if (!other.IsPedestrian && ds < self.HalfLength + other.HalfLength
+                    && Mathf.Abs(lateral - other.Lateral) >= self.HalfWidth + other.HalfWidth) continue;
                 float g = ds - self.HalfLength - other.HalfLength;
                 if (g < gap)
                 {

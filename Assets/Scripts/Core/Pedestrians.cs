@@ -43,6 +43,7 @@ namespace TwentyTons.Core
                     p.PedState = PedestrianState.Crossing;
                     p.CrossDirection = direction;
                     p.MidRoadSeconds = 0f;
+                    p.CrossingSeconds = 0f;
                 }
             }
             else
@@ -51,12 +52,16 @@ namespace TwentyTons.Core
                 // out in front of the light traffic, which brakes (Steering: a person ahead in the band).
                 bool impatient = p.MidRoadSeconds > tuning.MidRoadPatienceSeconds;
                 Verdict verdict = Decide(sim, p, p.CrossDirection, tuning, impatient);
+                // Caught in a moving vehicle's strip nearer the edge I came from: the way out is back, not
+                // across its bonnet. Turn round; the kerb and another try are what is left of this crossing.
+                if (verdict == Verdict.HurryBack) { p.CrossDirection = -p.CrossDirection; verdict = Verdict.Hurry; }
                 p.Speed = verdict == Verdict.Stop ? 0f : verdict == Verdict.Hurry ? tuning.WalkSpeed * 1.6f : tuning.WalkSpeed;
                 if (verdict == Verdict.Stop && Mathf.Abs(p.Lateral) < corridor.HalfWidth) p.MidRoadSeconds += dt;
                 else if (verdict != Verdict.Stop) p.MidRoadSeconds = 0f;
-                // Pinned long enough: give up, go back to the kerb, try again later. Without a backstop one
+                // Taking too long: give up, go back to the kerb, try again later. Without a backstop one
                 // person standing in a lane holds a bus, and the bus holds the street, for the rest of the day.
-                if (p.MidRoadSeconds > tuning.MidRoadGiveUpSeconds) { p.CrossDirection = -p.CrossDirection; p.MidRoadSeconds = 0f; }
+                p.CrossingSeconds += dt;
+                if (p.CrossingSeconds > tuning.CrossingGiveUpSeconds) { p.CrossDirection = -p.CrossDirection; p.CrossingSeconds = 0f; p.MidRoadSeconds = 0f; }
                 p.Lateral += p.CrossDirection * p.Speed * dt;
 
                 bool arrived = p.CrossDirection > 0f ? p.Lateral >= kerb : p.Lateral <= -kerb;
@@ -74,7 +79,7 @@ namespace TwentyTons.Core
             p.Yaw = corridor.YawAt(p.S) + (p.PedState == PedestrianState.Crossing ? p.CrossDirection * Mathf.PI * 0.5f : 0f);
         }
 
-        private enum Verdict { Walk, Stop, Hurry }
+        private enum Verdict { Walk, Stop, Hurry, HurryBack }
 
         /// <summary>
         /// Is a moving vehicle beside or coming at this kerb with its side reaching the kerb line? Where it
@@ -113,13 +118,21 @@ namespace TwentyTons.Core
                 if (Mathf.Abs(ds) < v.HalfLength + 1f)
                 {
                     // Alongside the crossing point right now: its strip is a wall until it has passed.
-                    // Unless it is standing: then it is waiting for me, or parked, and I go round it the
-                    // way everyone does. Treating a standing body as a wall locked the street: a person a
-                    // step behind a bus's nose waited for the bus, the bus waited for the person, all day
-                    // (four of the twelve days in the 3 Oct batch ended that way).
-                    if (v.Speed < 0.3f) continue;
-                    // Already in its strip with its nose on me: freezing is death, so get out, fast.
-                    if (Inside(p, v)) { verdict = Verdict.Hurry; continue; }
+                    // Standing, it is waiting for me or parked: at its nose or tail I go round it, the way
+                    // everyone does (a step behind the nose counts as the nose: a person there and the bus
+                    // waited for each other all day). Its body is still a body: nobody walks through a bus.
+                    if (v.Speed < 0.3f)
+                    {
+                        bool body = Mathf.Abs(ds) < v.HalfLength - 0.3f;
+                        if (!body) continue;
+                        if (Inside(p, v)) { verdict = Verdict.Hurry; continue; }   // overlapping a standing body: out of it
+                        if (StripIsAhead(p, v, direction)) return Verdict.Stop;      // its body is across my path: wait
+                        continue;
+                    }
+                    // Already in its strip with its nose on me: freezing is death, so get out, fast, by the
+                    // nearer edge of the strip: on, or back the way I came (seed 6 at half crowd: a man off the
+                    // median hurried on into the flank of the bus he could have stepped back from).
+                    if (Inside(p, v)) { verdict = NearerEdgeIsBehind(p, v, direction) ? Verdict.HurryBack : Verdict.Hurry; continue; }
                     if (StripIsAhead(p, v, direction)) return Verdict.Stop;
                     continue;
                 }
@@ -144,8 +157,8 @@ namespace TwentyTons.Core
 
                 if (Inside(p, v))
                 {
-                    // Already in its strip: get out of it, now.
-                    if (secondsAway < 4f) verdict = Verdict.Hurry;
+                    // Already in its strip: get out of it, now, by the nearer edge.
+                    if (secondsAway < 4f) verdict = NearerEdgeIsBehind(p, v, direction) ? Verdict.HurryBack : Verdict.Hurry;
                     continue;
                 }
                 if (!StripIsAhead(p, v, direction)) continue;             // its strip is behind me
@@ -163,6 +176,14 @@ namespace TwentyTons.Core
                 if (secondsAway < secondsToClear + margin) return Verdict.Stop;
             }
             return verdict;
+        }
+
+        /// <summary>Inside a vehicle's strip: is the edge behind me (the way I came) the nearer way out?</summary>
+        private static bool NearerEdgeIsBehind(Agent p, Agent v, float direction)
+        {
+            float half = v.HalfWidth + p.HalfWidth + SideMargin;
+            float toFar = direction > 0f ? (v.Lateral + half) - p.Lateral : p.Lateral - (v.Lateral - half);
+            return toFar > half;   // past the middle is nearer the far edge; short of it, nearer the one behind
         }
 
         private static bool Inside(Agent p, Agent v)

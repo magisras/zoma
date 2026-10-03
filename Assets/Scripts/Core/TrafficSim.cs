@@ -299,6 +299,7 @@ namespace TwentyTons.Core
             };
             a.Position = corridor.PositionAt(a.S, a.Lateral);
             a.Yaw = corridor.YawAt(a.S);
+            if (vehicleClass == VehicleClass.Bus) a.ServesStops = Random.Chance(Tuning.Passengers.OtherBusServeShare);
             Agents.Add(a);
             return a;
         }
@@ -353,7 +354,7 @@ namespace TwentyTons.Core
                 if (a.IsPlayer || a.GhostOf != null) continue;
                 if (a.IsPedestrian) { Pedestrians.Step(this, a, dt); continue; }
                 if (a.Brain != null) RivalAI.Step(this, a, dt);
-                else if (a.Class == VehicleClass.Bus) RaceWhenNear(a);
+                else if (a.Class == VehicleClass.Bus) { RaceWhenNear(a); OtherCompanyStop(a, dt); }
                 Steering.Drive(this, a, dt);
             }
             HoldAtRopes();
@@ -401,6 +402,52 @@ namespace TwentyTons.Core
                 near = Mathf.Abs(Corridor.DeltaS(bus.S, other.S)) < range;
             }
             bus.DesiredSpeed = bus.Shape.CruiseSpeed * (near ? Tuning.Utility.RaceWhenNearFactor : 1f);
+        }
+
+        /// <summary>
+        /// Another company's bus at a crowd: it stands where it is in its lane for a while and the people go
+        /// with it, one every few seconds (RESEARCH: each passenger boards the first bus unless it is too full;
+        /// helpers pull them in). This is what makes arriving first worth anything: a crowd left for later is
+        /// a crowd gone. It stops only clear of stop lines, so it never stands in a box.
+        /// </summary>
+        private void OtherCompanyStop(Agent bus, float dt)
+        {
+            PassengerSettings p = Tuning.Passengers;
+            if (bus.NpcDwell > 0f)
+            {
+                bus.NpcDwell -= dt;
+                bus.DesiredSpeed = 0f;
+                DemandZone here = bus.NpcLoadedZone;
+                if (bus.Speed < 0.5f && here != null && here.Waiting.Count > 0 && bus.NpcTaken < p.OtherBusTakesUpTo)
+                {
+                    bus.NpcBoardTimer -= dt;
+                    if (bus.NpcBoardTimer <= 0f)
+                    {
+                        here.Waiting.RemoveAt(0);
+                        bus.NpcTaken++;
+                        bus.NpcBoardTimer = p.OtherBusBoardSeconds;
+                    }
+                }
+                else if (bus.Speed < 0.5f && (here == null || here.Waiting.Count == 0 || bus.NpcTaken >= p.OtherBusTakesUpTo))
+                {
+                    bus.NpcDwell = 0f;   // kerb bare or bus full enough: off
+                }
+                return;
+            }
+            if (!bus.ServesStops || bus.Load != null || bus.Corridor != Corridor) return;   // a bus with its own door loads through Boarding
+            for (int i = 0; i < Zones.Count; i++)
+            {
+                DemandZone zone = Zones[i];
+                float ds = Corridor.DeltaS(bus.S, zone.S);
+                if (ds < -15f || ds > 15f) { if (zone == bus.NpcLoadedZone && ds < -25f) bus.NpcLoadedZone = null; continue; }
+                if (zone == bus.NpcLoadedZone || zone.Waiting.Count < p.OtherBusMinCrowd) continue;
+                if (StopDistanceAhead(bus, 30f) < 25f) continue;    // a stop line close ahead: not here
+                bus.NpcLoadedZone = zone;
+                bus.NpcDwell = p.OtherBusDwellSeconds;
+                bus.NpcTaken = 0;
+                bus.NpcBoardTimer = p.OtherBusBoardSeconds;
+                return;
+            }
         }
 
         private readonly System.Collections.Generic.Dictionary<DemandZone, float> _rivalTookAt = new System.Collections.Generic.Dictionary<DemandZone, float>();
@@ -835,7 +882,7 @@ namespace TwentyTons.Core
                 return;
             }
 
-            CountScrape(a, b);
+            CountScrape(a, b, overlapLat <= overlapS);
 
             // Nose to nose (the player's ghost against the flow of the other road) is never resolved
             // sideways, however deep the overlap: two vehicles head-on do not slip past each other, and
@@ -910,7 +957,7 @@ namespace TwentyTons.Core
             float penetration = a.HalfWidth + b.HalfWidth - distance;
             if (penetration <= 0f) return;
 
-            CountScrape(a, b);
+            CountScrape(a, b, false);
 
             // Both stop: a box jam. The lighter one is pushed out along the shortest line.
             a.Speed = Mathf.Min(a.Speed, 0.5f);
@@ -929,7 +976,8 @@ namespace TwentyTons.Core
             return a.GhostOf ?? a;
         }
 
-        private void CountScrape(Agent a, Agent b)
+        /// <param name="sideways">Side against side (the overlap is lateral), as against nose to tail.</param>
+        private void CountScrape(Agent a, Agent b, bool sideways)
         {
             // Count once per pair per couple of seconds.
             if (Metrics.Time - a.LastContactTime > 2f || Metrics.Time - b.LastContactTime > 2f)
@@ -937,8 +985,12 @@ namespace TwentyTons.Core
                 if (a.IsPlayerOrGhost || b.IsPlayerOrGhost)
                 {
                     Metrics.Contacts++;
-                    // How hard: the speed difference along the road (a head-on ghost has a negative speed, so it adds up).
-                    float relative = a.Corridor == b.Corridor ? Mathf.Abs(a.Speed - b.Speed) : Mathf.Abs(a.Speed) + Mathf.Abs(b.Speed);
+                    // How hard: nose to tail, the speed difference along the road (a head-on ghost has a negative
+                    // speed, so it adds up). Side against side, the speed the two sides closed at: a bus passing a
+                    // rickshaw and brushing it is paint, however fast it was going; a bus swerving into one is not.
+                    float relative = a.Corridor != b.Corridor ? Mathf.Abs(a.Speed) + Mathf.Abs(b.Speed)
+                                   : sideways ? Mathf.Abs(a.LateralVelocity - b.LateralVelocity)
+                                   : Mathf.Abs(a.Speed - b.Speed);
                     if (Economy.OnScrape(relative)) Metrics.HardContacts++;
                     Condition.Dents++;
                     // A scrape with a named crew is remembered.

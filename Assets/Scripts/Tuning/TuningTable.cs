@@ -394,9 +394,10 @@ namespace TwentyTons.Tuning
                  "batch stood 500 s). Buses and trucks are still waited for. placeholder")]
         public float MidRoadPatienceSeconds = 4f;
 
-        [Tooltip("Stuck mid-road this long even so, a crosser gives up and goes back to the kerb they came from, to try " +
-                 "again later. The backstop: nobody stands in the road all day, whatever the traffic does. placeholder")]
-        public float MidRoadGiveUpSeconds = 10f;
+        [Tooltip("A crossing that has taken this long (a 12 m road is 9 s at walking pace) is given up: the crosser turns " +
+                 "back to the kerb they came from and tries again later. The backstop: nobody stands in the road all " +
+                 "day, whatever the traffic does. placeholder")]
+        public float CrossingGiveUpSeconds = 20f;
 
         [Tooltip("Walking speed, m/s. placeholder")]
         public float WalkSpeed = 1.3f;
@@ -518,8 +519,10 @@ namespace TwentyTons.Tuning
     [Serializable]
     public sealed class SpawnSettings
     {
-        [Tooltip("Vehicles kept alive around the player. placeholder")]
-        public int VehiclesAround = 50;
+        [Tooltip("Vehicles kept alive around the player. 50 in the 370 m window was a standing jam end to end, both " +
+                 "autopilots crawling at 12 km/h with nothing about the driving mattering; Mirpur Road jams at the " +
+                 "junctions and moves between them. Tuning pass, 3 Oct 2026: 25. placeholder")]
+        public int VehiclesAround = 25;
 
         [Tooltip("Traffic is spawned up to this far ahead of the player, metres. placeholder")]
         public float SpawnAheadMetres = 250f;
@@ -652,8 +655,9 @@ namespace TwentyTons.Tuning
 
         [Header("Damage and the one hard rule")]
         [Tooltip("Contact slower than this (relative speed, m/s) is paint and mirrors: a dent, no bill. " +
-                 "RESEARCH: light contact is common and cosmetic. placeholder")]
-        public float CosmeticContactMs = 1.5f;
+                 "RESEARCH: light contact is common and cosmetic; a bill needs a real closing speed, a mirror torn off " +
+                 "or a panel folded, not a rub at walking pace (PLAYTEST lever 1, tuning pass 3 Oct 2026). placeholder")]
+        public float CosmeticContactMs = 3f;
 
         [Tooltip("What a harder scrape costs the crew, Tk. placeholder")]
         public float ScrapeRepairTk = 100f;
@@ -1026,16 +1030,32 @@ namespace TwentyTons.Tuning
         public float WalkToBusSecondsPerMetre = 0.4f;
 
         [Header("Demand")]
-        [Tooltip("People arriving per minute at an ordinary zone. Low enough that a crowd is taken whole by the first " +
-                 "door and the second bus finds the kerb empty: arriving first is what pays (RESEARCH: the race for " +
-                 "the stop; PLAYTEST: 'arriving second barely costs' at 3). Tuning pass, 3 Oct 2026. placeholder")]
-        public float BaseRatePerMinute = 1.2f;
+        [Tooltip("People arriving per minute at an ordinary zone. RESEARCH: a city bus takes Tk 6,000 a day, 400-600 fares, " +
+                 "the bus fills at the residential end; crowds are not what is scarce, time is. 1.2 was tried in the tuning " +
+                 "pass to make arriving first matter; it made a thin market where the slow bus trailing far behind " +
+                 "found the fullest kerb. Arriving first matters now because other companies' buses take crowds. placeholder")]
+        public float BaseRatePerMinute = 3f;
 
         [Tooltip("Multiplier for hot zones (junctions, markets). RESEARCH: hot clusters at junctions. placeholder")]
         public float HotZoneRateMultiplier = 2.5f;
 
-        [Tooltip("Crowd size at which newcomers give up and take a rickshaw. Tuning pass: 18. placeholder")]
-        public int MaxWaiting = 18;
+        [Tooltip("Crowd size at which newcomers give up and take a rickshaw. placeholder")]
+        public int MaxWaiting = 25;
+
+        [Header("Other companies' buses (RESEARCH: each passenger boards the first bus)")]
+        [Tooltip("Share of the other companies' buses on the road that stop for a crowd at our stands. Without them the " +
+                 "only buses sharing a stand's crowd are the three of our own company, and the slow bus trailing far " +
+                 "behind finds the fullest kerb: the batch at 4338ff9 had careful fares 524 against Dhaka 451 for " +
+                 "that reason alone. On Mirpur Road every company's bus takes whoever is standing there. placeholder")]
+        [Range(0f, 1f)] public float OtherBusServeShare = 0.6f;
+        [Tooltip("Smallest crowd another company's bus stops for. placeholder")]
+        public int OtherBusMinCrowd = 2;
+        [Tooltip("How long another company's bus stands at a crowd at most, seconds. placeholder")]
+        public float OtherBusDwellSeconds = 15f;
+        [Tooltip("Seconds per person another company's bus takes (its helper pulls them in). placeholder")]
+        public float OtherBusBoardSeconds = 2.5f;
+        [Tooltip("Most people another company's bus takes at one stop. placeholder")]
+        public int OtherBusTakesUpTo = 6;
 
         [Tooltip("Share of passengers who are students (fast, half fare). placeholder")]
         [Range(0f, 1f)] public float StudentShare = 0.2f;

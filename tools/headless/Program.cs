@@ -22,10 +22,14 @@ public static class Headless
     }
 
     private static float RateScale = 1f;
+    private static float Density = 1f;
 
     public static int Main(string[] args)
     {
         var list = new List<string>(args);
+        // --density X: traffic density multiplier (Spawn.VehiclesAround), for finding the regime the thesis needs.
+        int dn = list.IndexOf("--density");
+        if (dn >= 0) { Density = float.Parse(list[dn + 1]); list.RemoveRange(dn, 2); }
         if (list.Contains("--batch"))
         {
             list.Remove("--batch");
@@ -54,6 +58,8 @@ public static class Headless
         ScriptedDriver.CapKmh = capKmh;
         bool doorWas = false;
         int contactsWere = 0;
+        int boardedAtOpen = 0;
+        float openedAt = 0f;
         const float dt = 1f / 60f;
         for (float t = 0f; t < seconds && !sim.Economy.DayOver; t += dt)
         {
@@ -66,7 +72,12 @@ public static class Headless
                 DemandZone z = Boarding.ZoneInReach(sim, bus);
                 float aheadM, behindM;
                 Agent crewAhead = sim.OwnBusAhead(out aheadM), crewBehind = sim.OwnBusBehind(out behindM);
-                Console.WriteLine($"  t={t,6:0.0} door {(doorWas ? "OPEN " : "shut ")} at {(z == null ? "-" : z.Name),-10} waiting {(z == null ? 0 : z.Waiting.Count),2}  aboard {bus.Load.Count,2}  S={bus.S:0}  fares {bus.Load.FaresTk:0}  crew ahead {(crewAhead == null ? "-" : aheadM.ToString("0") + " m")} behind {(crewBehind == null ? "-" : behindM.ToString("0") + " m")}");
+                // Another door open at this zone: ours is the second, and the second door gets nobody.
+                int otherDoors = 0;
+                if (z != null) foreach (Agent o in sim.Agents) if (o != bus && o.Load != null && o.Load.DoorOpen && Math.Abs(sim.Corridor.DeltaS(z.S, o.S)) <= sim.Tuning.Passengers.ZoneHalfLengthMetres) otherDoors++;
+                string took = doorWas ? "" : $"  took {bus.Load.Boarded - boardedAtOpen} in {t - openedAt:0} s";
+                if (doorWas) { boardedAtOpen = bus.Load.Boarded; openedAt = t; }
+                Console.WriteLine($"  t={t,6:0.0} door {(doorWas ? "OPEN " : "shut ")} at {(z == null ? "-" : z.Name),-10} waiting {(z == null ? 0 : z.Waiting.Count),2}  aboard {bus.Load.Count,2}  S={bus.S:0}  fares {bus.Load.FaresTk:0}  otherDoors {otherDoors}{took}  crew ahead {(crewAhead == null ? "-" : aheadM.ToString("0") + " m")} behind {(crewBehind == null ? "-" : behindM.ToString("0") + " m")}");
             }
             if (verbose && sim.Metrics.Contacts > contactsWere)
             {
@@ -121,6 +132,7 @@ public static class Headless
             sim.Junctions.Add(new Junction(oncoming, oncomingS, cross, crossAtOncoming) { Mirror = main });
         }
         tuning.Passengers.BaseRatePerMinute *= RateScale;
+        tuning.Spawn.VehiclesAround = Mathf.RoundToInt(tuning.Spawn.VehiclesAround * Density);
         for (int i = 0; i < SandboxWorld.ZoneS.Length; i++) sim.AddZone(SandboxWorld.ZoneNames[i], SandboxWorld.ZoneS[i], SandboxWorld.ZoneHot[i]);
         for (int i = 0; i < SandboxWorld.CheckpointS.Length; i++) sim.AddCheckpoint(SandboxWorld.CheckpointNames[i], SandboxWorld.CheckpointS[i]);
         sim.SpawnPlayerBus(30f, -2f);
@@ -192,7 +204,7 @@ public static class Headless
     {
         var careful = new List<DayResult>();
         var dhaka = new List<DayResult>();
-        Console.WriteLine($"Thesis report: {seeds} seeds x {seconds:0} s, careful vs Dhaka driving, crowd rate x{RateScale:0.00}");
+        Console.WriteLine($"Thesis report: {seeds} seeds x {seconds:0} s, careful vs Dhaka driving, crowd rate x{RateScale:0.00}, traffic x{Density:0.00}");
         Console.WriteLine("seed  policy   net Tk  fares   km  scrapes  nearMiss  stopsLost  wrongSide  caneRuns  trips  rolls  hit");
         for (int seed = 1; seed <= seeds; seed++)
         {
@@ -259,7 +271,7 @@ public static class Headless
         Console.WriteLine($"--- t={t:0}s  junction0 open={j?.Open} timer={j?.Timer:0} roped={j?.Roped} mainInBox={j?.MainInBox} crossInBox={j?.CrossInBox}  ({inside.Count} on S {s0:0}-{s1:0}, head first)");
         foreach (Agent a in inside)
         {
-            string state = a.IsPedestrian ? a.PedState.ToString() : a.IsPlayer ? "PLAYER" : a.IsYielding ? "yield" : a.BluffTimer > 0f ? "bluff" : a.LeakingThrough != null ? "leak" : "drive";
+            string state = a.IsPedestrian ? a.PedState.ToString() : a.IsPlayer ? $"PLAYER thr={sim.Bus.Throttle:0.0} brk={sim.Bus.Brake:0.0} want={ScriptedDriver.WantLateral:0.0}" : a.IsYielding ? "yield" : a.BluffTimer > 0f ? "bluff" : a.LeakingThrough != null ? "leak" : "drive";
             Console.WriteLine($"  {(a.IsPlayer ? "BUS*" : a.Class.ToString()),-10} #{a.Id,-4} S={a.S,6:0.0} lat={a.Lateral,5:0.00} tgt={a.TargetLateral,5:0.00} v={a.Speed,4:0.0} want={a.DesiredSpeed,4:0.0} {state,-8} heldAhead={a.HeldAhead}");
         }
     }

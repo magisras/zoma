@@ -51,6 +51,13 @@ namespace TwentyTons.Core
         public BusLoad Load;             // passengers and door; null unless this is a bus that carries people
         public RivalBrain Brain;         // decision layer; null for generic traffic and the player
         public bool Persistent;          // never recycled by the population keeper (named crews)
+        // Other companies' buses work the same stops (RESEARCH: each passenger boards the first bus). They have no
+        // Load of their own; they stand at a crowd and the people go with them.
+        public bool ServesStops;         // this generic bus stops for crowds
+        public float NpcDwell;           // seconds of loading left; > 0 means standing at a crowd
+        public float NpcBoardTimer;      // seconds until the next person is taken
+        public int NpcTaken;             // taken at this stop
+        public DemandZone NpcLoadedZone; // the last zone this bus worked: not twice in one pass
         public Agent GhostOf;
         public bool Rolled;              // lying on its side (the player's bus after a rollover)            // a stand-in for another agent on a second corridor (the player on the oncoming road)
         public float LateralOverride = float.NaN;   // set by the decision layer to own the lateral this step
@@ -61,6 +68,7 @@ namespace TwentyTons.Core
         public float WaitTimer;          // seconds before considering the next crossing
         public float FlinchTimer;        // seconds left standing back from the kerb edge because something overhangs it
         public float MidRoadSeconds;     // how long this crosser has stood still in the road waiting for a gap
+        public float CrossingSeconds;    // how long this crossing has taken so far; a long one is given up
 
         public bool IsPedestrian => Class == VehicleClass.Pedestrian;
         public bool IsPlayerOrGhost => IsPlayer || (GhostOf != null && GhostOf.IsPlayer);

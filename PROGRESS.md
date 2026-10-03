@@ -364,6 +364,25 @@ in the headless runner and in the browser. Entries below are appended as steps l
   the road only, the lighter vehicle is shoved by the mass ratio, and the bus keeps the share of its
   speed the mass ratio allows: a truck stops it, a rickshaw slows it. 106 tests.
 
+**Step 22 — the tuning pass: the trap holds at the mean, not yet on every seed** (in progress)
+
+- The owner confirmed finding 0 of test report 0817 in the build session: polite driving must not
+  win. `docs/PLAYTEST.md` has the full account. In short: half the batch days were standoffs that
+  froze a bus and the street behind it (five patterns, all fixed with "nobody waits forever" rules:
+  geometric box check, braking-limited stop-line approach and back-off, crossers round standing
+  vehicles, nose-beside rules, alongside rule, creep); the Dhaka driver's scrapes were the controller
+  and the ring's eight-chord arcs (stopping-distance following, a mirror check, 32 chords, scrapes
+  priced by how the two met); and the market was wrong (other companies' buses now take crowds,
+  crowds at 3 a minute, traffic 25 around the player).
+- Dhaka-only moves that stayed: door open as it rolls in and out with the helper holding the step at
+  walking pace, canes respected on a drive day, the median crossed only where it is bare. Moves tried
+  and dropped: leaving a nearly bare kerb for the chaser, passing a kerb a crew bus already loads.
+- Result on `main`: Dhaka Tk +112 a day over careful at crowd rate 1.0 and +120 at 0.5, nobody hit,
+  no rollovers, every day run to the end; Dhaka ahead on 4 of 6 seeds at each rate. The acceptance
+  (5 of 6) is not yet met; the two losing seeds are second-door days at the Stand. 109 tests.
+- Owner decision recorded in README: the game is played from the driver's seat (wheel, mirrors,
+  the saloon in the interior mirror); on foot only when the body leaves the bus.
+
 **Where this leaves the project**
 
 Everything in README milestones 3–6 now exists as engine-free C# with tests, runs in the browser
