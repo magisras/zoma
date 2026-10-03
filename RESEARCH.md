@@ -347,6 +347,17 @@ Unity on Steam, prototype first on current laptops (MacBook Air M3 16 GB, Lenovo
 6. Fatigue meter and one-on, one-off shift rhythm
 7. Playtest: is the race for the stop tense and uncomfortable in the right way?
 
+## Research annexes
+
+Deeper notes kept beside this file, each with its own sources (Bangla quoted and translated):
+
+- `docs/STREET_CONTROL.md`: signals, the officer's cane, ropes, police boxes, cameras, crossings.
+- `docs/BUS.md`: the bus itself: air brakes, a cold start, fuel, costs.
+- `docs/STICKS_AND_SIGNALS.md`: why buses get hit with sticks (the officer's rap, the helper's
+  slaps and code words, the crowd after a hit), and what the simulation could do with it.
+- `docs/ROLLING_DOOR.md`: getting on and off a bus that doesn't stop: why, how (left foot first,
+  the helper's hand), how fast (estimated), against the game's door numbers.
+
 ## Sources
 
 - [Why blaming Dhaka's bus drivers misses the real problem](https://www.thedailystar.net/slow-reads/big-picture/news/why-blaming-dhakas-bus-drivers-misses-the-real-problem-4244066) — Daily Star, Aug 2026 (pay, training, sleep, fitness)
