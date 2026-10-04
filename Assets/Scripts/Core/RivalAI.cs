@@ -89,10 +89,12 @@ namespace TwentyTons.Core
             float skip = nearlyFull && waiting <= u.SmallCrowd ? u.SkipBonus : 0f;
 
             // Wait and fill: at a stop early in the route with no rival near: every empty seat says stay.
-            float wait = (early && rivalBehind == null && !nearlyFull && atZone) ? u.WaitBonus + emptySeats * u.RacePerEmptySeat : 0f;
+            // Off by default (WaitBonus 0): the owner's street has no fishing on the road.
+            float wait = (u.WaitBonus > 0f && early && rivalBehind == null && !nearlyFull && atZone) ? u.WaitBonus + emptySeats * u.RacePerEmptySeat : 0f;
 
-            // Block the player: player about to overtake, and a grudge to settle.
-            float block = PlayerAboutToOvertake(sim, bus) ? u.BlockPerGrudgePoint * brain.Grudge : 0f;
+            // Block the player: player about to overtake. Blocking is how the job works (the pack: the bus that
+            // passes you owns the next stop), so there is a base score; a grudge adds to it.
+            float block = PlayerAboutToOvertake(sim, bus) ? u.BlockBase + u.BlockPerGrudgePoint * brain.Grudge : 0f;
 
             // Back off: fatigue high, dangerous gap ahead.
             Steering.FindAhead(sim.Agents, bus, bus.Lateral, 40f, out float gap);
@@ -154,7 +156,10 @@ namespace TwentyTons.Core
             // Working a zone: pull to the kerb, stop, open, leave when done.
             DemandZone zone = brain.TargetZone;
             bool wantsStop = zone != null && zone != brain.LastLeft && brain.Action != BusAction.SkipTheStop
-                             && (zone.Waiting.Count > 0 || AnyoneFor(load, zone)) && load.Count < Boarding.TooFullCount(sim);
+                             && ((zone.Waiting.Count > 0 && load.Count < Boarding.TooFullCount(sim)) || AnyoneFor(load, zone));   // full: still stop for those getting off
+            // The pass at the stop (video: "the opportunity to pass is when you're picking up a customer"): a crew bus
+            // already loading here owns the crowd; queuing behind it earns nothing, so go past and be first at the next.
+            if (wantsStop && !brain.Stopping && u.PassLoadingBus && !AnyoneFor(load, zone) && BusLoadingAt(sim, bus, zone) != null) wantsStop = false;
             float ds = zone != null ? sim.Corridor.DeltaS(bus.S, zone.S) : 999f;
 
             if (brain.Stopping)
@@ -164,7 +169,10 @@ namespace TwentyTons.Core
                 bool done = load.AtDoor == null && load.Leaving == null && (zone.Waiting.Count == 0 || load.Count >= Boarding.TooFullCount(sim)) && !AnyoneFor(load, zone);
                 if (brain.Action == BusAction.WaitAndFill) done = done && load.Count >= sim.Tuning.Bus.Seats * u.NearlyFullLoad;
                 bool passed = sim.Corridor.DeltaS(zone.S, bus.S) > p.ZoneHalfLengthMetres;
-                if (done || brain.Dwell > maxDwell || passed)
+                // The pack on the tail: a bus of the route closing from behind will pass at the door and take the
+                // next stop. Unless the kerb is still full, the lead is worth more than the last few here: go.
+                bool chased = load.AtDoor == null && zone.Waiting.Count <= u.PackHoldCrowd && RouteBusBehind(sim, bus, u.PackLeaveMetres) != null;
+                if (done || brain.Dwell > maxDwell || passed || chased)
                 {
                     brain.Stopping = false;
                     brain.LastLeft = zone;
@@ -294,6 +302,36 @@ namespace TwentyTons.Core
                 if (-ds < best) { best = -ds; nearest = other; }
             }
             return nearest;
+        }
+
+        /// <summary>A bus of the route (one with a door: the player or a crew bus) moving up behind within range.</summary>
+        public static Agent RouteBusBehind(TrafficSim sim, Agent bus, float range)
+        {
+            Agent nearest = null;
+            float best = range;
+            for (int i = 0; i < sim.Agents.Count; i++)
+            {
+                Agent other = sim.Agents[i];
+                if (other == bus || other.Load == null || other.Corridor != bus.Corridor || other.Speed < 1f) continue;
+                float ds = sim.Corridor.DeltaS(bus.S, other.S);
+                if (ds >= 0f || -ds >= best) continue;
+                best = -ds; nearest = other;
+            }
+            return nearest;
+        }
+
+        /// <summary>Another bus with a door loading at this zone with room aboard, so the crowd is its (Boarding: first door); null if none.</summary>
+        public static Agent BusLoadingAt(TrafficSim sim, Agent bus, DemandZone zone)
+        {
+            float reach = sim.Tuning.Passengers.ZoneHalfLengthMetres;
+            for (int i = 0; i < sim.Agents.Count; i++)
+            {
+                Agent o = sim.Agents[i];
+                if (o == bus || o.Load == null || o.Corridor != bus.Corridor) continue;
+                if (o.Speed > sim.Tuning.Passengers.DoorSpeedMs || o.Load.Count >= Boarding.TooFullCount(sim)) continue;
+                if (Mathf.Abs(sim.Corridor.DeltaS(zone.S, o.S)) <= reach) return o;
+            }
+            return null;
         }
 
         private static bool PlayerAboutToOvertake(TrafficSim sim, Agent bus)

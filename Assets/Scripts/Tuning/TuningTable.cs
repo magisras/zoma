@@ -945,8 +945,8 @@ namespace TwentyTons.Tuning
         [Header("Wait and fill: 'early in route, no rival near'")]
         [Tooltip("Fraction of the route (0..1) that counts as 'early'. RESEARCH: ~70% of waiting happens before the halfway mark.")]
         [Range(0f, 1f)] public float EarlyRouteFraction = 0.5f;
-        [Tooltip("Score for waiting when early with no rival near. placeholder")]
-        public float WaitBonus = 0.6f;
+        [Tooltip("Score for waiting when early with no rival near. Owner, 4 Oct 2026: buses do not wait for passengers; the BUET 'intentional waiting' is at the terminal. 0 = no fishing on the road.")]
+        public float WaitBonus = 0f;
 
         [Header("Block the player: 'player about to overtake, driver's spite high'")]
         [Tooltip("Score when the player is overtaking, multiplied by grudge. placeholder")]
@@ -959,6 +959,16 @@ namespace TwentyTons.Tuning
         public float BackOffPerFatigue = 2f;
         [Tooltip("Score when the gap ahead is below this driver's critical gap. placeholder")]
         public float BackOffDangerousGapBonus = 1f;
+
+        [Header("The pack (docs/ROUTE_AND_TRIPS.md, 'The pack'): buses of one route leave together and the first at the stop takes all")]
+        [Tooltip("Leave the kerb when a bus of the route is this close behind and moving: it will pass at the door and own the next stop. Metres. placeholder")]
+        public float PackLeaveMetres = 30f;
+        [Tooltip("A kerb with more than this many waiting is held, whoever is on the tail: the crowd here is worth more than the lead. placeholder")]
+        public int PackHoldCrowd = 2;          // the last couple are left to the bus behind; three or more are worth the stop
+        [Tooltip("Score for blocking an overtaking crew bus with no grudge at all: trade practice, not spite (video: 'that bus is not going to let us pass'). placeholder")]
+        public float BlockBase = 0.5f;
+        [Tooltip("A crew bus loading at the kerb owns that crowd (Boarding: first door): do not queue behind it, pass and take the next stop first.")]
+        public bool PassLoadingBus = true;
 
         [Header("Carrying the actions out")]
         [Tooltip("Seconds between decisions. RESEARCH: 'Every second, score each action'.")]
@@ -974,7 +984,7 @@ namespace TwentyTons.Tuning
         [Tooltip("Nerve removed while backing off. placeholder")]
         public float BackOffNerveDrop = 0.3f;
         [Tooltip("Longest a racing bus stays at a stop: grab and go, seconds. placeholder")]
-        public float RaceDwellSeconds = 8f;
+        public float RaceDwellSeconds = 40f;   // was 8: a grab-and-go left most of the crowd to the bus behind. The pack: the first door takes all
         [Tooltip("Longest a 'wait and fill' bus stays, seconds. RESEARCH: drivers deliberately wait at early stops. placeholder")]
         public float WaitDwellSeconds = 40f;
         [Tooltip("Comfortable braking when pulling into a stop, m/s². placeholder")]
@@ -1044,16 +1054,16 @@ namespace TwentyTons.Tuning
     public sealed class PassengerSettings
     {
         [Tooltip("Fastest boarding, seconds. RESEARCH: 2 s")]
-        public float BoardingMinSeconds = 2f;
+        public float BoardingMinSeconds = 1.5f;   // RESEARCH: 2–6 s a person, more with pushing; the helper pulls (was 2)
 
         [Tooltip("Slowest ordinary boarding, seconds. RESEARCH: 6 s")]
-        public float BoardingMaxSeconds = 6f;
+        public float BoardingMaxSeconds = 4f;     // was 6: at 2–6 plus the walk out, a kerb of 25 took 200 s and the first bus could never take all
 
         [Tooltip("Boarding time of a student (the fast case), seconds. RESEARCH: 'student fast'. placeholder")]
-        public float StudentSeconds = 2f;
+        public float StudentSeconds = 1.5f;
 
         [Tooltip("Boarding time of an elderly passenger with a sack, seconds. RESEARCH: 'elderly with sack slow'. placeholder")]
-        public float ElderlyWithSackSeconds = 6f;
+        public float ElderlyWithSackSeconds = 5f;
 
         [Tooltip("Extra seconds added when people are pushing at the door. RESEARCH: 'more with pushing'. placeholder")]
         public float PushingPenaltySeconds = 2f;
@@ -1094,6 +1104,9 @@ namespace TwentyTons.Tuning
 
         [Tooltip("Seconds added per metre a passenger must walk out to a bus stopped away from the kerb. placeholder")]
         public float WalkToBusSecondsPerMetre = 0.4f;
+
+        [Tooltip("Minutes of crowd already on every kerb when the pack goes out: the headway in front of the pack (docs/ROUTE_AND_TRIPS.md). placeholder")]
+        public float InitialCrowdMinutes = 3f;
 
         [Header("Demand")]
         [Tooltip("People arriving per minute at an ordinary zone. RESEARCH: a city bus takes Tk 6,000 a day, 400-600 fares, " +

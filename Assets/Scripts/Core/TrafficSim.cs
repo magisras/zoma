@@ -24,6 +24,9 @@ namespace TwentyTons.Core
         public float RopeHeldSeconds;            // time the player's bus spent held at a constable's rope
         public float CaneWaitSeconds;            // time the player's bus spent stopped before a closed stop line, rope or not
         public int StopsLost;                    // a rival took a crowd the player was about to reach
+        public int StopsContested;               // player arrivals at a zone with people waiting (the pack: each is a contest)
+        public int StopsFirst;                   // ...of which the player's door was the first there
+        public float LeadMetresSum;              // the gap to the nearest route bus behind at each of those arrivals (capped)
         public float WrongSideSeconds;           // time spent on the oncoming carriageway
         public bool WrongSideNow;
         public bool PersonHit;                   // the player hit a person: the day is over
@@ -362,6 +365,7 @@ namespace TwentyTons.Core
             }
             HoldAtRopes();
             WatchStopsLost();
+            WatchTheContest();
 
             for (int i = 0; i < Agents.Count; i++)
             {
@@ -459,6 +463,37 @@ namespace TwentyTons.Core
         /// "Arriving second at a stop earns almost nothing." When a rival's door takes people at a zone
         /// the player is approaching from close behind, that stop is lost. Counted once per zone visit.
         /// </summary>
+        private DemandZone _contestCounted;
+
+        /// <summary>
+        /// The pack's two numbers (docs/ROUTE_AND_TRIPS.md): at every zone the player reaches with people waiting,
+        /// was ours the first door, and how far behind was the nearest bus of the route? Counted once per arrival.
+        /// </summary>
+        private void WatchTheContest()
+        {
+            if (Player == null || Player.Load == null) return;
+            DemandZone zone = Player.Load.ArrivedZone;
+            if (zone == null) { _contestCounted = null; return; }
+            if (zone == _contestCounted) return;
+            _contestCounted = zone;
+            if (zone.Waiting.Count == 0) return;
+            Metrics.StopsContested++;
+            float reach = Tuning.Passengers.ZoneHalfLengthMetres;
+            // Leftovers are not a win: a crowd another door was taking from within the last minute was theirs.
+            bool first = zone.LastTakenBy == null || zone.LastTakenBy == Player || Metrics.Time - zone.LastTakenAt > 60f;
+            for (int i = 0; i < Agents.Count && first; i++)
+            {
+                Agent other = Agents[i];
+                if (other == Player || other.Load == null || other.Load.ArrivedZone != zone) continue;
+                if (Mathf.Abs(Corridor.DeltaS(zone.S, other.S)) > reach || other.Load.Count >= Boarding.TooFullCount(this)) continue;
+                if (other.Load.DoorOpenedAt <= Player.Load.DoorOpenedAt) first = false;
+            }
+            if (first) Metrics.StopsFirst++;
+            float behind;
+            Agent chaser = OwnBusBehind(out behind);
+            Metrics.LeadMetresSum += chaser == null ? 400f : Mathf.Min(400f, behind);
+        }
+
         private void WatchStopsLost()
         {
             if (Player == null) return;

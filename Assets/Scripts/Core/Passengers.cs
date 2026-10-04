@@ -32,6 +32,8 @@ namespace TwentyTons.Core
         public readonly List<Passenger> Waiting = new List<Passenger>();
         public float Accumulator;             // fractional people, spills over into Waiting
         public Vector3 Position;
+        public Agent LastTakenBy;             // the bus whose door last took someone here (the pack: whose crowd it was)
+        public float LastTakenAt = -999f;     // ...and when
     }
 
     /// <summary>
@@ -58,6 +60,9 @@ namespace TwentyTons.Core
         public float FaresTk;                  // fares taken today (before the conductor leaks any)
         public int Boarded, Alighted, MissedAlights;
         public DemandZone LastServed;          // the zone we last worked, so one stop isn't counted twice
+        public float DoorBusySeconds;          // time with someone on the step getting on (the report: seconds a boarder)
+        public float StandingAtZoneSeconds;    // time standing within a zone's reach
+        public float StandingElsewhereSeconds; // time standing anywhere else (queues, boxes, people in the way)
 
         public int Count => Aboard.Count;
     }

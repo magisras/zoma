@@ -378,3 +378,52 @@ levers are small and all within the research's ranges: the household's food (Tk 
 a family in Dhaka; 400–500 puts the line at Tk 67–83 and the careful crew under it), the crew's wages
 (Tk 300–500 each; 800 is the low end), fuel per trip (250–333). None of them is a rule change. The
 owner decides; this file records the batch as it is.
+
+## The pack (4 Oct 2026, owner's correction, PROGRESS step 26)
+
+The owner, after the trip tables above: buses never wait for passengers; they leave the terminal as a
+pack of three on one route, and the whole competition is to be first at each stop (`docs/ROUTE_AND_TRIPS.md`,
+"The pack", with the Sayedabad ride-along). Built: the three buses leave the stand together with three
+minutes of crowd already on every kerb; nobody fishes; the first door takes the whole kerb (boarding
+1.5–4 s a head); a crew bus passes a bus that is loading instead of queuing behind it, leaves a kerb with
+two or fewer on it when a route bus closes from behind, and blocks an overtaking crew bus as a matter of
+trade; a full bus still stops to let people off. The batch now prints riders, first-door share and the
+lead over the nearest route bus behind, for the player and for each crew bus.
+
+### `./tools/headless.sh --batch 6 900`
+
+| seed | policy | net Tk | fares | riders | first | lead m | each crew bus's fares | km | scrapes | stopsLost |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | Careful | 308 | 1403 | 90 | 4/7 | 352 | 1652 | 1.84 | 3 | 2 |
+| 1 | Dhaka | -15 | 1377 | 90 | 2/10 | 400 | 2196 | 2.73 | 3 | 1 |
+| 2 | Careful | 319 | 1421 | 92 | 4/7 | 243 | 1569 | 1.88 | 5 | 3 |
+| 2 | Dhaka | -984 | 566 | 35 | 2/10 | 184 | 1708 | 3.31 | 10 | 11 |
+| 3 | Careful | 295 | 1463 | 85 | 3/5 | 363 | 1719 | 1.70 | 3 | 4 |
+| 3 | Dhaka | -730 | 511 | 35 | 3/8 | 303 | 2489 | 2.46 | 6 | 8 |
+| 4 | Careful | 77 | 1631 | 108 | 6/8 | 302 | 1539 | 1.89 | 2 | 2 |
+| 4 | Dhaka | -761 | 1309 | 76 | 5/7 | 348 | 1502 | 2.24 | 2 | 1 |
+| 5 | Careful | -553 | 675 | 42 | 5/6 | 400 | 2075 | 2.39 | 4 | 3 |
+| 5 | Dhaka | -541 | 615 | 35 | 3/7 | 292 | 1716 | 2.17 | 3 | 4 |
+| 6 | Careful | -187 | 977 | 63 | 3/8 | 400 | 1769 | 2.21 | 2 | 2 |
+| 6 | Dhaka | -872 | 591 | 37 | 0/9 | 357 | 2104 | 3.10 | 8 | 10 |
+
+```
+careful  mean net Tk     43  fares  1262  riders   80 (each crew bus  107)  first  61 %  lead  343 m  scrapes 3.2  stopsLost 2.7
+dhaka    mean net Tk   -650  fares   828  riders   51 (each crew bus  123)  first  29 %  lead  314 m  scrapes 5.3  stopsLost 5.8
+the pack: careful boarded 80 against each crew bus's 107; Dhaka boarded 51 against 123.
+          careful is third, but Dhaka does not lead its pack either.
+```
+
+What it says. The careful bus is third in its pack in every run of the day (80 riders against the crew
+buses' 107; the same in four earlier passes of the batch while the autopilots were being fixed): it pulls in
+behind a loading bus and waits, it never passes at the door and never blocks, and the two crews take the
+kerbs. That half of the premise now comes from position, not from a fine: no fines, no cameras, no
+knock-downs in any of the twelve days. The Dhaka autopilot does not lead its pack. Watching it (`-v`,
+`--watch`): it loses the first stop boxed in behind the leader at the kerb (fixed: it now stops outside a
+loader, clear of its band, and creeps out when boxed), then the first junction in a queue the two crews ran
+before the cane dropped, and it never gets the lead back on a 1.6 km ring where the kerbs refill in a minute.
+A faster cap (50 km/h) doubled its scrapes without a rider more. So the thesis instrument for the Dhaka side
+is the weak part now: the premise is about the player's driving, and the autopilot is not that driver. Next
+for the instrument: build the Dhaka policy on the crews' own decision layer (pass at the door, hold the
+middle, run the cane when the box is clear) so the batch compares like with like. For the owner: the pack is
+in the sandbox (artifact): three buses leave the stand together, and the first kerb is Block 11.

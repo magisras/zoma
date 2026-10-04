@@ -17,6 +17,7 @@ public static class Headless
     {
         public int Seed;
         public float Net, Fares, Km, Scrapes, NearMisses, StopsLost, WrongSide, Trips, Boarded, CaneRuns;
+        public float Contested, First, LeadMetres, RivalBoarded, RivalFares;   // the pack: who was first, by how much, and what the crew buses took
         public bool PersonHit;
         public int Rollovers, KnockedDown;
     }
@@ -57,7 +58,8 @@ public static class Headless
         ScriptedDriver.Reset();
         ScriptedDriver.Current = dhaka ? Policy.Dhaka : Policy.Careful;
         ScriptedDriver.CapKmh = capKmh;
-        bool doorWas = false;
+        DemandZone zoneWas = null;
+        int frame = 0;
         int contactsWere = 0;
         int boardedAtOpen = 0;
         float openedAt = 0f;
@@ -67,10 +69,11 @@ public static class Headless
             ScriptedDriver.Apply(sim);
             sim.Step(dt);
             if (watch0 >= 0f && Mathf.RoundToInt(t * 60f) % 300 == 0) Watch(sim, t, watch0, watch1);
-            if (verbose && bus.Load.DoorOpen != doorWas)
+            if (verbose && bus.Load.ArrivedZone != zoneWas)
             {
-                doorWas = bus.Load.DoorOpen;
-                DemandZone z = Boarding.ZoneInReach(sim, bus);
+                bool doorWas = bus.Load.ArrivedZone != null;    // arriving (true) or leaving (false)
+                DemandZone z = doorWas ? bus.Load.ArrivedZone : zoneWas;
+                zoneWas = bus.Load.ArrivedZone;
                 float aheadM, behindM;
                 Agent crewAhead = sim.OwnBusAhead(out aheadM), crewBehind = sim.OwnBusBehind(out behindM);
                 // Another door open at this zone: ours is the second, and the second door gets nobody.
@@ -78,7 +81,13 @@ public static class Headless
                 if (z != null) foreach (Agent o in sim.Agents) if (o != bus && o.Load != null && o.Load.DoorOpen && Math.Abs(sim.Corridor.DeltaS(z.S, o.S)) <= sim.Tuning.Passengers.ZoneHalfLengthMetres) otherDoors++;
                 string took = doorWas ? "" : $"  took {bus.Load.Boarded - boardedAtOpen} in {t - openedAt:0} s";
                 if (doorWas) { boardedAtOpen = bus.Load.Boarded; openedAt = t; }
-                Console.WriteLine($"  t={t,6:0.0} door {(doorWas ? "OPEN " : "shut ")} at {(z == null ? "-" : z.Name),-10} waiting {(z == null ? 0 : z.Waiting.Count),2}  aboard {bus.Load.Count,2}  S={bus.S:0}  fares {bus.Load.FaresTk:0}  otherDoors {otherDoors}{took}  crew ahead {(crewAhead == null ? "-" : aheadM.ToString("0") + " m")} behind {(crewBehind == null ? "-" : behindM.ToString("0") + " m")}");
+                Console.WriteLine($"  t={t,6:0.0} {(doorWas ? "ARRIVE" : "LEAVE ")} {(z == null ? "-" : z.Name),-10} waiting {(z == null ? 0 : z.Waiting.Count),2}  aboard {bus.Load.Count,2}  S={bus.S:0}  fares {bus.Load.FaresTk:0}  otherDoors {otherDoors}{took}  crew ahead {(crewAhead == null ? "-" : aheadM.ToString("0") + " m")} behind {(crewBehind == null ? "-" : behindM.ToString("0") + " m")}");
+            }
+            frame++;
+            if (verbose && bus.Load.ArrivedZone != null && frame % 600 == 0)
+            {
+                DemandZone z = bus.Load.ArrivedZone;
+                Console.WriteLine($"  t={t,6:0.0}   at {z.Name,-10} v={bus.Speed:0.0} waiting {z.Waiting.Count,2} aboard {bus.Load.Count,2} atDoor {(bus.Load.AtDoor != null ? "yes" : "no ")} leaving {(bus.Load.Leaving != null ? "yes" : "no ")} working {(ScriptedDriver.Working == null ? "-" : ScriptedDriver.Working.Name)} dwell {ScriptedDriver.Dwell:0} lastTakenBy {(z.LastTakenBy == null ? "-" : z.LastTakenBy.IsPlayer ? "us" : "#" + z.LastTakenBy.Id)} {t - z.LastTakenAt:0}s ago");
             }
             if (verbose && sim.Metrics.Contacts > contactsWere)
             {
@@ -138,9 +147,13 @@ public static class Headless
         tuning.Spawn.VehiclesAround = Mathf.RoundToInt(tuning.Spawn.VehiclesAround * Density);
         for (int i = 0; i < SandboxWorld.ZoneS.Length; i++) sim.AddZone(SandboxWorld.ZoneNames[i], SandboxWorld.ZoneS[i], SandboxWorld.ZoneHot[i]);
         for (int i = 0; i < SandboxWorld.CheckpointS.Length; i++) sim.AddCheckpoint(SandboxWorld.CheckpointNames[i], SandboxWorld.CheckpointS[i]);
-        sim.SpawnPlayerBus(30f, -2f);
-        sim.SpawnRivalBus("Rafiq", DriverPersonality.Reckless(), 180f, -2f);
-        sim.SpawnRivalBus("Jamal", DriverPersonality.Spiteful(), corridor.Length - 160f, -2f);
+        Boarding.SeedCrowds(sim, tuning.Passengers.InitialCrowdMinutes);   // the headway in front of the pack
+        // The pack (docs/ROUTE_AND_TRIPS.md): three buses of one route leave the stand together, 18 m apart, the player in
+            // the middle. Rafiq has the first door at Block 11 unless the player takes it from him; Jamal is on the player's tail.
+            float packS = SandboxWorld.ZoneS[0] + tuning.Passengers.ZoneHalfLengthMetres + 12f;
+            sim.SpawnPlayerBus(packS + 18f, -2f);
+        sim.SpawnRivalBus("Rafiq", DriverPersonality.Reckless(), packS + 36f, -2f);
+        sim.SpawnRivalBus("Jamal", DriverPersonality.Spiteful(), packS, -2f);
         return sim;
     }
 
@@ -151,7 +164,7 @@ public static class Headless
         BusLoad load = bus.Load;
         Ledger l = sim.Economy.Ledger;
         Console.WriteLine($"seed {seed} ({ScriptedDriver.Current}): {seconds:0}s  dist {m.DistanceMetres / 1000f:0.00} km  nearMisses {m.NearMisses} ({m.NearMissesPerMinute:0.0}/min)  minHeadway {m.MinHeadwaySeconds:0.00}s  scrapes {m.Contacts} ({m.HardContacts} hard)  caneRuns {m.CaneRuns}  horn {m.HornPresses} moved {m.YieldsToHorn}  agents {sim.Agents.Count}");
-        Console.WriteLine($"  aboard {load.Count}  boarded {load.Boarded}  alighted {load.Alighted}  missed {load.MissedAlights}  stumbles {load.Stumbles}  brushes {m.Brushes}  hurt {load.Injuries}  fares Tk {load.FaresTk:0}  stopsLost {m.StopsLost}");
+        Console.WriteLine($"  aboard {load.Count}  boarded {load.Boarded}  alighted {load.Alighted}  missed {load.MissedAlights}  stumbles {load.Stumbles}  brushes {m.Brushes}  hurt {load.Injuries}  fares Tk {load.FaresTk:0}  stopsLost {m.StopsLost}  first door {m.StopsFirst}/{m.StopsContested}  lead {(m.StopsContested > 0 ? m.LeadMetresSum / m.StopsContested : 0f):0} m");
         Console.WriteLine($"  ledger: fares {l.FaresTk:0}  zoma {l.ZomaTk:0}  fuel {l.FuelTk:0}  wages {l.WagesTk:0}  food {l.FoodTk:0}  lineman {l.LinemanTk:0}  party {l.PartyManTk:0}  sergeant {l.SergeantTk:0}  cases {l.CaseTk:0}  camera {l.CameraTk:0}  repairs {l.RepairsTk:0}  => crew {l.CrewNetTk:0} Tk  ({l.Trips} trips, day over: {sim.Economy.DayOver} {sim.Economy.DayOverReason})");
         Console.WriteLine($"  street: {(sim.Economy.DriveDay ? "DRIVE DAY" : "ordinary day")}  boxes manned {sim.Checkpoints.FindAll(c => c.SergeantOnDuty).Count}/{sim.Checkpoints.Count}  seized {sim.Economy.Seized}");
         foreach (Junction j in sim.Junctions)
@@ -190,10 +203,11 @@ public static class Headless
         Console.WriteLine($"  voices: {sim.Voice.Lines.Count} lines");
         int from = Math.Max(0, sim.Voice.Lines.Count - 8);
         for (int i = from; i < sim.Voice.Lines.Count; i++) { VoiceLine v = sim.Voice.Lines[i]; Console.WriteLine($"    [{v.Time,5:0}s] {v.Speaker}: {v.Text}"); }
+        Console.WriteLine($"  time: player standing at zones {load.StandingAtZoneSeconds:0} s, elsewhere {load.StandingElsewhereSeconds:0} s; door busy {load.DoorBusySeconds:0} s = {(load.Boarded > 0 ? load.DoorBusySeconds / load.Boarded : 0f):0.0} s a boarder");
         foreach (Agent a in sim.Agents)
         {
             if (a.Brain == null) continue;
-            Console.WriteLine($"  crew {a.Brain.CrewName,-6} {a.Brain.Personality.Name,-9} gap {sim.Corridor.DeltaS(bus.S, a.S),6:0} m  {a.Brain.Action,-16} aboard {a.Load.Count,2}  boarded {a.Load.Boarded,2}  fares Tk {a.Load.FaresTk,4:0}  grudge {a.Brain.Grudge}");
+            Console.WriteLine($"  crew {a.Brain.CrewName,-6} {a.Brain.Personality.Name,-9} gap {sim.Corridor.DeltaS(bus.S, a.S),6:0} m  {a.Brain.Action,-16} aboard {a.Load.Count,2}  boarded {a.Load.Boarded,2}  fares Tk {a.Load.FaresTk,4:0}  grudge {a.Brain.Grudge}  standing at zones {a.Load.StandingAtZoneSeconds:0} s, elsewhere {a.Load.StandingElsewhereSeconds:0} s, {(a.Load.Boarded > 0 ? a.Load.DoorBusySeconds / a.Load.Boarded : 0f):0.0} s a boarder, cruise {a.Brain.BaseCruise:0.0} m/s");
         }
     }
 
@@ -208,14 +222,14 @@ public static class Headless
         var careful = new List<DayResult>();
         var dhaka = new List<DayResult>();
         Console.WriteLine($"Thesis report: {seeds} seeds x {seconds:0} s, careful vs Dhaka driving, crowd rate x{RateScale:0.00}, traffic x{Density:0.00}");
-        Console.WriteLine("seed  policy   net Tk  fares   km  scrapes  nearMiss  stopsLost  wrongSide  caneRuns  trips  rolls  down  hit");
+        Console.WriteLine("seed  policy   net Tk  fares  riders  first  lead m  rivalFares   km  scrapes  nearMiss  stopsLost  wrongSide  caneRuns  rolls  down  hit");
         for (int seed = 1; seed <= seeds; seed++)
         {
             foreach (Policy policy in new[] { Policy.Careful, Policy.Dhaka })
             {
                 DayResult r = RunDay(seed, seconds, policy);
                 (policy == Policy.Careful ? careful : dhaka).Add(r);
-                Console.WriteLine($"{seed,4}  {policy,-7} {r.Net,7:0} {r.Fares,6:0} {r.Km,5:0.00} {r.Scrapes,8:0} {r.NearMisses,9:0} {r.StopsLost,10:0} {r.WrongSide,9:0}s {r.CaneRuns,9:0} {r.Trips,6:0} {r.Rollovers,6} {r.KnockedDown,5}  {(r.PersonHit ? "YES" : "")}");
+                Console.WriteLine($"{seed,4}  {policy,-7} {r.Net,7:0} {r.Fares,6:0} {r.Boarded,7:0} {FirstText(r),6} {r.LeadMetres,7:0} {r.RivalFares,11:0} {r.Km,5:0.00} {r.Scrapes,8:0} {r.NearMisses,9:0} {r.StopsLost,10:0} {r.WrongSide,9:0}s {r.CaneRuns,9:0} {r.Rollovers,6} {r.KnockedDown,5}  {(r.PersonHit ? "YES" : "")}");
             }
         }
         Console.WriteLine();
@@ -228,6 +242,12 @@ public static class Headless
         // household's food for the day share; careful must fail that, Dhaka must clear it.
         float food = careful.Count > 0 ? FoodShare : 0f;
         bool carefulCannotEat = c <= food, dhakaEats = d > food;
+        // The pack (docs/ROUTE_AND_TRIPS.md, "The pack"): the three buses leave together and the first at the stop takes
+        // all, so a crew's riders are a function of its lead. The careful bus should end up third: fewer riders than the
+        // crew buses' mean, first at few stops.
+        float cb = Mean(careful, r => r.Boarded), crb = Mean(careful, r => r.RivalBoarded), db = Mean(dhaka, r => r.Boarded), drb = Mean(dhaka, r => r.RivalBoarded);
+        Console.WriteLine($"the pack: careful boarded {cb:0} against each crew bus's {crb:0} (first at {100f * Mean(careful, r => r.First) / Mathf.Max(1f, Mean(careful, r => r.Contested)):0} % of stops, lead {Mean(careful, r => r.LeadMetres):0} m); Dhaka boarded {db:0} against {drb:0} (first at {100f * Mean(dhaka, r => r.First) / Mathf.Max(1f, Mean(dhaka, r => r.Contested)):0} %, lead {Mean(dhaka, r => r.LeadMetres):0} m).");
+        Console.WriteLine(cb < crb && db > crb ? "          careful is third in its pack, Dhaka leads: the pack holds." : cb < crb ? "          careful is third, but Dhaka does not lead its pack either." : "          careful is NOT third in its pack: the rivals leave too much on the kerb.");
         Console.WriteLine($"eat line: Tk {food:0} a day (the household's food). careful {(carefulCannotEat ? "cannot eat" : "EATS")} ({c:0}), Dhaka {(dhakaEats ? "eats" : "CANNOT EAT")} ({d:0}).");
         Console.WriteLine(carefulCannotEat && dhakaEats
             ? $"VERDICT: the trap holds. Careful driving does not feed the house; Dhaka driving does, by Tk {d - food:0}."
@@ -251,18 +271,27 @@ public static class Headless
         }
         SimMetrics m = sim.Metrics;
         Ledger l = sim.Economy.Ledger;
+        int crews = 0; float rivalBoarded = 0f, rivalFares = 0f;
+        foreach (Agent a in sim.Agents) if (a.Brain != null && a.Load != null) { crews++; rivalBoarded += a.Load.Boarded; rivalFares += a.Load.FaresTk; }
         return new DayResult
         {
+            Contested = m.StopsContested, First = m.StopsFirst, LeadMetres = m.StopsContested > 0 ? m.LeadMetresSum / m.StopsContested : 0f,
+            RivalBoarded = crews > 0 ? rivalBoarded / crews : 0f, RivalFares = crews > 0 ? rivalFares / crews : 0f,
             Seed = seed, Net = l.CrewNetTk, Fares = l.FaresTk, Km = m.DistanceMetres / 1000f, Scrapes = m.Contacts,
             NearMisses = m.NearMisses, StopsLost = m.StopsLost, WrongSide = m.WrongSideSeconds, Trips = l.Trips,
             Boarded = sim.Player.Load.Boarded, CaneRuns = m.CaneRuns, PersonHit = m.PersonHit, Rollovers = sim.Rollover.Count, KnockedDown = m.PeopleKnockedDown,
         };
     }
 
+    private static string FirstText(DayResult r)
+    {
+        return r.Contested > 0 ? $"{r.First:0}/{r.Contested:0}" : "-";
+    }
+
     private static void Summ(string name, List<DayResult> rs)
     {
         int hits = 0, down = 0; foreach (DayResult r in rs) { if (r.PersonHit) hits++; down += r.KnockedDown; }
-        Console.WriteLine($"{name,-8} mean net Tk {Mean(rs, r => r.Net),6:0}  fares {Mean(rs, r => r.Fares),5:0}  km {Mean(rs, r => r.Km),4:0.00}  scrapes {Mean(rs, r => r.Scrapes),4:0.0}  nearMiss {Mean(rs, r => r.NearMisses),4:0.0}  stopsLost {Mean(rs, r => r.StopsLost),4:0.0}  wrongSide {Mean(rs, r => r.WrongSide),4:0}s  knocked down {down}  people hit {hits}/{rs.Count}");
+        Console.WriteLine($"{name,-8} mean net Tk {Mean(rs, r => r.Net),6:0}  fares {Mean(rs, r => r.Fares),5:0}  riders {Mean(rs, r => r.Boarded),4:0} (each crew bus {Mean(rs, r => r.RivalBoarded),4:0})  first {100f * Mean(rs, r => r.First) / Mathf.Max(1f, Mean(rs, r => r.Contested)),3:0} %  lead {Mean(rs, r => r.LeadMetres),4:0} m  km {Mean(rs, r => r.Km),4:0.00}  scrapes {Mean(rs, r => r.Scrapes),4:0.0}  stopsLost {Mean(rs, r => r.StopsLost),4:0.0}  wrongSide {Mean(rs, r => r.WrongSide),4:0}s  knocked down {down}  people hit {hits}/{rs.Count}");
     }
 
     private static float Mean(List<DayResult> rs, Func<DayResult, float> f)
@@ -282,7 +311,7 @@ public static class Headless
         Console.WriteLine($"--- t={t:0}s  junction0 open={j?.Open} timer={j?.Timer:0} roped={j?.Roped} mainInBox={j?.MainInBox} crossInBox={j?.CrossInBox}  ({inside.Count} on S {s0:0}-{s1:0}, head first)");
         foreach (Agent a in inside)
         {
-            string state = a.IsPedestrian ? a.PedState.ToString() : a.IsPlayer ? $"PLAYER thr={sim.Bus.Throttle:0.0} brk={sim.Bus.Brake:0.0} want={ScriptedDriver.WantLateral:0.0}" : a.IsYielding ? "yield" : a.BluffTimer > 0f ? "bluff" : a.LeakingThrough != null ? "leak" : "drive";
+            string state = a.IsPedestrian ? a.PedState.ToString() : a.IsPlayer ? $"PLAYER thr={sim.Bus.Throttle:0.0} brk={sim.Bus.Brake:0.0} want={ScriptedDriver.WantLateral:0.0} why={ScriptedDriver.Why}working={(ScriptedDriver.Working == null ? "-" : ScriptedDriver.Working.Name)}" : a.IsYielding ? "yield" : a.BluffTimer > 0f ? "bluff" : a.LeakingThrough != null ? "leak" : "drive";
             Console.WriteLine($"  {(a.IsPlayer ? "BUS*" : a.Class.ToString()),-10} #{a.Id,-4} S={a.S,6:0.0} lat={a.Lateral,5:0.00} tgt={a.TargetLateral,5:0.00} v={a.Speed,4:0.0} want={a.DesiredSpeed,4:0.0} {state,-8} heldAhead={a.HeldAhead}");
         }
     }

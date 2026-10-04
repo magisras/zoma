@@ -1,4 +1,5 @@
 using TwentyTons.Core;
+using TwentyTons.Tuning;
 using UnityEngine;
 
 namespace TwentyTons.Sandbox
@@ -22,8 +23,11 @@ namespace TwentyTons.Sandbox
         public static float HoldLateral = -2f;
         public static float MaxDwellSeconds = 40f;     // long enough to take an ordinary crowd whole
         public static int DhakaMinCrowd = 1;           // the Dhaka driver stops for anyone waving (3 was tried: no gain, the bus stops anyway for people getting off)
-        public static bool DhakaSkipsTakenStops = false;   // pass a stop where a crew bus is already loading (tried twice: loses a full kerb for the next one, which the rival behind then takes)
-        public static bool DhakaRaceLeave = false;         // leave a nearly bare kerb when a crew bus is on the tail
+        // The pack (docs/ROUTE_AND_TRIPS.md): the three buses leave the stand together, the first at a stop takes all,
+        // the pass happens while the leader loads. Both flags were off while rivals left 60–120 s apart; with the pack
+        // they are the job. Tuning.Utility.PackLeaveMetres / PackHoldCrowd set the leave rule.
+        public static bool DhakaSkipsTakenStops = true;    // pass a stop where a crew bus is already loading: its crowd is its, the next is yours
+        public static bool DhakaRaceLeave = true;          // leave a kerb when a crew bus closes from behind, unless the kerb is still full
 
         // ---- Act 1: the player is the helper, the ostad drives (RESEARCH: "Act 1 as helper is the tutorial").
         // The ostad only stops where the helper calls; the helper's hand says hurry or easy.
@@ -44,6 +48,9 @@ namespace TwentyTons.Sandbox
         private static float _wantLateral = -2f;
         private static float _stopLateral = float.NaN;   // the kerb line we are pulling in to for a stop; NaN = not stopping
         public static float WantLateral => _wantLateral;   // for the headless runner's contact log
+        public static float Dwell => _dwell;
+        public static string Why = "";          // why the pedals are where they are this frame (the headless watch)
+        public static DemandZone Working => _working;
 
         public static void Reset()
         {
@@ -72,7 +79,12 @@ namespace TwentyTons.Sandbox
             bool tooClose = TooCloseBehind(sim, bus, 4f, out coast);
             bool closing = h < 2f || g < 12f || tooClose || PersonInTheWay(sim, bus);
             // No door on this bus: people step on whenever it is slow. The careful driver stops for them.
-            if (bus.Load.AtDoor != null || bus.Load.Leaving != null) closing = true;
+            float carefulCap = CapKmh;
+            if (bus.Load.AtDoor != null || bus.Load.Leaving != null)
+            {
+                if (_working != null || _lastLeft == null) closing = true;    // at the kerb: the step clears before we go
+                else carefulCap = Mathf.Min(carefulCap, Mathf.Min(sim.Tuning.Passengers.DoorSpeedMs, sim.Tuning.Passengers.InjurySpeedMs - 0.6f) * 3.6f);   // pulling away: hold walking pace until they are in
+            }
             float stop = sim.StopDistanceAhead(bus, 60f);
             if (stop < 60f) closing = closing || Steering.AllowedSpeed(stop, 2f, 1f) < bus.Speed;   // respects the cane
 
@@ -81,7 +93,7 @@ namespace TwentyTons.Sandbox
             if (WorkZone(sim, bus, MaxDwellSeconds, 1)) return;
             closing = closing || TooFastForZoneAhead(sim, bus, 1);
 
-            sim.Bus.Throttle = closing || coast > 0f ? 0f : (v > CapKmh ? 0f : 1f);
+            sim.Bus.Throttle = closing || coast > 0f ? 0f : (v > carefulCap ? 0f : 1f);
             sim.Bus.Brake = closing ? 1f : 0f;
             sim.Bus.Steer = SteerToHold(bus, sim.Corridor, AimLateral(sim, bus, _wantLateral));
         }
@@ -103,7 +115,7 @@ namespace TwentyTons.Sandbox
             float stop = sim.StopDistanceAhead(bus, 60f, ignoreCane: !driveDay);
             bool boxBlocked = stop < 60f && Steering.AllowedSpeed(stop, 0.8f, 1f) < bus.Speed;
 
-            float cap = 45f;
+            float cap = 45f;   // 50 was tried to match the crew buses (47 km/h): twice the scrapes, a minute on the wrong side, no more riders
             // Pulled away with someone still on the step: the helper holds them and the bus holds walking pace
             // until they are in, then the right foot goes down (above the door speed nobody boards anyway; a
             // fall at speed is the injury the street answers). Under the injury speed with a margin, not at it.
@@ -132,13 +144,20 @@ namespace TwentyTons.Sandbox
             // will do today. Closer than that stopping distance is the brake; a bit more is the throttle off.
             float coast;
             bool tooClose = TooCloseBehind(sim, bus, 1.5f, out coast);
-            bool closing = tooClose || boxBlocked || TooFastForZoneAhead(sim, bus, HelperMode ? (HelperCalls ? 0 : int.MaxValue) : DhakaMinCrowd) || PersonInTheWay(sim, bus);
+            bool zoneAhead = TooFastForZoneAhead(sim, bus, HelperMode ? (HelperCalls ? 0 : int.MaxValue) : DhakaMinCrowd);
+            bool person = PersonInTheWay(sim, bus);
+            bool closing = tooClose || boxBlocked || zoneAhead || person;
+            Why = (tooClose ? "close " : "") + (boxBlocked ? "box " : "") + (zoneAhead ? "zone " : "") + (person ? "person " : "") + (coast > 0f ? "coast " : "");
             // Blocked, or stuck behind a bus: a bus ahead is the one that takes the next crowd, so it is the
             // thing to get past (RESEARCH: the race for the stop). Both start the look for a freer band.
             float gapBus;
             Agent busAhead = Steering.FindAhead(sim.Agents, bus, bus.Lateral, 40f, out gapBus);
             bool behindABus = busAhead != null && busAhead.Class == TwentyTons.Tuning.VehicleClass.Bus && busAhead.Speed < bus.Speed + 2f;
-            bool blocked = (g < 15f && bus.Speed < 5f) || behindABus;
+            // Something standing in my band within 40 m: start looking for the way round now, while still rolling. Braking
+            // to a stop behind it first left the bus unable to steer out (a bus at rest turns nothing) for as long as the
+            // loader ahead stood there: forty seconds a kerb, the whole lead gone.
+            bool standingAhead = busAhead != null && busAhead.Speed < 1f && gapBus < 40f;
+            bool blocked = (g < 15f && bus.Speed < 5f) || behindABus || standingAhead;
             _stuckFor = blocked ? _stuckFor + dt : 0f;
 
             // The horn: tap whenever something is close ahead, blast when stuck.
@@ -176,11 +195,33 @@ namespace TwentyTons.Sandbox
             }
             else if (!blocked && Mathf.Abs(_wantLateral - HoldLateral) > 0.1f && g > 30f)
             {
-                _wantLateral = HoldLateral;   // drift back to the usual line when the road is open
+                // Drift back to the usual line when the road is open there too: aiming back into the band of the bus
+                // we have just crept out from behind put us back in its tail, braking, for as long as it stood.
+                float homeFreeAhead;
+                Steering.FindAhead(sim.Agents, bus, HoldLateral, 40f, out homeFreeAhead);
+                if (homeFreeAhead > 30f) _wantLateral = HoldLateral;
+            }
+            // The block (video: "that bus is not going to let us pass; he swerves all over the place"): a crew bus
+            // coming up faster behind will pass and own the next stop. Sit in its band while the road ahead is open.
+            if (!blocked && !sim.Metrics.WrongSideNow && float.IsNaN(_stopLateral) && _working == null)
+            {
+                Agent chaser = RivalAI.RouteBusBehind(sim, bus, 45f);
+                if (chaser != null && chaser.Speed > bus.Speed + 0.5f && !Steering.SideBlocked(sim.Agents, bus, chaser.Lateral)) _wantLateral = chaser.Lateral;
             }
             if (!float.IsNaN(_stopLateral) && !sim.Metrics.WrongSideNow) _wantLateral = _stopLateral;   // pulling in for a crowd
 
-            sim.Bus.Throttle = closing || coast > 0f ? 0f : (v > cap ? 0f : 1f);
+            // Stopped close behind something, wanting another band that is open ahead: creep out at a walk. The nose
+            // angles out as it rolls; a standing bus goes nowhere.
+            bool creepOut = false;
+            if (tooClose && bus.Speed < 1.5f && Mathf.Abs(_wantLateral - bus.Lateral) > 0.6f && !person && !boxBlocked && !Steering.SideBlocked(sim.Agents, bus, _wantLateral))
+            {
+                float freeWant;
+                Steering.FindAhead(sim.Agents, bus, _wantLateral, 40f, out freeWant);
+                creepOut = freeWant > 15f;
+            }
+            if (creepOut) { closing = false; coast = 0f; cap = Mathf.Min(cap, 7f); }
+
+            sim.Bus.Throttle = closing || coast > 0f ? 0f : (v > cap ? 0f : (creepOut ? 0.35f : 1f));
             sim.Bus.Brake = closing ? 1f : 0f;
             // Hard, but not harder than the bus takes: the Dhaka driver corners at 0.6 of what tips it.
             sim.Bus.Steer = SteerToHold(bus, sim.Corridor, AimLateral(sim, bus, _wantLateral), SafeLock(sim, bus, sim.Tuning.Bus.RolloverLateralAccelMs2 * 0.6f));
@@ -236,8 +277,9 @@ namespace TwentyTons.Sandbox
         {
             DemandZone zone = Boarding.ZoneInReach(sim, bus);
             if (zone == null) _lastLeft = null;
-            bool wantStop = zone != null && zone != _lastLeft && (zone.Waiting.Count >= minCrowd || (!HelperMode && AnyoneFor(bus, zone)))
-                            && bus.Load.Count < Boarding.TooFullCount(sim);
+            // Full is a reason not to take anyone, never a reason to carry people past where they asked to get off.
+            bool room = bus.Load.Count < Boarding.TooFullCount(sim);
+            bool wantStop = zone != null && zone != _lastLeft && ((zone.Waiting.Count >= minCrowd && room) || (!HelperMode && AnyoneFor(bus, zone)));
             if (HelperMode && !HelperCalls) wantStop = false;         // nobody banged the side: drive on
             // The race, as the research has it: a bus already loading at this kerb owns the crowd (Boarding:
             // first door takes them). Queuing behind it earns nothing; the Dhaka driver goes past and takes
@@ -256,10 +298,10 @@ namespace TwentyTons.Sandbox
             if (HelperMode) done = !HelperCalls && bus.Load.AtDoor == null && bus.Load.Leaving == null;   // the helper decides when we go
             if (DhakaRaceLeave && Current == Policy.Dhaka && !HelperMode && !done)
             {
-                // The race: with a crew bus closing from behind and the kerb nearly bare, take what is at the door
-                // and go: the next crowd is worth more than the last two here. A full kerb is held, whoever honks.
-                Agent chaser = sim.OwnBusBehind(out float behindM);
-                if (chaser != null && behindM < 60f && _dwell > 4f && bus.Load.AtDoor == null && _working.Waiting.Count <= 2) done = true;
+                // The pack: a crew bus closing from behind will pass at the door and own the next stop. Take what is on
+                // the step and go, unless the kerb is still full: that crowd is worth more than the lead.
+                UtilitySettings u = sim.Tuning.Utility;
+                if (bus.Load.AtDoor == null && _working.Waiting.Count <= u.PackHoldCrowd && RivalAI.RouteBusBehind(sim, bus, u.PackLeaveMetres) != null) done = true;
             }
             if (done || _dwell > maxDwell)
             {
@@ -271,6 +313,19 @@ namespace TwentyTons.Sandbox
                 _dropOnly = false;
                 _stopLateral = float.NaN;
                 return false;
+            }
+            if (_dropOnly)
+            {
+                // The crowd is the other door's; ours only get off. The Dhaka driver does that on the roll: a crawl under
+                // the door speed through the zone, people step down as he goes (RESEARCH: dropping without stopping),
+                // and he is past the loading bus and first at the next kerb while it is still filling.
+                float stepMs = Mathf.Min(sim.Tuning.Passengers.DoorSpeedMs, sim.Tuning.Passengers.InjurySpeedMs - 0.6f);
+                float coastDrop;
+                bool danger = PersonInTheWay(sim, bus) || TooCloseBehind(sim, bus, 1.5f, out coastDrop);
+                sim.Bus.Throttle = !danger && bus.Speed < stepMs - 0.3f ? 0.5f : 0f;
+                sim.Bus.Brake = danger || bus.Speed > stepMs ? 1f : 0f;
+                sim.Bus.Steer = SteerToHold(bus, sim.Corridor, AimLateral(sim, bus, float.IsNaN(_stopLateral) ? bus.Lateral : _stopLateral));
+                return true;
             }
             sim.Bus.Throttle = 0f;
             sim.Bus.Brake = 1f;
@@ -305,11 +360,19 @@ namespace TwentyTons.Sandbox
             DemandZone next = RivalAI.NextZone(sim, bus);
             float ds = next != null ? sim.Corridor.DeltaS(bus.S, next.S) : 0f;
             bool worth = next != null && next != _lastLeft && ds > -sim.Tuning.Passengers.ZoneHalfLengthMetres && ds < 45f
-                         && (next.Waiting.Count >= minCrowd || AnyoneFor(bus, next)) && bus.Load.Count < Boarding.TooFullCount(sim);
+                         && ((next.Waiting.Count >= minCrowd && bus.Load.Count < Boarding.TooFullCount(sim)) || AnyoneFor(bus, next));
             if (!worth) { _stopLateral = float.NaN; return; }
             float kerb = next.Side * (sim.Corridor.HalfWidth - bus.HalfWidth - 0.3f);
             // Something parked in the kerb band (a rickshaw, a bus already there): stop in our own lane and let them walk out.
-            if (float.IsNaN(_stopLateral)) _stopLateral = Steering.SideBlocked(sim.Agents, bus, kerb) ? bus.Lateral : kerb;
+            // The Dhaka driver also never tucks in behind a crew bus that is loading: boxed in at the kerb behind it he
+            // leaves after it and is second at the next stop too. He stops outside it (RESEARCH: "a second bus stops
+            // outside the first and loads across it") and is free to go the moment his own people are off.
+            Agent loader = Current == Policy.Dhaka && !HelperMode ? RivalAI.BusLoadingAt(sim, bus, next) : null;
+            if (float.IsNaN(_stopLateral))
+            {
+                if (loader != null) _stopLateral = Mathf.Max(bus.Lateral, loader.Lateral + loader.HalfWidth + bus.HalfWidth + 0.4f);   // outside it, clear of its band
+                else _stopLateral = Steering.SideBlocked(sim.Agents, bus, kerb) ? bus.Lateral : kerb;
+            }
         }
 
         /// <summary>
@@ -394,8 +457,8 @@ namespace TwentyTons.Sandbox
             if (next == null || next == _lastLeft) return false;
             float ds = sim.Corridor.DeltaS(bus.S, next.S);
             if (ds < 0f || ds > 70f) return false;
-            bool worth = next.Waiting.Count >= minCrowd || AnyoneFor(bus, next);
-            if (!worth || bus.Load.Count >= Boarding.TooFullCount(sim)) return false;
+            bool worth = (next.Waiting.Count >= minCrowd && bus.Load.Count < Boarding.TooFullCount(sim)) || AnyoneFor(bus, next);
+            if (!worth) return false;
             float allowed = Mathf.Sqrt(2f * 2.5f * Mathf.Max(0f, ds - 4f));
             return bus.Speed > allowed;
         }

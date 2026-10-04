@@ -34,17 +34,37 @@ namespace TwentyTons.Core
             }
         }
 
+        /// <summary>
+        /// The crowd that was already there when the pack went out (docs/ROUTE_AND_TRIPS.md, "The pack"): the people
+        /// who gathered since the previous pack passed, so many minutes' worth at each zone's rate, capped.
+        /// </summary>
+        public static void SeedCrowds(TrafficSim sim, float minutes)
+        {
+            PassengerSettings p = sim.Tuning.Passengers;
+            for (int i = 0; i < sim.Zones.Count; i++)
+            {
+                DemandZone zone = sim.Zones[i];
+                int n = Mathf.Min(p.MaxWaiting, Mathf.RoundToInt(zone.RatePerMinute * minutes));
+                while (zone.Waiting.Count < n) zone.Waiting.Add(NewPassenger(sim, zone));
+            }
+        }
+
         /// <summary>One step of door work for one bus.</summary>
         public static void Step(TrafficSim sim, Agent bus, float dt)
         {
             BusLoad load = bus.Load;
             PassengerSettings p = sim.Tuning.Passengers;
             if (load == null) return;
+            if (load.AtDoor != null) load.DoorBusySeconds += dt;
+            if (bus.Speed < 0.5f) { if (load.ArrivedZone != null) load.StandingAtZoneSeconds += dt; else load.StandingElsewhereSeconds += dt; }
 
             // Flying: nobody can get on or off (there is no door to shut; the doorway is always open). Whoever
             // was on the step is still on it.
             if (bus.Speed > p.JumpSpeedMs)
             {
+                // Still "arrived" nowhere: a bus that flew off keeps no claim on the kerb it left (and the logs and the
+                // contest count read ArrivedZone as where the bus is).
+                if (load.ArrivedZone != null && ZoneInReach(sim, bus) != load.ArrivedZone) { load.ArrivedZone = null; load.DoorOpenedAt = -1f; }
                 return;
             }
 
@@ -121,6 +141,8 @@ namespace TwentyTons.Core
 
             Passenger next = zone.Waiting[0];
             zone.Waiting.RemoveAt(0);
+            zone.LastTakenBy = bus;
+            zone.LastTakenAt = sim.Metrics.Time;
             next.FareTk = Fare(sim, zone, next);
             load.AtDoor = next;
             // Walking out to a bus stopped mid-road takes time too.

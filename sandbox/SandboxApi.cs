@@ -215,6 +215,7 @@ namespace TwentyTons.Sandbox
             {
                 _sim.AddCheckpoint(SandboxWorld.CheckpointNames[i], SandboxWorld.CheckpointS[i]);
             }
+            Boarding.SeedCrowds(_sim, _tuning.Passengers.InitialCrowdMinutes);   // the headway in front of the pack
             ScriptedDriver.Reset();
             _sim.Condition = _household.Bus;                 // the same bus every day
             _sim.Day = _household.Day;
@@ -222,11 +223,14 @@ namespace TwentyTons.Sandbox
             if (_tuning.Economy.CameraFromDay > 0 && _sim.Day >= _tuning.Economy.CameraFromDay) _sim.Junctions[0].Camera = true;
             bool continuing = _household.Days.Count > 0;
             float wearCarried = _household.Bus.BrakeWear;
-            _sim.SpawnPlayerBus(30f, -2f);                   // sets the prototype's starting wear...
+            // The pack (docs/ROUTE_AND_TRIPS.md): three buses of one route leave the stand together, 18 m apart, the player in
+            // the middle. Rafiq has the first door at Block 11 unless the player takes it from him; Jamal is on the player's tail.
+            float packS = SandboxWorld.ZoneS[0] + _tuning.Passengers.ZoneHalfLengthMetres + 12f;
+            _sim.SpawnPlayerBus(packS + 18f, -2f);                   // sets the prototype's starting wear...
             if (continuing) { _sim.Condition.BrakeWear = wearCarried; _sim.Bus.BrakeWear = wearCarried; }   // ...unless the bus has a history
             // The two crews of the player's own company: one ahead, one behind, as the research describes.
-            _sim.SpawnRivalBus("Rafiq", DriverPersonality.Reckless(), 180f, -2f);
-            _sim.SpawnRivalBus("Jamal", DriverPersonality.Spiteful(), corridor.Length - 160f, -2f);
+            _sim.SpawnRivalBus("Rafiq", DriverPersonality.Reckless(), packS + 36f, -2f);
+            _sim.SpawnRivalBus("Jamal", DriverPersonality.Spiteful(), packS, -2f);
             _sim.RecallCrews(_household);                    // Jamal remembers yesterday, a little less each night
             _accumulator = 0f;
 

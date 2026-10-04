@@ -442,21 +442,35 @@ in the headless runner and in the browser. Entries below are appended as steps l
   the street does after a death or a bad injury is from the Bangla press: the crew runs, the crowd
   beats them and burns the bus, police seize it. 115 tests.
 
-**Step 26 — the pack: fares are seconds of lead, not crowds fished for** (research only)
+**Step 26 — the pack: three buses leave together and the first at the stop takes all** (done)
 
-- Owner's correction, 4 Oct: buses never wait for passengers; they leave the terminal as a pack
-  of three or more on one route and the whole competition is to be first at each stop. A ride-along
-  video from Sayedabad (transcript from the owner) says the same from inside: two or three buses
-  released together, no timetable, the first takes everything, the second scraps, the third
-  nothing; a pass is only possible while the leader is loading; on the road the leader blocks.
-- Written into `docs/ROUTE_AND_TRIPS.md` ("The pack") with what is confirmed in Bangla (the
-  minister on the same-route competition) and what is not (the pack release, a company
-  time-checker: searched, not found). The math that holds without fines or scrapes: what a bus
-  can load at a stop is bounded by its lead over the bus behind, about one person per 4 s of lead;
-  a calm driver in a pack is third by construction and earns nothing.
-- Consequence for the sim, next build after report 1131: no dwell-and-fish for either autopilot,
-  rivals leave the stand with the player, and the headless report prints seconds of lead and share
-  of stops taken first as the verdict columns.
+- Owner's correction, 4 Oct: buses never wait for passengers; they leave the terminal as a pack of three
+  on one route and the whole competition is to be first at each stop. Confirmed from inside by a Sayedabad
+  ride-along (two or three released together, no timetable, the first takes everything, a pass is possible
+  only while the leader loads, the leader blocks on the road); the pack wears one livery but is three
+  owners' buses on a daily gate pass, so only the crews race. Four more videos read; a machine
+  transcription tool for Bangla ride-alongs is in `tools/transcribe/`. All in `docs/ROUTE_AND_TRIPS.md`.
+- Built: the player and the two crews spawn 18 m apart just past the stand (headless and sandbox); three
+  minutes of crowd on every kerb at the start (`InitialCrowdMinutes`, `Boarding.SeedCrowds`); no fishing
+  (`WaitBonus` 0); the first door takes the whole kerb (`RaceDwellSeconds` 40, boarding 1.5–4 s a head);
+  a crew bus passes a loading bus (`PassLoadingBus`), leaves a kerb with two or fewer on it when a route
+  bus closes from behind (`PackLeaveMetres` 30, `PackHoldCrowd` 2), and blocks an overtaking crew bus as
+  trade practice (`BlockBase`); a full bus still stops for those getting off (was a bug: 70 carried past in
+  one day). Dhaka autopilot: passes a loading crew bus, drops its own people on the roll, stops outside a
+  loader clear of its band, looks for a free band while still rolling and creeps out when boxed in, blocks a
+  faster crew bus behind. Careful autopilot: holds walking pace instead of stopping for each newcomer once
+  it is pulling away (it crept 40 m through a zone stopping for everyone, two minutes a kerb).
+- Metrics: `StopsContested`, `StopsFirst` (nobody else's door took anyone here in the last minute),
+  `LeadMetresSum`; `BusLoad.DoorBusySeconds` and standing time; zones remember whose door last took
+  someone. The batch prints riders, first-door share and lead for the player and each crew bus, and a pack
+  verdict line; the verbose log shows arrive/leave per zone and a line every 10 s at a kerb; the watch
+  prints why the Dhaka autopilot is on the brake. The arrival stamp clears when the bus is away at any
+  speed (it kept a stale claim on the kerb it had left).
+- Result (`docs/PLAYTEST.md`, "The pack"): careful is third in its pack every run, 80 riders against the
+  crews' 107, with no fine, camera or knock-down in any day. The Dhaka autopilot does not lead (51 against
+  123): it loses the first kerb and the first junction and never gets the lead back. The instrument, not
+  the model; next is a Dhaka policy on the crews' decision layer. Report 1131 (getting off) after that.
+  119 tests.
 
 **Where this leaves the project**
 

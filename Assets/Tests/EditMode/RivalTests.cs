@@ -55,12 +55,17 @@ namespace TwentyTons.Tests
         }
 
         [Test]
-        public void EarlyAtTheStandWithNoRivalWaitsAndFills()
+        public void NobodyFishesOnTheRoadUnlessTheTableSaysSo()
         {
+            // Owner, 4 Oct 2026: buses do not wait for passengers. WaitBonus is 0 by default; the action still exists
+            // for a table that wants the BUET "intentional waiting" at the terminal.
             var sim = World();
             Agent bus = sim.SpawnRivalBus("Rafiq", DriverPersonality.Default(), 50f, -3f);   // at the stand, early in route
             sim.SetPassengerCount(bus, 5);
             Crowd(sim.Zones[0], 2);
+            RivalAI.Decide(sim, bus);
+            Assert.AreNotEqual(BusAction.WaitAndFill, bus.Brain.Action);
+            sim.Tuning.Utility.WaitBonus = 0.6f;
             RivalAI.Decide(sim, bus);
             Assert.AreEqual(BusAction.WaitAndFill, bus.Brain.Action);
         }
@@ -76,8 +81,11 @@ namespace TwentyTons.Tests
             bus.Brain.Grudge = 4;
             RivalAI.Decide(sim, bus);
             Assert.AreEqual(BusAction.BlockThePlayer, bus.Brain.Action);
-            // And without a grudge, the same situation is just racing.
+            // Without a grudge he still blocks: it is the job (the pack). Only with the base score off is it just racing.
             bus.Brain.Grudge = 0;
+            RivalAI.Decide(sim, bus);
+            Assert.AreEqual(BusAction.BlockThePlayer, bus.Brain.Action);
+            sim.Tuning.Utility.BlockBase = 0f;
             RivalAI.Decide(sim, bus);
             Assert.AreNotEqual(BusAction.BlockThePlayer, bus.Brain.Action);
         }
@@ -174,6 +182,90 @@ namespace TwentyTons.Tests
             sim.SpawnVehicle(VehicleClass.Bus, 230f, 2f, 0.5f);
             sim.Step(1f / 60f);
             Assert.Greater(generic.DesiredSpeed, alone);
+        }
+    
+        // ---- The pack (docs/ROUTE_AND_TRIPS.md, "The pack"): the first at the stop takes all, the pass happens at the door.
+
+        [Test]
+        public void LoadingRivalLeavesTheKerbWhenARouteBusClosesFromBehind()
+        {
+            var sim = World();
+            Agent bus = sim.SpawnRivalBus("Rafiq", DriverPersonality.Default(), 395f, -3f);
+            bus.Speed = 0f;
+            Crowd(sim.Zones[1], 2);                       // the last couple on the kerb: at PackHoldCrowd
+            Run(sim, 3f);
+            Assert.IsTrue(bus.Brain.Stopping, "he should be working the kerb");
+            // The player comes up behind him, moving.
+            Agent player = sim.SpawnPlayerBus(375f, -2f);
+            player.Speed = 6f;
+            Run(sim, 1f);
+            Assert.IsFalse(bus.Brain.Stopping, "a route bus 20 m behind and closing: take what is on the step and go");
+            Assert.AreEqual(sim.Zones[1], bus.Brain.LastLeft);
+        }
+
+        [Test]
+        public void LoadingRivalHoldsAFullKerbWhateverIsBehind()
+        {
+            var sim = World();
+            Agent bus = sim.SpawnRivalBus("Rafiq", DriverPersonality.Default(), 395f, -3f);
+            bus.Speed = 0f;
+            Crowd(sim.Zones[1], 20);                      // a full kerb: worth more than the lead
+            Run(sim, 3f);
+            Agent player = sim.SpawnPlayerBus(375f, -2f);
+            player.Speed = 6f;
+            Run(sim, 1f);
+            Assert.IsTrue(bus.Brain.Stopping, "twenty on the kerb: he stays, whoever honks");
+        }
+
+        [Test]
+        public void RivalPassesAStopWhereAnotherBusIsAlreadyLoading()
+        {
+            var sim = World();
+            Agent player = sim.SpawnPlayerBus(398f, -3f);  // the player's door is open at Mid
+            player.Speed = 0f;
+            Crowd(sim.Zones[1], 10);
+            Run(sim, 2f);
+            Assert.IsNotNull(player.Load.ArrivedZone, "the player should be first door at Mid");
+            Agent bus = sim.SpawnRivalBus("Rafiq", DriverPersonality.Default(), 350f, -2f);
+            bus.Speed = 8f;
+            bus.DesiredSpeed = 8f;
+            Run(sim, 12f);
+            Assert.IsFalse(bus.Brain.Stopping, "the crowd is the other door's: he does not queue");
+            Assert.Greater(sim.Corridor.DeltaS(sim.Zones[1].S, bus.S), 0f, "he should have gone past the zone");
+            // With the rule off he stops behind the player like before.
+            var sim2 = World();
+            Agent p2 = sim2.SpawnPlayerBus(398f, -3f); p2.Speed = 0f;
+            Crowd(sim2.Zones[1], 10);
+            Run(sim2, 2f);
+            sim2.Tuning.Utility.PassLoadingBus = false;
+            Agent b2 = sim2.SpawnRivalBus("Rafiq", DriverPersonality.Default(), 350f, -2f);
+            b2.Speed = 8f;
+            Run(sim2, 12f);
+            Assert.IsTrue(b2.Brain.Stopping);
+        }
+
+        [Test]
+        public void TheContestIsCountedOncePerArrivalAndKnowsWhoWasFirst()
+        {
+            var sim = World();
+            Agent player = sim.SpawnPlayerBus(398f, -3f);
+            player.Speed = 0f;
+            Crowd(sim.Zones[1], 10);
+            Run(sim, 3f);
+            Assert.AreEqual(1, sim.Metrics.StopsContested);
+            Assert.AreEqual(1, sim.Metrics.StopsFirst);
+            Assert.AreEqual(400f, sim.Metrics.LeadMetresSum, 0.01f, "nobody behind: the lead is the cap");
+            // A second bus arriving at the same kerb is counted on its own arrival, and it is not first.
+            var sim2 = World();
+            Agent rival = sim2.SpawnRivalBus("Rafiq", DriverPersonality.Default(), 398f, -3f);
+            rival.Speed = 0f;
+            Crowd(sim2.Zones[1], 20);
+            Run(sim2, 2f);
+            Agent p2 = sim2.SpawnPlayerBus(385f, 1f);
+            p2.Speed = 0f;
+            Run(sim2, 2f);
+            Assert.AreEqual(1, sim2.Metrics.StopsContested);
+            Assert.AreEqual(0, sim2.Metrics.StopsFirst, "the rival's door was open first");
         }
     }
 }

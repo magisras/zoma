@@ -314,11 +314,17 @@ Open numbers for the owner: how often a pack is released (the headway in front o
 the pie); how many stops a pass or a block typically swaps the order; whether a company ever fines
 a crew for lagging, and if so how much.
 
-**Against the sandbox.** The careful autopilot dwells up to 40 s and fishes; the Dhaka one leaves
-when the kerb is bare. Under the pack model neither is right: the dwell is set by the gap behind,
-and the rivals should leave the stand with the player, not 60–120 s apart. The headless report
-should print seconds of lead and share of stops taken first; those two columns replace the scrape
-and fine arithmetic as the verdict. Next build, after the getting-off design (report 1131).
+**Against the sandbox (built 4 Oct 2026, PROGRESS step 26).** The three buses now leave the stand
+together with three minutes of crowd already on every kerb; nobody fishes (`WaitBonus` 0); the first
+door takes the whole kerb (`RaceDwellSeconds` 40, boarding 1.5–4 s a head with the helper pulling);
+a crew bus passes a bus that is loading instead of queuing behind it, and leaves a kerb with two or
+fewer on it when a route bus closes from behind (`PackLeaveMetres`, `PackHoldCrowd`); blocking an
+overtaking crew bus is trade practice (`BlockBase`), a grudge only adds. The headless batch prints
+riders, first-door share and lead for the player and the crew buses; `docs/PLAYTEST.md` "The pack"
+has the tables. Result: the careful bus is third in its pack every run. The Dhaka autopilot is not
+yet the driver the premise describes (it loses the first stop boxed in and the first junction in a
+queue, and never gets the lead back); the browser sandbox is where that driver sits. Report 1131
+(getting off) is still next.
 
 ## Sources
 
