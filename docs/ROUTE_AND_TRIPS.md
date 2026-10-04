@@ -171,6 +171,15 @@ with a local guide, transcript supplied by the owner. Facts, as the narrator and
   within five minutes, bus on its side; a broken hand, nobody dead; the driver ran; locals winched
   the bus upright and traffic moved on. "Just another Tuesday."
 
+A second video (a day with Sujan, a Dhaka city-bus driver of 8–9 years, [youtu.be/JgRubquYnBU](https://youtu.be/JgRubquYnBU);
+transcript from the owner, English narration only, Sujan's own Bangla answers not in it): the bus is
+parked and locked at the kerb overnight, the day opens with checks and the attendant sweeping; one
+stop for fuel and one for lunch in the whole day, "more traffic means a longer trip means lower
+collection"; the attendant announces stops, does the ticketing, and **takes the wheel when the driver
+has been driving for several hours**; drivers say the traffic police give them a hard time; the
+depot is pre-1971 and buses spend a lot of time in it for cracked glass and scraped bodies. Thin on
+the race, but the swap at the wheel and the one-fuel-one-lunch day are usable.
+
 Independent of the video: the road transport minister names the same mechanism when announcing
 the one-company-per-route reform, একই রুটে বিচ্ছিন্নভাবে একাধিক মালিকের বাস আর চলবে না … যাত্রী
 তোলার প্রতিযোগিতা — "buses of several owners will no longer run separately on one route … the
