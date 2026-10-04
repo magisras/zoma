@@ -240,6 +240,12 @@ gets sleepy and his eyelids grow heavy". So a long-distance driver earns roughly
 clears on a good day, with a wage, days off and no race: the city deposit system is the exception,
 not the trade.
 
+The France 24 clip ([youtu.be/SeQFgkNl7Ms](https://youtu.be/SeQFgkNl7Ms), April 2026) is one minute
+of viral highway-race footage with a vlogger's comment: "when there are a lot of people on the bus the
+driver tries to entertain the passengers by driving very fast"; a helper's pitch "get on, it's half
+price" (companies competing on fare and journey time); buses in 12 % of the country's road accidents.
+Nothing on dispatch. It confirms only that passengers egg the driver on, which `RESEARCH.md` has.
+
 Independent of the video: the road transport minister names the same mechanism when announcing
 the one-company-per-route reform, একই রুটে বিচ্ছিন্নভাবে একাধিক মালিকের বাস আর চলবে না … যাত্রী
 তোলার প্রতিযোগিতা — "buses of several owners will no longer run separately on one route … the
