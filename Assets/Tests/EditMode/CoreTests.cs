@@ -219,6 +219,7 @@ namespace TwentyTons.Tests
             ped.Lateral = 0f;
             sim.Tuning.Pedestrians.WalkSpeed = 0f;   // cannot get out of the way: frozen in the bus's path
             sim.Tuning.Pedestrians.RunSpeed = 0f;    // (people run from a bus now; this one cannot)
+            sim.Tuning.Economy.DeathLogisticA = -50f; // and the death curve pinned to "dies": the day's end is on trial, not the odds
 
             Run(sim, 15f);
 

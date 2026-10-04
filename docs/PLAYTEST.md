@@ -280,3 +280,101 @@ bus). `docs/BUS.md` §7. Batch at crowd rate 1.0: careful +469, Dhaka +539 (+70 
 autopilots never needed the new pedestrian rules; a human at the wheel at 30 km/h does. The absolute
 premise (a careful crew cannot eat) is still not in these numbers: that is the economics decision in
 report 1639.
+
+## The day is a trip (4 Oct 2026, owner's decisions 1 and 2)
+
+One sandbox day is now charged like one real trip of six (`docs/ROUTE_AND_TRIPS.md`, Builder's
+notes): the deposit, the helper's and conductor's wages and the crew's food at a sixth of the day
+(Tk 500, 133, 33); fuel for the real kilometres a lap stands for (`TripKm` 15 over the ring's 1.6 km,
+Tk 300 a trip); fares by the real kilometres a ride stands for; and everything that happens per event
+at its real taka: a sergeant Tk 300, a camera SMS Tk 2,000, a case Tk 3,000, a knock-down Tk 3,000,
+a scrape Tk 100, the lineman Tk 50 and the party man Tk 30 a trip. Crowds at 2 a minute (3 filled
+every kerb to the cap and a lap boarded 90 against a real trip's 60–70). The batch verdict is the
+eat line: the household's food is Tk 50 a day-share; careful must not clear it, Dhaka must.
+
+### `./tools/headless.sh --batch 6 900` (crowds 2 a minute)
+
+| seed | policy | net Tk | fares | km | scrapes | caneRuns | down | hit |
+|---|---|---|---|---|---|---|---|---|
+| 1 | Careful | 211 | 1295 | 1.79 | 3 | 0 | 0 | 0 |
+| 1 | Dhaka | 131 | 1489 | 2.55 | 7 | 1 | 0 | 0 |
+| 2 | Careful | 395 | 1396 | 1.61 | 4 | 1 | 0 | 0 |
+| 2 | Dhaka | 399 | 1490 | 1.82 | 3 | 1 | 0 | 0 |
+| 3 | Careful | 432 | 1404 | 1.46 | 0 | 2 | 0 | 0 |
+| 3 | Dhaka | -2119 | 1284 | 1.89 | 4 | 0 | 0 | 0 |
+| 4 | Careful | -21 | 1081 | 1.88 | 4 | 0 | 0 | 0 |
+| 4 | Dhaka | 546 | 1768 | 1.98 | 9 | 2 | 0 | 0 |
+| 5 | Careful | -265 | 1270 | 1.79 | 6 | 1 | 0 | 0 |
+| 5 | Dhaka | -25 | 1301 | 2.38 | 9 | 1 | 0 | 0 |
+| 6 | Careful | -181 | 921 | 1.61 | 6 | 1 | 0 | 0 |
+| 6 | Dhaka | -233 | 1349 | 2.31 | 8 | 2 | 0 | 0 |
+
+```
+careful  mean net Tk     95  fares  1228  km 1.69  scrapes  3.8  nearMiss  1.3  stopsLost  2.7  wrongSide    0s  knocked down 0  people hit 0/6
+dhaka    mean net Tk   -217  fares  1447  km 2.16  scrapes  6.7  nearMiss  2.5  stopsLost  3.2  wrongSide    3s  knocked down 0  people hit 0/6
+eat line: Tk 50 a day (the household's food). careful EATS (95), Dhaka CANNOT EAT (-217).
+VERDICT: polite driving still wins (careful net >= Dhaka net). RESEARCH says: rivals too timid, or the street too kind.
+```
+
+### `--batch 6 900 0.5` (1 a minute)
+
+| seed | policy | net Tk | fares | km | scrapes | caneRuns | down | hit |
+|---|---|---|---|---|---|---|---|---|
+| 1 | Careful | -605 | 651 | 2.54 | 3 | 0 | 0 | 0 |
+| 1 | Dhaka | -916 | 643 | 3.09 | 9 | 1 | 0 | 0 |
+| 2 | Careful | -353 | 795 | 2.13 | 2 | 0 | 0 | 0 |
+| 2 | Dhaka | -468 | 913 | 3.20 | 1 | 2 | 0 | 0 |
+| 3 | Careful | -952 | 638 | 2.72 | 4 | 0 | 0 | 0 |
+| 3 | Dhaka | -1000 | 611 | 2.83 | 7 | 3 | 0 | 0 |
+| 4 | Careful | -491 | 648 | 2.08 | 1 | 0 | 0 | 0 |
+| 4 | Dhaka | -812 | 485 | 2.76 | 2 | 1 | 0 | 0 |
+| 5 | Careful | -515 | 760 | 2.64 | 6 | 0 | 0 | 0 |
+| 5 | Dhaka | -543 | 713 | 2.54 | 3 | 0 | 0 | 0 |
+| 6 | Careful | -502 | 652 | 2.16 | 3 | 0 | 0 | 0 |
+| 6 | Dhaka | -512 | 757 | 2.61 | 6 | 1 | 0 | 0 |
+
+```
+careful  mean net Tk   -570  fares   691  km 2.38  scrapes  3.2  nearMiss  0.7  stopsLost  2.2  wrongSide    0s  knocked down 0  people hit 0/6
+dhaka    mean net Tk   -709  fares   687  km 2.84  scrapes  4.7  nearMiss  3.5  stopsLost  2.8  wrongSide    0s  knocked down 0  people hit 0/6
+eat line: Tk 50 a day (the household's food). careful cannot eat (-570), Dhaka CANNOT EAT (-709).
+VERDICT: nobody eats. The street is too hard for both; the costs or the crowds are off.
+```
+
+### `--batch 6 900 1.5` (3 a minute, for reference)
+
+| seed | policy | net Tk | fares | km | scrapes | caneRuns | down | hit |
+|---|---|---|---|---|---|---|---|---|
+| 1 | Careful | 475 | 1477 | 1.62 | 1 | 1 | 0 | 0 |
+| 1 | Dhaka | -106 | 1711 | 2.34 | 5 | 1 | 0 | 0 |
+| 2 | Careful | 519 | 1762 | 1.30 | 6 | 2 | 0 | 0 |
+| 2 | Dhaka | 705 | 1825 | 1.98 | 5 | 0 | 0 | 0 |
+| 3 | Careful | 552 | 1553 | 1.61 | 5 | 1 | 0 | 0 |
+| 3 | Dhaka | 431 | 1815 | 1.79 | 4 | 2 | 0 | 0 |
+| 4 | Careful | -222 | 1217 | 1.55 | 1 | 0 | 0 | 0 |
+| 4 | Dhaka | 507 | 1593 | 1.80 | 3 | 0 | 0 | 0 |
+| 5 | Careful | 665 | 1665 | 1.61 | 4 | 0 | 0 | 0 |
+| 5 | Dhaka | 671 | 1756 | 1.79 | 5 | 1 | 0 | 0 |
+| 6 | Careful | 645 | 1646 | 1.61 | 3 | 0 | 0 | 0 |
+| 6 | Dhaka | 203 | 1482 | 2.29 | 7 | 2 | 0 | 0 |
+
+```
+careful  mean net Tk    439  fares  1553  km 1.55  scrapes  3.3  nearMiss  0.5  stopsLost  3.2  wrongSide    0s  knocked down 0  people hit 0/6
+dhaka    mean net Tk    402  fares  1697  km 2.00  scrapes  4.8  nearMiss  2.3  stopsLost  3.3  wrongSide    0s  knocked down 0  people hit 0/6
+eat line: Tk 50 a day (the household's food). careful EATS (439), Dhaka eats (402).
+VERDICT: polite driving still wins (careful net >= Dhaka net). RESEARCH says: rivals too timid, or the street too kind.
+```
+
+**Reading.** With real costs the margins are real: a careful lap clears about Tk 1,230 in fares against
+Tk 1,130 of costs and keeps Tk 95, Tk 45 over the household's food. The Dhaka lap collects 18 % more
+fares (1,447), burns 28 % more fuel, pays the sergeant more often, and on seed 3 took the wrong side
+under a camera: an SMS to the owner for Tk 2,000, the whole trip gone (−2,119). Without that day the
+Dhaka mean is about +160; with it, −217. That is the premise with its teeth in: the racing crew eats
+when it gets away with it and loses a day's food in one text message when it does not. The careful
+crew eats, barely. At half crowds nobody eats (careful −570, Dhaka −709): the post-metro street,
+where ticket sales fell a third and the deposit did not. At 3 a minute everyone eats.
+
+**Not met as written**: careful clears the eat line by Tk 45 at normal crowds. The honest remaining
+levers are small and all within the research's ranges: the household's food (Tk 300 a day is low for
+a family in Dhaka; 400–500 puts the line at Tk 67–83 and the careful crew under it), the crew's wages
+(Tk 300–500 each; 800 is the low end), fuel per trip (250–333). None of them is a rule change. The
+owner decides; this file records the batch as it is.

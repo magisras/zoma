@@ -178,26 +178,59 @@ company that comes to a crowd. "First door" now means the first bus to arrive sl
 E key is the helper's call ("stop here, stop here!") in the helper role and nothing in the driver's
 seat. A sitting-service bus with a real door, if one is ever modelled, gets the field back.
 
-## 7. Hitting someone: what speed does to a body, and what people do first (owner, 3 Oct 2026)
+## 7. Hitting someone: what speed does to a body, and what the street does next (owner, 3–4 Oct 2026)
 
 "It's too easy to kill someone. Humans are not so unaware of the danger of a bus. At 20–40 km/h a
-person in the street, or near the pavement, sees me and moves away, especially when I horn."
+person in the street, or near the pavement, sees me and moves away, especially when I horn." And:
+"I don't think hitting a person under 10 or 20 km/h would get you a fine even, especially if the
+person is in the street, not on the pavement. Research it; real physics, real street behaviour."
 
-- **People move.** A pedestrian who sees a bus closing does not freeze; they run for the nearer
-  edge of its path, three to four metres a second for a few strides, and a horn aimed at them gets
-  the same. The Dhaka street runs on this: the horn is a request to move and it is obeyed. In the
-  sim a crosser whose strip a vehicle will reach within `DangerSeconds` (2.5 s) runs at `RunSpeed`
-  (3.5 m/s) for the nearer edge, back the way they came if that is closer, and a horn in their
-  direction (`HornSystem`, the cone) sets them running for `HornAlarmSeconds` whatever else they
-  were doing. Running beats waiting: a person about to be hit no longer stands still because the
-  next lane is busy.
-- **Speed decides what the hit is.** Pedestrian fatality rises steeply with impact speed: for cars
-  roughly 10 % at 30 km/h, 50 % at 50 km/h; a flat-fronted bus is worse at every speed because the
-  body takes the whole front instead of going over a bonnet. Under about 30 km/h most are knocked
-  down and hurt, not killed. In the sim: nose contact under `CosmeticContactMs` (3 m/s, 11 km/h) is
-  a shove; from there to `PedestrianDeathSpeedMs` (8 m/s, 29 km/h) the person is **knocked down**:
-  carried to the kerb, the crowd closes in, the crew pays `KnockDownTk` (Tk 8,000, scaled) on the
-  spot, the bus is held twice as long as for a fall, and it counts as an injury toward the second
-  one that ends the day; at or above 29 km/h at the nose, or dragged along the flank at that
-  speed, the person is killed and the day is over as before. Figures are published ranges for
-  cars adjusted for a flat front, not Dhaka measurements.
+**People move.** A pedestrian who sees a bus closing does not freeze; they run for the nearer edge of
+its path, three to four metres a second for a few strides, and a horn aimed at them gets the same.
+In the sim a crosser whose strip a vehicle will reach within `DangerSeconds` (2.5 s) runs at
+`RunSpeed` (3.5 m/s) for the nearer edge, back the way they came if that is closer, and a horn in
+their direction (`HornSystem`, the cone) sets them running for `HornAlarmSeconds`. Running beats
+waiting: a person about to be hit no longer stands still because the next lane is busy. One Bangla
+report is the exception that proves it: a man crossing "দুই হাত উঁচু করে" (with both hands raised, the
+hand-up crossing) was hit and killed by a bus that did not slow; the hand works on rickshaws and
+cars, not on a bus that is racing.
+
+**Speed decides what the hit is** (published curves for cars, adjusted for a flat front):
+
+| impact speed | car, chance of death | bus in the sim (`DeathLogisticA` 5.5, `B` 0.102) |
+|---|---|---|
+| 15 km/h | under 1 % | a bump: a shout, a stumble, nothing owed |
+| 20 km/h | ~2 % | knocked down; 3 % dead |
+| 30 km/h | ~5 % | knocked down; 8 % dead |
+| 40 km/h | ~13 % | 18 % dead |
+| 50 km/h | ~29 % | 36 % dead |
+| 60 km/h | ~55 % | 60 % dead |
+
+Sources: Rosén & Sander 2009 (fatality risk as a function of car impact speed), Hussain et al. 2019
+meta-analysis (5 % at 30, 13 % at 40, 29 % at 50; +11 % odds per km/h), Kröyer 2014 ("Is 30 km/h a
+safe speed?": the lowest mean speed with a fatal outcome was 27 km/h and it involved a heavy
+vehicle; heavy vehicles over-represented in deaths). A flat-fronted bus throws nobody over a
+bonnet; the body takes the whole front and goes under, so the sim shifts the car curve about
+5 km/h worse. Under 15 km/h (`KnockDownSpeedMs` 4.2 m/s) the nose bumps: a shove, counted as a
+brush, and the owner is right that nobody is fined for it. From there up the person is knocked down
+and the curve rolls the dice. On the pavement or the median (`KerbHitShiftKmh` 10) it is worse: a
+nudge there is a hit, the curve counts 10 km/h faster, and the money doubles, because the bus had
+no business being there and the crowd knows it.
+
+**What the Dhaka street does next** (Bangla and English press, Oct 2026 searches):
+
+- *Death, or a bad injury.* The crew runs (ঢাকা–মাওয়ায় পথচারীকে ধাক্কা দিয়ে পালানোর চেষ্টা; "পথচারীকে চাপা
+  দিয়ে পালানোর সময় বাস-চালক আটক", the driver caught fleeing). The crowd blocks the road (Badda), beats
+  the driver and helper and hands them to police (Jatrabari), vandalises or burns the bus (Rampura,
+  Kurigram: "পথচারীকে ধাক্কা দেওয়া বাসে আগুন বিক্ষুব্ধ জনতার", an angry crowd set fire to the bus that hit
+  a pedestrian; Airport Road 2018: 50–60 buses vandalised). Police seize the bus and detain whoever
+  did not get away. In the sim: a death ends the day as before (`PersonHitCaseTk`, the day's money
+  gone); a knock-down is an injury: the crowd closes in, the crew pays `KnockDownTk` (Tk 3,000,
+  real, the hospital money the crowd makes them hand over) on the spot, the bus is held twice as
+  long as for a fall, and the second injury of the day ends it (the police, the seizure).
+- *A bump.* No report of a fine or a case for a nudge at walking pace; the shouting match is the
+  whole of it, and the sim gives it nothing but the shout.
+
+Figures for the curve are published ranges for cars adjusted for a flat front, not Dhaka
+measurements; the Dhaka consequences are from incident reports, which cover deaths and bad injuries
+and are silent on bumps, which is itself the finding.

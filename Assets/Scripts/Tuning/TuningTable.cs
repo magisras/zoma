@@ -606,10 +606,29 @@ namespace TwentyTons.Tuning
         [Tooltip("Clock hour the shift starts at. RESEARCH: Khurshid drives 6 am to 11 pm.")]
         public float ShiftStartHour = 6f;
 
-        [Tooltip("Every Tk amount except fares and fuel (zoma, roadside payments, cases, repairs, food, bed) is " +
-                 "multiplied by this, so a short sandbox day stays a fair fight. Fares are per passenger and fuel " +
-                 "per km, so they scale with the day on their own. 1 = the real day. placeholder")]
-        public float MoneyScale = 0.1f;
+        [Tooltip("One sandbox day stands for one trip of a real day (owner, 4 Oct 2026: a day is charged like a trip). " +
+                 "Amounts that are per day (the deposit, the crew's wages and food, the household's food and bed) are " +
+                 "multiplied by this share, 1/TripsPerDay. Everything that happens per event (a sergeant, a case, a " +
+                 "scrape, a camera, a knock-down, the ropes) is charged at its real Tk. docs/ROUTE_AND_TRIPS.md.")]
+        public float MoneyScale = 1f / 6f;
+
+        [Tooltip("One-way trips in a real day on this route: 5-7 (docs/ROUTE_AND_TRIPS.md). MoneyScale is 1 over this.")]
+        public int TripsPerDay = 6;
+
+        [Tooltip("Length of a real one-way trip, km (Mirpur 12 to Azimpur about 15). The sandbox ring stands for one; fares " +
+                 "and fuel are scaled by TripKm over the ring's length so a lap pays and burns like a trip. 1 on a real corridor.")]
+        public float TripKm = 15f;
+
+        [Tooltip("Fuel for one trip, Tk. RESEARCH: Tk 1,500-2,000 a day over 5-7 trips; whether that is CNG or old diesel prices " +
+                 "is open (docs/BUS.md §4 caveat). Charged per real kilometre driven: this over TripKm.")]
+        public float FuelTkPerTrip = 300f;
+
+        [Tooltip("What the driver pays the helper and the conductor out of the take, Tk a day: Tk 300-500 each (RESEARCH). " +
+                 "Charged at the day share.")]
+        public float CrewWagesTkPerDay = 800f;
+
+        [Tooltip("Tea and rice on the road for three, Tk a day. Charged at the day share. placeholder")]
+        public float CrewFoodTkPerDay = 200f;
 
         [Header("The owner")]
         [Tooltip("The daily deposit, Tk. RESEARCH: Tk 3,000–5,000 depending on route; city bus ~3,000.")]
@@ -636,13 +655,13 @@ namespace TwentyTons.Tuning
         [Tooltip("What the sergeant asks for, Tk. Negotiable in the full game. placeholder")]
         public float SergeantDemandTk = 300f;
         [Tooltip("Chance the sergeant steps out after you ran a cane. placeholder")]
-        [Range(0f, 1f)] public float SergeantChanceAfterCaneRun = 0.6f;
+        [Range(0f, 1f)] public float SergeantChanceAfterCaneRun = 0.15f;   // most junctions have a constable with a cane, not a sergeant who files; at Tk 300 real a stop, 0.6 made running a cane irrational, which it is not
         [Tooltip("Officer.SergeantStopChance is per shift; per junction pass it is multiplied by this. placeholder")]
         [Range(0f, 1f)] public float SergeantChancePerPassFactor = 0.25f;
 
         [Header("Police boxes, drive days, the yard, the cameras (docs/STREET_CONTROL.md §3–4)")]
         [Tooltip("Chance a sergeant on duty at a police box stops you as you pass, per pass, before papers and dents. placeholder")]
-        [Range(0f, 1f)] public float CheckpointStopChance = 0.15f;
+        [Range(0f, 1f)] public float CheckpointStopChance = 0.05f;   // a sergeant's stop is Tk 300 real and rare: once in a few trips, not twice a trip (docs/ROUTE_AND_TRIPS.md: 8-10 payment points a trip are the line, Tk 10-50 each, not the sergeant)
 
         [Tooltip("Chance a given police box has a sergeant on duty today. placeholder")]
         [Range(0f, 1f)] public float SergeantOnDutyChance = 0.6f;
@@ -693,13 +712,23 @@ namespace TwentyTons.Tuning
         [Tooltip("Injuries in one day before the police end it. RESEARCH: only injuries escalate. placeholder")]
         public int InjuriesBeforeArrest = 2;
 
-        [Tooltip("A bus nose at or above this speed kills, m/s. Below it (and above CosmeticContactMs) the person is knocked down: " +
-                 "an injury the crowd answers, the crew pays on the spot, the second one ends the day. Pedestrian deaths climb " +
-                 "steeply past 30 km/h for a flat-fronted vehicle; 8 m/s is 29 km/h. docs/BUS.md §7. placeholder")]
-        public float PedestrianDeathSpeedMs = 8f;
+        [Tooltip("Below this nose speed a person in the road is bumped, m/s: a shout, a stumble, no money (owner: nobody is fined for " +
+                 "a nudge under 15 km/h). From here up they are knocked down and the death curve applies. 4.2 m/s is 15 km/h.")]
+        public float KnockDownSpeedMs = 4.2f;
 
-        [Tooltip("What knocking a person down costs on the spot, Tk: the hospital, the crowd's price. placeholder")]
-        public float KnockDownTk = 8000f;
+        [Tooltip("Death on being hit follows a logistic in impact speed, P = 1/(1+exp(A - B*kmh)). Cars: ~5% at 30, 13% at 40, " +
+                 "29% at 50 km/h (Rosen & Sander; Hussain et al. meta-analysis). A flat-fronted bus is worse: A 5.5, B 0.102 gives " +
+                 "3% at 20, 8% at 30, 18% at 40, 36% at 50, 60% at 60. docs/BUS.md §7.")]
+        public float DeathLogisticA = 5.5f;
+        public float DeathLogisticB = 0.102f;
+
+        [Tooltip("Hit on the pavement or the median, where the bus had no business being, counts this many km/h faster: no room to " +
+                 "run, hit from behind, the crowd knows whose fault it is. placeholder")]
+        public float KerbHitShiftKmh = 10f;
+
+        [Tooltip("What knocking a person down costs on the spot, Tk, real: the hospital money the crowd makes the crew hand over. " +
+                 "Twice that on the pavement. placeholder")]
+        public float KnockDownTk = 3000f;
 
         [Tooltip("The case after hitting a person, Tk. RESEARCH: non-bailable; the day's money is gone too. placeholder")]
         public float PersonHitCaseTk = 20000f;
@@ -1071,7 +1100,7 @@ namespace TwentyTons.Tuning
                  "the bus fills at the residential end; crowds are not what is scarce, time is. 1.2 was tried in the tuning " +
                  "pass to make arriving first matter; it made a thin market where the slow bus trailing far behind " +
                  "found the fullest kerb. Arriving first matters now because other companies' buses take crowds. placeholder")]
-        public float BaseRatePerMinute = 3f;
+        public float BaseRatePerMinute = 2f;   // 3 filled every kerb to the cap and the lap boarded ~90 against a real trip's 60-70 (fares 1,550 against ~1,000); 2 is the research's full-but-not-crushed trip
 
         [Tooltip("Multiplier for hot zones (junctions, markets). RESEARCH: hot clusters at junctions. placeholder")]
         public float HotZoneRateMultiplier = 2.5f;

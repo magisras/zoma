@@ -20,12 +20,14 @@ namespace TwentyTons.Core
         public float RepairsTk;        // scrapes: paint, mirrors, a bent door
         public float RopesTk;          // the men who dragged the bus back onto its wheels
         public float CameraTk;         // SMS cases from the junction cameras, booked to the owner, taken from the crew
+        public float WagesTk;          // the helper's and the conductor's share, paid by the driver out of the take
+        public float FoodTk;           // tea and rice on the road for three
         public int Trips;
         public bool Arrested;          // the day ended with a person under the wheels
 
         public readonly List<string> Events = new List<string>();
 
-        public float PaidOutTk => FuelTk + LinemanTk + PartyManTk + SergeantTk + CaseTk + RepairsTk + RopesTk + CameraTk;
+        public float PaidOutTk => FuelTk + LinemanTk + PartyManTk + SergeantTk + CaseTk + RepairsTk + RopesTk + CameraTk + WagesTk + FoodTk;
         public float CrewNetTk => (Arrested ? 0f : FaresTk) - ZomaTk - PaidOutTk;
 
         public void Log(string text) { Events.Add(text); if (Events.Count > 40) Events.RemoveAt(0); }
@@ -70,6 +72,8 @@ namespace TwentyTons.Core
             _sim = sim;
             _e = sim.Tuning.Economy;
             Ledger.ZomaTk = _e.ZomaTk * _e.MoneyScale;
+            Ledger.WagesTk = _e.CrewWagesTkPerDay * _e.MoneyScale;
+            Ledger.FoodTk = _e.CrewFoodTkPerDay * _e.MoneyScale;
             // Drawn from its own stream so the day's traffic does not change with the drive-day coin.
             DriveDay = new SeededRandom(sim.Seed * 7919 + 17).Chance(_e.DriveDayChance);
             if (DriveDay) Ledger.Log("The lineman says it is a drive today. Sergeants at every box.");
@@ -86,7 +90,8 @@ namespace TwentyTons.Core
 
             // Fuel burns with distance. A heavy bus burns more; that comes with the physics later.
             float metres = bus.Speed * dt;
-            Ledger.FuelTk += metres / 1000f / Mathf.Max(0.1f, _e.BusKmPerLitre) * _e.DieselTkPerLitre;
+            // A trip's fuel over a trip's kilometres, per real kilometre driven (the ring's metres count TripKm/ring of them).
+            Ledger.FuelTk += metres * _sim.DistanceScale / 1000f / Mathf.Max(0.1f, _e.TripKm) * _e.FuelTkPerTrip;
 
             WatchTripPoints(bus);
             if (InjuryHoldUntil >= 0f)
@@ -99,7 +104,7 @@ namespace TwentyTons.Core
             if (_sim.Metrics.PersonHit)
             {
                 Ledger.Arrested = true;
-                Ledger.CaseTk += _e.PersonHitCaseTk * _e.MoneyScale;
+                Ledger.CaseTk += _e.PersonHitCaseTk;
                 Ledger.Log("A person under the wheels. The crowd, the police, the case. The day's money is gone.");
                 EndDay("person hit");
             }
@@ -118,7 +123,7 @@ namespace TwentyTons.Core
         /// </summary>
         public void OnInjury(bool alighting)
         {
-            float tk = _e.InjuryCompensationTk * _e.MoneyScale;
+            float tk = _e.InjuryCompensationTk;
             Injury((alighting ? "A passenger fell getting off" : "A passenger fell at the door") + " at speed. The crowd. Tk " + tk.ToString("0") + " on the spot.", tk, _e.InjuryHoldSeconds);
         }
 
@@ -126,10 +131,10 @@ namespace TwentyTons.Core
         /// The nose put someone on the ground under the death speed. Same path as a fall: the crowd holds the
         /// bus, the crew pays, the second injury of the day ends it. More money and a longer hold than a fall.
         /// </summary>
-        public void OnPedestrianKnockedDown(float speedMs)
+        public void OnPedestrianKnockedDown(float speedMs, bool onKerb)
         {
-            float tk = _e.KnockDownTk * _e.MoneyScale;
-            Injury("A person under the nose at " + Mathf.RoundToInt(speedMs * 3.6f) + " km/h. Down, not dead. The crowd closes in. Tk " + tk.ToString("0") + " on the spot, and the hospital.", tk, _e.InjuryHoldSeconds * 2f);
+            float tk = _e.KnockDownTk * (onKerb ? 2f : 1f);
+            Injury("A person under the nose at " + Mathf.RoundToInt(speedMs * 3.6f) + " km/h" + (onKerb ? ", on the pavement" : "") + ". Down, not dead. The crowd closes in. Tk " + tk.ToString("0") + " on the spot, and the hospital.", tk, _e.InjuryHoldSeconds * 2f);
         }
 
         private void Injury(string what, float tk, float holdSeconds)
@@ -163,7 +168,7 @@ namespace TwentyTons.Core
         public bool OnScrape(float relativeSpeed)
         {
             if (relativeSpeed < _e.CosmeticContactMs) return false;
-            Ledger.RepairsTk += _e.ScrapeRepairTk * _e.MoneyScale;
+            Ledger.RepairsTk += _e.ScrapeRepairTk;
             return true;
         }
 
@@ -186,7 +191,7 @@ namespace TwentyTons.Core
                     SeizeBus();
                     return;
                 }
-                float caseTk = _e.CaseTk * _e.MoneyScale;
+                float caseTk = _e.CaseTk;
                 Ledger.CaseTk += caseTk;
                 Sergeant.ReleaseAt = _sim.Metrics.Time + _e.CaseDelaySeconds;
                 Ledger.Log("Sergeant, " + Sergeant.Reason + ": refused. A case for Tk " + caseTk.ToString("0") + " and the papers take " + Mathf.RoundToInt(_e.CaseDelaySeconds / 60f) + " minutes.");
@@ -219,13 +224,13 @@ namespace TwentyTons.Core
                 if (i == _e.LinemanZoneIndex && _sim.Metrics.DistanceMetres > 200f)
                 {
                     Ledger.Trips++;
-                    Ledger.LinemanTk += _e.LinemanTkPerTrip * _e.MoneyScale;
-                    Ledger.Log("Trip " + Ledger.Trips + " at the stand. Lineman: Tk " + (_e.LinemanTkPerTrip * _e.MoneyScale).ToString("0") + ".");
+                    Ledger.LinemanTk += _e.LinemanTkPerTrip;
+                    Ledger.Log("Trip " + Ledger.Trips + " at the stand. Lineman: Tk " + _e.LinemanTkPerTrip.ToString("0") + ".");
                 }
                 if (i == _e.PartyManZoneIndex && _sim.Metrics.DistanceMetres > 200f)
                 {
-                    Ledger.PartyManTk += _e.PartyManTkPerTrip * _e.MoneyScale;
-                    Ledger.Log("Party man at " + zone.Name + ": Tk " + (_e.PartyManTkPerTrip * _e.MoneyScale).ToString("0") + ".");
+                    Ledger.PartyManTk += _e.PartyManTkPerTrip;
+                    Ledger.Log("Party man at " + zone.Name + ": Tk " + _e.PartyManTkPerTrip.ToString("0") + ".");
                 }
             }
             _lastPlayerS = bus.S;
@@ -284,7 +289,7 @@ namespace TwentyTons.Core
                         // The camera does not negotiate: the owner gets the SMS, the crew gets the bill tonight.
                         if (j.Camera)
                         {
-                            float fine = _e.CameraFineTk * _e.MoneyScale;
+                            float fine = _e.CameraFineTk;
                             Ledger.CameraTk += fine;
                             Ledger.Log("The camera on the pole. " + (ranCane ? "Ran the cane" : "Wrong side") + ": an SMS to the owner, Tk " + fine.ToString("0") + ".");
                         }
@@ -329,7 +334,7 @@ namespace TwentyTons.Core
             Sergeant.Active = true;
             Sergeant.HeldSeconds = 0f;
             Sergeant.ReleaseAt = -1f;
-            Sergeant.DemandTk = _e.SergeantDemandTk * _e.MoneyScale * (DriveDay ? _e.DriveDayDemandFactor : 1f);
+            Sergeant.DemandTk = _e.SergeantDemandTk * (DriveDay ? _e.DriveDayDemandFactor : 1f);
             Sergeant.Reason = reason;
             _sim.Bus.Held = true;
             Ledger.Log("A sergeant steps out: " + reason + ". Tk " + Sergeant.DemandTk.ToString("0") + " now, or a case.");

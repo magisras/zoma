@@ -52,7 +52,7 @@ namespace TwentyTons.Tests
             h.Bus.BrakeWear = 0.8f;
             h.ServiceBrakes(tuning.Bus, tuning.Economy);
             Assert.AreEqual(tuning.Bus.WearAfterService, h.Bus.BrakeWear, 1e-6f);
-            Assert.AreEqual(1000f - tuning.Economy.BrakeServiceTk * tuning.Economy.MoneyScale, h.SavingsTk, 1e-3f);
+            Assert.AreEqual(1000f - tuning.Economy.BrakeServiceTk, h.SavingsTk, 1e-3f);
 
             Assert.IsFalse(h.Bus.PapersValid(h.Day));
             h.BuyPapers(tuning.Economy);

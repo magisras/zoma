@@ -22,6 +22,7 @@ public static class Headless
     }
 
     private static float RateScale = 1f;
+    private static float FoodShare = 50f;   // set from the tuning when the world is built
     private static float Density = 1f;
 
     public static int Main(string[] args)
@@ -117,6 +118,7 @@ public static class Headless
         var random = new SeededRandom(seed);
         Corridor corridor = SandboxWorld.BuildCorridor(random);
         var sim = new TrafficSim(corridor, tuning, seed + 1);
+        sim.DistanceScale = tuning.Economy.TripKm * 1000f / corridor.Length;   // one lap of the ring stands for one trip
         sim.Tuning.Spawn.MedianMetres = SandboxWorld.MedianMetres;
         Corridor oncoming = SandboxWorld.BuildOncoming(corridor);
         sim.SetOncoming(oncoming);
@@ -132,6 +134,7 @@ public static class Headless
             sim.Junctions.Add(new Junction(oncoming, oncomingS, cross, crossAtOncoming) { Mirror = main });
         }
         tuning.Passengers.BaseRatePerMinute *= RateScale;
+        FoodShare = tuning.Economy.FoodTkPerDay * tuning.Economy.MoneyScale;
         tuning.Spawn.VehiclesAround = Mathf.RoundToInt(tuning.Spawn.VehiclesAround * Density);
         for (int i = 0; i < SandboxWorld.ZoneS.Length; i++) sim.AddZone(SandboxWorld.ZoneNames[i], SandboxWorld.ZoneS[i], SandboxWorld.ZoneHot[i]);
         for (int i = 0; i < SandboxWorld.CheckpointS.Length; i++) sim.AddCheckpoint(SandboxWorld.CheckpointNames[i], SandboxWorld.CheckpointS[i]);
@@ -149,7 +152,7 @@ public static class Headless
         Ledger l = sim.Economy.Ledger;
         Console.WriteLine($"seed {seed} ({ScriptedDriver.Current}): {seconds:0}s  dist {m.DistanceMetres / 1000f:0.00} km  nearMisses {m.NearMisses} ({m.NearMissesPerMinute:0.0}/min)  minHeadway {m.MinHeadwaySeconds:0.00}s  scrapes {m.Contacts} ({m.HardContacts} hard)  caneRuns {m.CaneRuns}  horn {m.HornPresses} moved {m.YieldsToHorn}  agents {sim.Agents.Count}");
         Console.WriteLine($"  aboard {load.Count}  boarded {load.Boarded}  alighted {load.Alighted}  missed {load.MissedAlights}  stumbles {load.Stumbles}  brushes {m.Brushes}  hurt {load.Injuries}  fares Tk {load.FaresTk:0}  stopsLost {m.StopsLost}");
-        Console.WriteLine($"  ledger: fares {l.FaresTk:0}  zoma {l.ZomaTk:0}  fuel {l.FuelTk:0}  lineman {l.LinemanTk:0}  party {l.PartyManTk:0}  sergeant {l.SergeantTk:0}  cases {l.CaseTk:0}  camera {l.CameraTk:0}  repairs {l.RepairsTk:0}  => crew {l.CrewNetTk:0} Tk  ({l.Trips} trips, day over: {sim.Economy.DayOver} {sim.Economy.DayOverReason})");
+        Console.WriteLine($"  ledger: fares {l.FaresTk:0}  zoma {l.ZomaTk:0}  fuel {l.FuelTk:0}  wages {l.WagesTk:0}  food {l.FoodTk:0}  lineman {l.LinemanTk:0}  party {l.PartyManTk:0}  sergeant {l.SergeantTk:0}  cases {l.CaseTk:0}  camera {l.CameraTk:0}  repairs {l.RepairsTk:0}  => crew {l.CrewNetTk:0} Tk  ({l.Trips} trips, day over: {sim.Economy.DayOver} {sim.Economy.DayOverReason})");
         Console.WriteLine($"  street: {(sim.Economy.DriveDay ? "DRIVE DAY" : "ordinary day")}  boxes manned {sim.Checkpoints.FindAll(c => c.SergeantOnDuty).Count}/{sim.Checkpoints.Count}  seized {sim.Economy.Seized}");
         foreach (Junction j in sim.Junctions)
         {
@@ -220,9 +223,17 @@ public static class Headless
         Summ("dhaka", dhaka);
         float c = Mean(careful, r => r.Net), d = Mean(dhaka, r => r.Net);
         Console.WriteLine();
-        Console.WriteLine(c >= d
-            ? "VERDICT: polite driving still wins (careful net >= Dhaka net). RESEARCH says: rivals too timid, or the street too kind."
-            : $"VERDICT: the trap holds. Dhaka driving nets Tk {d - c:0} more per day than careful driving.");
+        // The eat line (owner, 4 Oct 2026): the premise is not "Dhaka earns more" but "drive carefully and you cannot
+        // eat". The driver's take after the deposit, fuel, the line, the crew's wages and food has to cover the
+        // household's food for the day share; careful must fail that, Dhaka must clear it.
+        float food = careful.Count > 0 ? FoodShare : 0f;
+        bool carefulCannotEat = c <= food, dhakaEats = d > food;
+        Console.WriteLine($"eat line: Tk {food:0} a day (the household's food). careful {(carefulCannotEat ? "cannot eat" : "EATS")} ({c:0}), Dhaka {(dhakaEats ? "eats" : "CANNOT EAT")} ({d:0}).");
+        Console.WriteLine(carefulCannotEat && dhakaEats
+            ? $"VERDICT: the trap holds. Careful driving does not feed the house; Dhaka driving does, by Tk {d - food:0}."
+            : carefulCannotEat ? "VERDICT: nobody eats. The street is too hard for both; the costs or the crowds are off."
+            : d > c ? $"VERDICT: polite driving still eats (careful {c:0} > food {food:0}). Dhaka earns Tk {d - c:0} more, but the premise is not met."
+            : "VERDICT: polite driving still wins (careful net >= Dhaka net). RESEARCH says: rivals too timid, or the street too kind.");
         return 0;
     }
 

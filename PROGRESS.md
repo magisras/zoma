@@ -424,6 +424,24 @@ in the headless runner and in the browser. Entries below are appended as steps l
 - Batch with the momentum rule: at crowd rate 1.0 careful +469, Dhaka +539 (+70, ahead on 5 of 6);
   at 0.5 careful +161, Dhaka +154. Nobody knocked down, nobody hit, in 24 days.
 
+**Step 25 — the day is a trip; the eat line; the death curve** (done)
+
+- Owner's decisions, 4 Oct: a sandbox day is charged like one trip of six (deposit, wages, food at a
+  sixth; fuel and fares by the real kilometres a lap stands for; every event at its real taka), and
+  the batch verdict is the eat line (careful must not clear the household's food, Dhaka must).
+  `MoneyScale` is 1/6 and applies only to per-day amounts; `TripKm`, `FuelTkPerTrip`,
+  `CrewWagesTkPerDay`, `CrewFoodTkPerDay`, `TrafficSim.DistanceScale`. Sergeant stops are rare now
+  (once in a few trips) and crowds are 2 a minute. `docs/PLAYTEST.md` has the tables: careful +95,
+  Dhaka −217 with one Tk 2,000 camera day (about +160 without it) at normal crowds; nobody eats at
+  half crowds; everyone eats at 3 a minute. Careful clears the eat line by Tk 45: not met as written,
+  the small honest levers are listed there for the owner.
+- Owner's decision 4, researched (`docs/BUS.md` §7): under 15 km/h the nose bumps and nothing is
+  owed; above it the person is knocked down and a logistic in impact speed decides death (3 % at 20,
+  8 % at 30, 18 % at 40, 36 % at 50 km/h, a car curve shifted 5 km/h for the flat front); on the
+  pavement or median a nudge is a hit, the curve counts 10 km/h faster and the money doubles. What
+  the street does after a death or a bad injury is from the Bangla press: the crew runs, the crowd
+  beats them and burns the bus, police seize it. 115 tests.
+
 **Where this leaves the project**
 
 Everything in README milestones 3–6 now exists as engine-free C# with tests, runs in the browser

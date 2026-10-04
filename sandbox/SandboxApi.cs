@@ -39,6 +39,8 @@ namespace TwentyTons.Sandbox
         public float Cases { get; set; }
         public float Repairs { get; set; }
         public float Camera { get; set; }
+        public float Wages { get; set; }
+        public float Food { get; set; }
         public float CrewNet { get; set; }
         public bool Arrested { get; set; }
     }
@@ -185,6 +187,7 @@ namespace TwentyTons.Sandbox
             var random = new SeededRandom(seed);
             Corridor corridor = SandboxWorld.BuildCorridor(random);
             _sim = new TrafficSim(corridor, _tuning, seed + 1);
+            _sim.DistanceScale = _tuning.Economy.TripKm * 1000f / corridor.Length;   // one lap stands for one trip
             _tuning.Spawn.MedianMetres = SandboxWorld.MedianMetres;
             Corridor oncoming = SandboxWorld.BuildOncoming(corridor);
             _sim.SetOncoming(oncoming);
@@ -506,13 +509,13 @@ namespace TwentyTons.Sandbox
                 Dents = _sim.Condition.Dents,
                 PapersValid = _sim.Condition.PapersValid(_sim.Day),
                 PapersDaysLeft = Mathf.Max(0, _sim.Condition.PapersValidUntilDay - _sim.Day),
-                BrakeServiceTk = _tuning.Economy.BrakeServiceTk * _tuning.Economy.MoneyScale,
+                BrakeServiceTk = _tuning.Economy.BrakeServiceTk,
                 Rolled = _sim.Rollover.Active,
                 RolloverPending = _sim.Rollover.Pending,
                 RolloverText = _sim.Rollover.Active ? "The bus is on its side: " + _sim.Rollover.Cause + ". " + _sim.Rollover.HurtPassengers + " hurt. A crowd gathers. A man with ropes and a tractor." : null,
                 RightingLeft = _sim.Rollover.RightingUntil >= 0f ? Mathf.Max(0f, _sim.Rollover.RightingUntil - m.Time) : 0f,
-                RopesTk = _tuning.Economy.RopesTk * _tuning.Economy.MoneyScale,
-                FitnessTk = _tuning.Economy.FitnessTk * _tuning.Economy.MoneyScale,
+                RopesTk = _tuning.Economy.RopesTk,
+                FitnessTk = _tuning.Economy.FitnessTk,
                 Subtitle = _sim.Voice.Latest == null ? null : SpeakerName(_sim.Voice.Latest) + ": " + _sim.Voice.Latest.Text,
                 SubtitleAge = _sim.Voice.Latest == null ? 999f : m.Time - _sim.Voice.Latest.Time,
                 StopsLost = m.StopsLost,

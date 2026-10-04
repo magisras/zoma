@@ -244,6 +244,7 @@ namespace TwentyTons.Core
             DemandZone to = sim.Zones[passenger.DestinationZone];
             float km = Mathf.Abs(sim.Corridor.DeltaS(from.S, to.S)) / 1000f;
             if (sim.Corridor.Closed && sim.Corridor.DeltaS(from.S, to.S) < 0f) km = (sim.Corridor.Length + sim.Corridor.DeltaS(from.S, to.S)) / 1000f;
+            km *= sim.DistanceScale;   // the ring's metres stand for a trip's kilometres
             float fare = Mathf.Max(p.FareMinTk, p.FarePerKmTk * km);
             return Mathf.Ceil(fare * passenger.FareFactor);
         }

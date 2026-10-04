@@ -18,7 +18,7 @@ namespace TwentyTons.Core
         public int Contacts;                     // player scrapes, light and hard
         public int HardContacts;                 // the ones that cost money
         public int NpcPersonHits;                // NPCs hitting pedestrians (it happens; counted, not fatal)
-        public int PeopleKnockedDown;            // the player's nose or flank put someone on the ground, under the death speed
+        public int PeopleKnockedDown;            // the player's nose or flank put someone on the ground and they lived
         public int Brushes;                      // the player's flank shoved someone aside at a crawl: a shout, not a death
         public int CaneRuns;                     // times the player crossed a closed stop line
         public float RopeHeldSeconds;            // time the player's bus spent held at a constable's rope
@@ -54,6 +54,8 @@ namespace TwentyTons.Core
         public readonly List<DemandZone> Zones = new List<DemandZone>();
         public readonly TuningTable Tuning;
         public readonly int Seed;
+        /// <summary>Real kilometres one corridor kilometre stands for: TripKm over the ring's length in the sandbox (about 9), 1 on a real road. Fares and fuel use it.</summary>
+        public float DistanceScale = 1f;
         public readonly SeededRandom Random;
         public readonly List<Agent> Agents = new List<Agent>();
         public readonly SimMetrics Metrics = new SimMetrics();
@@ -867,12 +869,18 @@ namespace TwentyTons.Core
                 float cosmetic = Tuning.Economy.CosmeticContactMs;
                 bool graze = overlapLat < 0.25f;
                 float speedAbs = Mathf.Abs(vehicle.Speed);
-                bool hit = atTheNose ? speedAbs >= cosmetic
+                // On the pavement or the median the bus had no business being: a nudge there is a hit.
+                bool onKerb = Mathf.Abs(person.Lateral) >= person.Corridor.HalfWidth - 0.2f;
+                float knockDownMs = onKerb ? 1f : Tuning.Economy.KnockDownSpeedMs;
+                bool hit = atTheNose ? speedAbs >= knockDownMs
                                      : !graze && (flankClosing >= cosmetic || speedAbs >= 3f);
-                // Hit by the nose at speed, or dragged along the flank at speed, kills. Hit slower, the person
-                // goes down: an injury, the crowd, the crew paying on the spot (owner, 3 Oct 2026: it was far too
-                // easy to kill someone; docs/BUS.md §7 on what speed does to a body).
-                bool killed = hit && speedAbs >= Tuning.Economy.PedestrianDeathSpeedMs;
+                // Under the knock-down speed the nose bumps: a shout, a stumble, nothing owed. From there up the
+                // person goes down, and whether they live follows the speed (docs/BUS.md §7: ~5% dead at 30 km/h
+                // for a car, more for a flat front): an injury, the crowd, the crew paying on the spot; or a death,
+                // the mob, the police, the end of the day. Owner, 4 Oct 2026: real physics, real street.
+                float kmh = speedAbs * 3.6f + (onKerb ? Tuning.Economy.KerbHitShiftKmh : 0f);
+                float pDeath = 1f / (1f + (float)System.Math.Exp(Tuning.Economy.DeathLogisticA - Tuning.Economy.DeathLogisticB * kmh));
+                bool killed = hit && Random.Chance(pDeath);
                 if (!hit)
                 {
                     if (Mathf.Abs(vehicle.Speed) < 0.3f && flankClosing < 0.3f) return;   // standing still: nothing happened
@@ -898,7 +906,7 @@ namespace TwentyTons.Core
                 person.Speed = 0f;
                 person.WaitTimer = 120f;
                 person.LastContactTime = Metrics.Time;
-                if (vehicle.IsPlayerOrGhost) { Metrics.PeopleKnockedDown++; Economy.OnPedestrianKnockedDown(speedAbs); }
+                if (vehicle.IsPlayerOrGhost) { Metrics.PeopleKnockedDown++; Economy.OnPedestrianKnockedDown(speedAbs, onKerb); }
                 else Metrics.NpcPersonHits++;
                 return;
             }

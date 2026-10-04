@@ -99,7 +99,7 @@ namespace TwentyTons.Tests
             Run(sim, 1.5f);
             Assert.AreEqual(1, bus.Load.Injuries);
             Assert.IsTrue(sim.Bus.Held, "the crowd holds the bus");
-            Assert.AreEqual(sim.Tuning.Economy.InjuryCompensationTk * sim.Tuning.Economy.MoneyScale, sim.Economy.Ledger.CaseTk, 1e-3f);
+            Assert.AreEqual(sim.Tuning.Economy.InjuryCompensationTk, sim.Economy.Ledger.CaseTk, 1e-3f);
             Assert.IsFalse(sim.Economy.DayOver, "the first one is paid for");
             Run(sim, 6f);
             Assert.IsFalse(sim.Bus.Held, "released after the hold");

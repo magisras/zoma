@@ -115,7 +115,7 @@ namespace TwentyTons.Tests
                 if (s.Economy.Sergeant.Active)
                 {
                     stopped++;
-                    Assert.AreEqual(s.Tuning.Economy.SergeantDemandTk * s.Tuning.Economy.MoneyScale * 1.5f, s.Economy.Sergeant.DemandTk, 1e-3f, "he asks more on a drive day");
+                    Assert.AreEqual(s.Tuning.Economy.SergeantDemandTk * 1.5f, s.Economy.Sergeant.DemandTk, 1e-3f, "he asks more on a drive day");
                 }
             }
             Assert.Greater(stopped, 20, "well over the 30% base rate");
@@ -165,8 +165,8 @@ namespace TwentyTons.Tests
             bus.Speed = 10f; sim.Bus.Throttle = 1f;
             Run(sim, 10f);
             Assert.GreaterOrEqual(sim.Metrics.CaneRuns, 1);
-            Assert.AreEqual(sim.Tuning.Economy.CameraFineTk * sim.Tuning.Economy.MoneyScale, sim.Economy.Ledger.CameraTk, 1e-3f);
-            Assert.AreEqual(sim.Economy.Ledger.CameraTk, sim.Economy.Ledger.PaidOutTk - sim.Economy.Ledger.FuelTk, 1e-3f, "and it is in the day's equation");
+            Assert.AreEqual(sim.Tuning.Economy.CameraFineTk, sim.Economy.Ledger.CameraTk, 1e-3f);
+            Assert.AreEqual(sim.Economy.Ledger.CameraTk, sim.Economy.Ledger.PaidOutTk - sim.Economy.Ledger.FuelTk - sim.Economy.Ledger.WagesTk - sim.Economy.Ledger.FoodTk, 1e-3f, "and it is in the day's equation");
         }
 
         [Test]

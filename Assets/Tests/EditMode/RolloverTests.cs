@@ -84,7 +84,7 @@ namespace TwentyTons.Tests
             sim.Tuning.Economy.RightingSeconds = 5f;
             Rollover.Tip(sim, "test");
             Rollover.Answer(sim, true);
-            Assert.AreEqual(sim.Tuning.Economy.RopesTk * sim.Tuning.Economy.MoneyScale, sim.Economy.Ledger.RopesTk, 1e-3f);
+            Assert.AreEqual(sim.Tuning.Economy.RopesTk, sim.Economy.Ledger.RopesTk, 1e-3f);
             Run(sim, 3f);
             Assert.IsTrue(sim.Rollover.Active, "still on its side");
             Assert.IsTrue(sim.Bus.Held);

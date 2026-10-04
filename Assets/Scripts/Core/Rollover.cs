@@ -84,7 +84,7 @@ namespace TwentyTons.Core
             sim.Condition.DoorBent = true;
             sim.Condition.BrakeWear = Mathf.Clamp01(sim.Condition.BrakeWear + e.RolloverBrakeWear);
 
-            sim.Economy.Ledger.Log("The bus is on its side (" + cause + "). " + r.HurtPassengers + " hurt. A crowd. Someone has ropes and a tractor, for Tk " + (e.RopesTk * e.MoneyScale).ToString("0") + ".");
+            sim.Economy.Ledger.Log("The bus is on its side (" + cause + "). " + r.HurtPassengers + " hurt. A crowd. Someone has ropes and a tractor, for Tk " + e.RopesTk.ToString("0") + ".");
         }
 
         /// <summary>Pay the men with the ropes, or walk away from the bus.</summary>
@@ -96,7 +96,7 @@ namespace TwentyTons.Core
             r.Pending = false;
             if (pay)
             {
-                sim.Economy.Ledger.RopesTk += e.RopesTk * e.MoneyScale;
+                sim.Economy.Ledger.RopesTk += e.RopesTk;
                 r.RightingUntil = sim.Metrics.Time + e.RightingSeconds;
                 sim.Economy.Ledger.Log("Paid for the ropes. " + Mathf.RoundToInt(e.RightingSeconds / 60f) + " minutes of shouting and a tractor.");
             }

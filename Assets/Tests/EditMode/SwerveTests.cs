@@ -100,6 +100,7 @@ namespace TwentyTons.Tests
 
             // Passing at speed: someone stepping into the flank goes under it.
             var fast = Road();
+            fast.Tuning.Economy.DeathLogisticA = 50f;   // the curve pinned to "lives" (22 km/h gives 4% otherwise): the knock-down is on trial
             Agent bus2 = fast.SpawnPlayerBus(100f, -2f);
             bus2.Speed = 6f; fast.Bus.Throttle = 1f;
             Agent q = fast.SpawnPedestrian(100f, -1);

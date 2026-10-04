@@ -66,11 +66,12 @@ namespace TwentyTons.Tests
         }
 
         [Test]
-        public void ANoseAt15KmhKnocksDownAt40Kills()
+        public void ANoseAt14KmhKnocksDownAndTheDeathCurveDecidesTheRest()
         {
             // Someone who cannot move (the rules say they would run; this is the test of the hit itself).
             var slow = Road();
             slow.Tuning.Pedestrians.WalkSpeed = 0f; slow.Tuning.Pedestrians.RunSpeed = 0f;
+            slow.Tuning.Economy.DeathLogisticA = 50f;                  // the curve pinned to "lives": the knock-down itself is on trial
             Agent bus = slow.SpawnPlayerBus(100f, -2f);
             bus.Speed = 4f; slow.Bus.Throttle = 0.5f;                 // 14 km/h
             Crosser(slow, 110f, -2f, +1f);
@@ -80,10 +81,11 @@ namespace TwentyTons.Tests
             Assert.AreEqual(1, slow.Economy.Injuries);
             Assert.IsTrue(slow.Bus.Held, "the crowd holds the bus");
             Assert.IsFalse(slow.Economy.DayOver, "the first one is paid for");
-            Assert.AreEqual(slow.Tuning.Economy.KnockDownTk * slow.Tuning.Economy.MoneyScale, slow.Economy.Ledger.CaseTk, 1e-3f);
+            Assert.AreEqual(slow.Tuning.Economy.KnockDownTk, slow.Economy.Ledger.CaseTk, 1e-3f);
 
             var fast = Road();
             fast.Tuning.Pedestrians.WalkSpeed = 0f; fast.Tuning.Pedestrians.RunSpeed = 0f;
+            fast.Tuning.Economy.DeathLogisticA = -50f;                 // pinned to "dies": at 40 km/h the real curve gives 18%
             Agent bus2 = fast.SpawnPlayerBus(100f, -2f);
             bus2.Speed = 11f; fast.Bus.Throttle = 1f;                  // 40 km/h
             Crosser(fast, 112f, -2f, +1f);

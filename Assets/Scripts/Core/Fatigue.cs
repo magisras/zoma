@@ -124,14 +124,14 @@ namespace TwentyTons.Core
         /// <summary>A roadside brake service, paid from savings (into debt if need be).</summary>
         public void ServiceBrakes(BusSettings b, EconomySettings e)
         {
-            SavingsTk -= e.BrakeServiceTk * e.MoneyScale;
+            SavingsTk -= e.BrakeServiceTk;
             Bus.ServiceBrakes(b);
         }
 
         /// <summary>The paper that means nothing, bought for a few days of fewer questions.</summary>
         public void BuyPapers(EconomySettings e)
         {
-            SavingsTk -= e.FitnessTk * e.MoneyScale;
+            SavingsTk -= e.FitnessTk;
             Bus.PapersValidUntilDay = Day + e.FitnessDays;
         }
 

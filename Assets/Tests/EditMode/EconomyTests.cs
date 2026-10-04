@@ -53,7 +53,8 @@ namespace TwentyTons.Tests
             sim.Bus.Throttle = 1f;
             Run(sim, 30f);
             float km = sim.Metrics.DistanceMetres / 1000f;
-            float expected = km / sim.Tuning.Economy.BusKmPerLitre * sim.Tuning.Economy.DieselTkPerLitre;
+            // A trip's fuel over a trip's kilometres, per real kilometre (DistanceScale is 1 on this test road).
+            float expected = km * sim.DistanceScale / sim.Tuning.Economy.TripKm * sim.Tuning.Economy.FuelTkPerTrip;
             Assert.Greater(km, 0.1f);
             Assert.AreEqual(expected, sim.Economy.Ledger.FuelTk, 0.5f);
         }
@@ -65,8 +66,8 @@ namespace TwentyTons.Tests
             Agent bus = sim.SpawnPlayerBus(100f, -2f);
             Drive(sim, 220f);                                 // at ~7 m/s: more than a lap of the 1 km ring
             Assert.GreaterOrEqual(sim.Economy.Ledger.Trips, 1);
-            Assert.AreEqual(sim.Economy.Ledger.Trips * sim.Tuning.Economy.LinemanTkPerTrip * sim.Tuning.Economy.MoneyScale, sim.Economy.Ledger.LinemanTk, 1e-3f);
-            Assert.GreaterOrEqual(sim.Economy.Ledger.PartyManTk, sim.Tuning.Economy.PartyManTkPerTrip * sim.Tuning.Economy.MoneyScale - 1e-3f);
+            Assert.AreEqual(sim.Economy.Ledger.Trips * sim.Tuning.Economy.LinemanTkPerTrip, sim.Economy.Ledger.LinemanTk, 1e-3f);
+            Assert.GreaterOrEqual(sim.Economy.Ledger.PartyManTk, sim.Tuning.Economy.PartyManTkPerTrip - 1e-3f);
         }
 
         [Test]
@@ -81,7 +82,7 @@ namespace TwentyTons.Tests
             Run(sim, 4f);
             Assert.GreaterOrEqual(sim.Metrics.Contacts, 1);
             Assert.GreaterOrEqual(sim.Metrics.HardContacts, 1, "8 m/s into a crawling rickshaw is not cosmetic");
-            Assert.AreEqual(sim.Metrics.HardContacts * sim.Tuning.Economy.ScrapeRepairTk * sim.Tuning.Economy.MoneyScale, sim.Economy.Ledger.RepairsTk, 1e-3f);
+            Assert.AreEqual(sim.Metrics.HardContacts * sim.Tuning.Economy.ScrapeRepairTk, sim.Economy.Ledger.RepairsTk, 1e-3f);
 
             // A nudge at walking pace: a dent, no bill.
             var slow = Ring();
@@ -122,7 +123,7 @@ namespace TwentyTons.Tests
             float s = sim.Player.S;
             sim.Economy.AnswerSergeant(true);
             Assert.IsFalse(sim.Economy.Sergeant.Active);
-            Assert.AreEqual(sim.Tuning.Economy.SergeantDemandTk * sim.Tuning.Economy.MoneyScale, sim.Economy.Ledger.SergeantTk, 1e-3f);
+            Assert.AreEqual(sim.Tuning.Economy.SergeantDemandTk, sim.Economy.Ledger.SergeantTk, 1e-3f);
             Run(sim, 5f);
             Assert.Greater(sim.Player.S, s + 5f, "released");
         }
@@ -133,7 +134,7 @@ namespace TwentyTons.Tests
             var sim = WithSergeantAfterCane(out Junction j);
             sim.Tuning.Economy.CaseDelaySeconds = 10f;
             sim.Economy.AnswerSergeant(false);
-            Assert.AreEqual(sim.Tuning.Economy.CaseTk * sim.Tuning.Economy.MoneyScale, sim.Economy.Ledger.CaseTk, 1e-3f);
+            Assert.AreEqual(sim.Tuning.Economy.CaseTk, sim.Economy.Ledger.CaseTk, 1e-3f);
             Run(sim, 5f);
             Assert.IsTrue(sim.Economy.Sergeant.Active, "still held by the paperwork");
             Assert.Less(sim.Player.Speed, 0.5f);
@@ -168,10 +169,11 @@ namespace TwentyTons.Tests
             Agent ped = sim.SpawnPedestrian(130f, -1);
             ped.PedState = PedestrianState.Crossing; ped.CrossDirection = 1f; ped.Lateral = 0f;
             sim.Tuning.Pedestrians.WalkSpeed = 0f; sim.Tuning.Pedestrians.RunSpeed = 0f;   // frozen in the path
+            sim.Tuning.Economy.DeathLogisticA = -50f;                                        // and the curve pinned to "dies"
             Run(sim, 15f);
             Assert.IsTrue(sim.Economy.DayOver);
             Assert.IsTrue(sim.Economy.Ledger.Arrested);
-            Assert.Less(sim.Economy.Ledger.CrewNetTk, -sim.Tuning.Economy.PersonHitCaseTk * sim.Tuning.Economy.MoneyScale * 0.9f);
+            Assert.Less(sim.Economy.Ledger.CrewNetTk, -sim.Tuning.Economy.PersonHitCaseTk * 0.9f);
         }
     }
 }
