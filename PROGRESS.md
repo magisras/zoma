@@ -442,6 +442,22 @@ in the headless runner and in the browser. Entries below are appended as steps l
   the street does after a death or a bad injury is from the Bangla press: the crew runs, the crowd
   beats them and burns the bus, police seize it. 115 tests.
 
+**Step 26 — the pack: fares are seconds of lead, not crowds fished for** (research only)
+
+- Owner's correction, 4 Oct: buses never wait for passengers; they leave the terminal as a pack
+  of three or more on one route and the whole competition is to be first at each stop. A ride-along
+  video from Sayedabad (transcript from the owner) says the same from inside: two or three buses
+  released together, no timetable, the first takes everything, the second scraps, the third
+  nothing; a pass is only possible while the leader is loading; on the road the leader blocks.
+- Written into `docs/ROUTE_AND_TRIPS.md` ("The pack") with what is confirmed in Bangla (the
+  minister on the same-route competition) and what is not (the pack release, a company
+  time-checker: searched, not found). The math that holds without fines or scrapes: what a bus
+  can load at a stop is bounded by its lead over the bus behind, about one person per 4 s of lead;
+  a calm driver in a pack is third by construction and earns nothing.
+- Consequence for the sim, next build after report 1131: no dwell-and-fish for either autopilot,
+  rivals leave the stand with the player, and the headless report prints seconds of lead and share
+  of stops taken first as the verdict columns.
+
 **Where this leaves the project**
 
 Everything in README milestones 3–6 now exists as engine-free C# with tests, runs in the browser

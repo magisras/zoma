@@ -138,6 +138,98 @@ On the builder's notes 1 and 2: 1 is right and the row above is corrected. 2, "d
 not time compression": agreed. The sandbox drives a real quarter-hour; it is the crowds that are
 compressed, so charging a lap a trip's share is coherent and a faster clock would be the wrong fix.
 
+## The pack (4 Oct 2026: owner's correction, and a ride-along video)
+
+The owner, after the batch tables in `docs/PLAYTEST.md`: *buses do not wait for passengers; you cannot
+stop and fish. They go out in batches of three or more on the same route, and the whole competition
+is to be first at the stop.* The ride-along video below says the same from inside the bus. Everything
+in the builder's "being first adds 18 %" reading was wrong because the sandbox let a bus dwell 40 s
+and fish; this section replaces that model.
+
+### What the video shows (Sayedabad, Dhaka; one ride; single source, the guide's claims unconfirmed)
+
+Video: [Why Bangladesh's buses race each other](https://youtu.be/MoyKNBRvONs), a ride from Sayedabad
+with a local guide, transcript supplied by the owner. Facts, as the narrator and the guide state them:
+
+- **Release.** "There's no spacing, there's no timetable … whenever they let them go, it's two or
+  three buses rolling out together." Dispatch is random in time but the buses leave as a pack.
+- **First takes all.** "At every stop, whoever arrives first is going to take everything. Not most
+  of the passengers, all of them. The second bus maybe gets some scraps. The third bus gets nothing."
+- **Pay.** No normal wage; "the team gets a cut of the takings, maybe a tiny base pay if you're
+  lucky." The crew pays the owner and the fuel; "if the bus is empty, you don't earn less, you earn
+  nothing." Matches the deposit system in `RESEARCH.md`.
+- **Crew.** Three: the driver, the helper hanging out of the door shouting the route and dragging
+  people in, and a third who floats and collects. They sleep in the bus at night; the guide says
+  24-hour shifts. The driver in the video has held a licence 10 years and started driving at nine.
+- **How you pass.** "The opportunity to pass really is when you're trying to pick up a customer.
+  Once you're on the road you've really got no shot, they'll just cut you off." The pass in the
+  video used a car as a screen between the two buses. On the road the leader swerves across to
+  block: "that bus is not going to let us pass."
+- **Contact.** A smack into another bus at a stop is "almost normal". Every bus at the terminal is
+  dented end to end.
+- **Rollover, intercity.** 20–22 aboard, driver sleepy, warned twice by passengers, hit the divider
+  within five minutes, bus on its side; a broken hand, nobody dead; the driver ran; locals winched
+  the bus upright and traffic moved on. "Just another Tuesday."
+
+Independent of the video: the road transport minister names the same mechanism when announcing
+the one-company-per-route reform, একই রুটে বিচ্ছিন্নভাবে একাধিক মালিকের বাস আর চলবে না … যাত্রী
+তোলার প্রতিযোগিতা — "buses of several owners will no longer run separately on one route … the
+competition to pick up passengers" ([Khobor Sangjog](https://www.khoborsangjog.com/capital/114956/),
+[Bangla Tribune](https://www.banglatribune.com/others/capital-city/890873/)); and a Prothom Alo
+op-ed, [Bus races, where lives are lost](https://en.prothomalo.com/opinion/op-ed/5l1t0dtpg7). The
+pack release itself (two or three at once, no interval) has only the video and English rewrites
+of it ([TBS](https://www.tbsnews.net/features/mad-bus-races-youtube-views-304855),
+[bdnews24](https://bdnews24.com/bangladesh/a01a0cb5c7f7)); unconfirmed in Bangla. A company
+time-checker fining early or late arrival was searched for (বাস টাইম চেকার জরিমানা) and not found;
+the waybill checks that logged times and counts were scrapped in August 2022
+([Dhaka Tribune Bangla](https://bangla.dhakatribune.com/bangladesh/2022/08/10/16601528202533)),
+which leaves nothing holding the buses apart.
+
+What the BUET waiting study (`RESEARCH.md`, "the full/empty dial": drivers wait to fill, 70 % of
+it near the origin) means under this reading: the waiting is at the terminal and the first stands,
+before and as the pack forms, not on the road with a pack behind you. Unconfirmed; the owner reads
+it the same way.
+
+### The math that holds, passengers only
+
+No fines, no scrapes. Three buses of one company leave Sayedabad together. A stop's crowd is the
+minutes of people who gathered since the last bus of this route loaded there. At 2–6 s a head
+(`RESEARCH.md`, boarding time), a bus takes about one person per 4 s of door time.
+
+The rule: **what you can load at a stop is bounded by your lead over the bus behind you.** Load
+longer than that and it draws level and passes you at the door, and from then on it is the one
+loading. So a bus 20 s ahead can take about 5 people per stop; 60 s ahead, 15, which is a whole
+stand; a bus 0 s ahead takes the one person the helper can grab on the roll.
+
+| | lead over the bus behind | takes per stand (crowd 15) | takes per roadside wave (crowd 2) | riders a trip, 7 stands and 23 waves |
+|---|---|---|---|---|
+| first out of the pack, 30 s ahead | 30 s | 7–8 | 2 | about 100 (capped by room, then turnover in the core) |
+| second, right behind | a few seconds | 1–2 | 0–1 | 20–30 |
+| third | nothing to take | 0–1 | 0 | 5–10 |
+
+Everyone's income is a function of one number, seconds of lead, and the pack's total is fixed by
+the headway in front of the pack, so every second gained is a second taken from a colleague of the
+same company. That is the engine, and it does not need accident arithmetic:
+
+- A calm driver in a pack is third by construction and goes home with nothing. Not because of a
+  fine, because of where the bus is.
+- Nobody can wait at a stop: a 30 s dwell is 30 s of lead given away at the next stop.
+- A pass is worth minutes and is only possible while the leader is loading, so the fight happens
+  at the stops, among the people boarding; on the road the leader blocks.
+- Blocking is as good as passing and costs nothing: hold the middle, let nobody by.
+- Other companies on the same road take a slice of every headway, which is why the pack's pie is
+  smaller than the route's demand.
+
+Open numbers for the owner: how often a pack is released (the headway in front of the pack sets
+the pie); how many stops a pass or a block typically swaps the order; whether a company ever fines
+a crew for lagging, and if so how much.
+
+**Against the sandbox.** The careful autopilot dwells up to 40 s and fishes; the Dhaka one leaves
+when the kerb is bare. Under the pack model neither is right: the dwell is set by the gap behind,
+and the rivals should leave the stand with the player, not 60–120 s apart. The headless report
+should print seconds of lead and share of stops taken first; those two columns replace the scrape
+and fine arithmetic as the verdict. Next build, after the getting-off design (report 1131).
+
 ## Sources
 
 - [Amar Sangbad: the pink bus does not even cover its fuel ("if" 2–2.5 km/l, 16.8–21 l a trip)](https://www.amarsangbad.com/bangladesh/news/359731)
