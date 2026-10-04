@@ -200,6 +200,36 @@ nothing below is a quote and all of it is unconfirmed). What Sujan and the other
 - **Commuters.** Students late for school, jobs at risk, "people cannot drive properly". A resident on
   the footbridges: people cross through traffic instead; "that is where the accidents come from".
 
+A third video, a Kalbela TV report ([youtu.be/VFHF9mQhzYk](https://youtu.be/VFHF9mQhzYk), Bangla captions
+from the owner, so these are real quotes): driver Monir Hossain's viral complaint and the reactions.
+Nothing on the pack; what it gives is the crew's standing and the half-fare fight.
+
+- স্টুডেন্টরা আমাদের গাড়িতে ২০ বছর যাবৎ হাফ ভাড়া দিয়ে যায়। তারা যখন প্রতিষ্ঠিত হয়, ডাক্তার হয়,
+  ইঞ্জিনিয়ার হয়, ব্যারিস্টার হয়, তখন তো তারা আমাদের জন্য আর হাফ করে না — "students have ridden our
+  buses at half fare for twenty years; when they are made, doctors, engineers, barristers, they do not
+  do half for us" (Monir Hossain, driver).
+- কোন নেতা না, কোন এমপি না, কোন মন্ত্রী না … পরিবহনে ড্রাইভার স্টাফদের কোন মূল্য নাই — "no leader, no
+  MP, no minister … transport drivers and staff have no value" (a driver). Another: taken to Dhaka
+  Medical with a Tk 10 ticket and told to wait outside; no healthcare, social security or pension.
+- সবাই সব কর্মজীবী ছুটি পায়। ওইদিনও আমাদের কর্ম করে চলতে হয় — "every worker gets the (Eid) holiday;
+  that day too we have to work" (a driver). No days off.
+- রোড লঙ্ঘন করলে মামলাটা হইতো, ওটা সর্বোচ্চ ৫০ টাকা আছিল — "a traffic violation got a case, and that
+  was at most Tk 50" (an owner, on how cases used to be priced; today's are in the thousands, so the
+  case amounts in the game are the new regime, not an old one). No owner "can put a hand on his chest
+  and say he is surviving."
+- বাসের মধ্যে পাঁচ-দশ টাকার জন্য ঝগড়া লাগে … এক হাতে তালি কখনো বাজে না — "fights break out in the bus
+  over five or ten taka … one hand never claps" (a student); সব বাসে কিন্তু স্টুডেন্টরা আসলে হাফ ভাড়া
+  পাচ্ছে না — "not on every bus do students actually get the half fare".
+
+For the game: the conductor's half-fare argument is a daily, political fight, not a gag; the crew's
+between-shift scenes (illness, a hospital that makes them wait, no holiday) are from life; and the
+owners remember Tk 50 cases, which is why a Tk 3,000 case feels like the state's doing to them.
+
+A News Bangla piece found on the way ("the bus runs on the driver's daily lease",
+[newsbangla24](https://www.newsbangla24.com/news/166932/), search snippet only, blocked from here):
+driver and helper were paid Tk 300 a trip under the old per-trip system, Tk 1,500–2,000 on a good
+day and nothing on a bad one; owners set daily targets of Tk 1,500–3,000 by route. Unconfirmed.
+
 Independent of the video: the road transport minister names the same mechanism when announcing
 the one-company-per-route reform, একই রুটে বিচ্ছিন্নভাবে একাধিক মালিকের বাস আর চলবে না … যাত্রী
 তোলার প্রতিযোগিতা — "buses of several owners will no longer run separately on one route … the
