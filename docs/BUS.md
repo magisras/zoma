@@ -92,6 +92,13 @@ the retarder none of these buses have, and the CNG/diesel choice.
 
 ## 4. Fuel: who pays, when, how much (added 3 Oct 2026)
 
+**Caveat (4 Oct 2026).** This section assumes diesel. `RESEARCH.md`'s daily fuel figure (Tk 1,500–2,000)
+buys only 11–15 litres at today's price, 40–50 km at 3.5 km/l, while `docs/ROUTE_AND_TRIPS.md` has
+a day at 90–120 km. One of three is true: many of these buses run on CNG (about a third of the
+diesel cost per km, and a large share of Dhaka's local buses are CNG), the fuel figure predates the
+price rise, or a day is two round trips. Until a Bangla source settles it, `BusKmPerLitre` and
+`DieselTkPerLitre` stand for "fuel cost per km" whatever is in the tank.
+
 - **Who pays.** Under the daily-deposit system the crew does. The owner is guaranteed the zoma;
   the crew keeps what is left after the zoma, fuel and the roadside payments, and the loss from a
   slow day is theirs. Gross takings in the city are around Tk 3,000 a day before those deductions.

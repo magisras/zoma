@@ -63,6 +63,37 @@ empty roads. A day where the bus crawls at a steady 10 km/h would be safe and wr
   plays at real speed); or keep one corridor chunk and treat the rest of the route as off-screen
   time with its costs and takings simulated.
 
+## Builder's notes (4 Oct 2026, from the build session)
+
+Read against the sandbox's numbers. The route, the speeds, the trip count and "slow on average, deadly
+in bursts" all hold; the shape is the brief, and the headless report should show it (share of the day
+standing, share above 25 km/h: to add). Three things I would not sign as written:
+
+1. **The takings row contradicts `RESEARCH.md`.** "Gross about Tk 3,000 a day" against a deposit of
+   Tk 3,000–5,000 cannot be the norm; nobody would drive it. `RESEARCH.md` line 195 has the owners'
+   figure: ticket sales Tk 6,000–6,500 a day before the metro, 4,000–5,500 after (2024). The 3,000 is
+   a driver's *net* in good times, not gross. Report 1639 finding 3 leans on this row; its conclusion
+   survives with the right figures (in the sim fares are 2.6× the deposit; in life about 1.3–1.5×, and
+   after fuel and the line a careful day nets about nothing), but the row should be corrected.
+2. **It is demand compression, not time compression.** A sandbox day covers 1.4–2.2 km in 15 min:
+   6–9 km/h, a real quarter-hour of Dhaka driving, not a day squeezed 56×. What is compressed is the
+   crowd: six stands in 1.6 km refilling at 3 a minute fill the bus once per lap, so one lap takes one
+   trip's fares (Tk 800–950) on a ninth of a trip's road. That is why charging a lap a trip's share of
+   the deposit is coherent, and why fuel, sergeants and junction time per lap are under-represented.
+   Framing it as time compression points at the wrong fix (a faster clock).
+3. **90–120 km a day does not square with the fuel figure.** At Tk 135 a litre and 3.5 km/l that is
+   Tk 3,500–4,600 of diesel a day against gross of 4,000–5,500 and a deposit of 3,000: impossible.
+   Either many of these buses run on CNG (a third of the cost per km; a lot of Dhaka's local buses
+   do), or the daily fuel figure predates the price rise, or the day is two round trips. `docs/BUS.md`
+   §4 assumed diesel and now carries the caveat. Worth a Bangla search: বাস সিএনজি ডিজেল খরচ দিনে.
+
+On the design question in "Against the sandbox": I would take none of the three as written. Play one
+trip of the real corridor chunk at real time and real distance, and charge that trip a trip's share
+of the day: deposit ÷ trips, the lineman at the turn, the 8–10 payment points along the way, fuel for
+the kilometres driven, the crew's food. The round-trip rhythm (race to the end, turn, pay, race back)
+then exists inside one session; the ring stays an instrument. Compressing the standstill hides the
+fatigue; simulating the rest of the route off-screen explains instead of forcing. Owner's call.
+
 ## Sources
 
 - [Bonik Barta: "বিশ্বে সবচেয়ে ভয়ংকর বাংলাদেশের বাস" (287 deaths per 10,000 buses)](https://www.bonikbarta.com/bangladesh/Upbfai8b7djgWPrq)
