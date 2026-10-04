@@ -230,6 +230,16 @@ A News Bangla piece found on the way ("the bus runs on the driver's daily lease"
 driver and helper were paid Tk 300 a trip under the old per-trip system, Tk 1,500–2,000 on a good
 day and nothing on a bad one; owners set daily targets of Tk 1,500–3,000 by route. Unconfirmed.
 
+A fourth ([Inside the Life of a Bus Driver in Bangladesh](https://youtu.be/zIn31_xYoOM), DreamersEye,
+English narration) is an **intercity** day, Rajshahi to Lalmonirhat and back, about 500 km, not Dhaka
+city. Useful only as the comparator: driver Raju is on a fixed daily wage from the owner, about
+US$ 12 (Tk 1,400–1,500) handed over by the supervisor at night, five days a week with two days off;
+counter tickets, a crew of four (driver, a supervisor who checks tickets, two helpers); the limit is
+80 km/h and he runs over 100 on a clear road; the hardest part of the day is the afternoon, "when he
+gets sleepy and his eyelids grow heavy". So a long-distance driver earns roughly what a Dhaka crew
+clears on a good day, with a wage, days off and no race: the city deposit system is the exception,
+not the trade.
+
 Independent of the video: the road transport minister names the same mechanism when announcing
 the one-company-per-route reform, একই রুটে বিচ্ছিন্নভাবে একাধিক মালিকের বাস আর চলবে না … যাত্রী
 তোলার প্রতিযোগিতা — "buses of several owners will no longer run separately on one route … the
