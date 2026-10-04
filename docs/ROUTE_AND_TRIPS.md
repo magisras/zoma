@@ -190,6 +190,21 @@ it near the origin) means under this reading: the waiting is at the terminal and
 before and as the pack forms, not on the road with a pack behind you. Unconfirmed; the owner reads
 it the same way.
 
+### Who is in the pack: same banner, different owners
+
+A Dhaka bus "company" is the route-permit holder and the livery. The buses under it belong to many
+small owners; each pays the company a daily gate pass to run under the banner: কোম্পানির অধীন বাস
+চালাতে দৈনিক ওয়েবিল বা গেটপাস (জিপি) চাঁদা দিতে হয় — "to run a bus under a company one pays a daily
+waybill or gate-pass (GP) fee" ([Kaler Alo](https://kaleralo.com/385863/2026/); the Tk 5–15 thousand
+figure there is for long-distance buses). The minister's reform text says the same of the problem:
+একই রুটে বিচ্ছিন্নভাবে একাধিক মালিকের বাস — "several owners' buses, each on its own, on one route"
+([Khobor Sangjog](https://www.khoborsangjog.com/capital/114956/)). So the three buses leaving together
+wear the same name and are three businesses: three owners' deposits, three crews on commission. The
+company earns its GP and the owners their deposit whichever bus wins; only the crews are in the race.
+Buses of other companies share stretches of the road and take a slice as well, but the bus that
+turns your day to nothing is the one in your own colours. In the game that is the two named crews of
+the player's company (`RESEARCH.md`, "own company"), plus other companies' buses as passing traffic.
+
 ### The math that holds, passengers only
 
 No fines, no scrapes. Three buses of one company leave Sayedabad together. A stop's crowd is the
