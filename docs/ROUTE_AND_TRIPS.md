@@ -14,7 +14,7 @@ articles listed, and each says how sure it is.
 | Pallabi (Mirpur) → Motijheel by bus, before the metro | **2–2.5 hours**; one office worker from Mirpur 10 took **over 3 hours** | Prothom Alo / TBS Bangla on the metro (মেট্রোরেলে … ২৬ থেকে ২৭ মিনিট, the same trip by metro: 26–27 minutes) |
 | Round trips a day, Mirpur–Jatrabari | **at most four** (a trip = there and back) | search snippet of a Prothom Alo piece on Dhaka's old buses; unconfirmed |
 | Daily deposit | **Tk 3,000–5,000**; a helper: "সাড়ে চার হাজার টাকা জমা" (Tk 4,500) | Ajker Patrika (state minister: দৈনিক ৩–৫ হাজার টাকা জমার চাপেই অশুভ প্রতিযোগিতা, "the pressure of a Tk 3–5 thousand daily deposit drives the deadly competition"); helper quote unconfirmed |
-| Gross takings | about Tk 3,000 a day (RESEARCH.md); drivers report Tk 3,000–5,000 left after deposit, fuel and food in good times (RESEARCH.md, Raida driver) | RESEARCH.md |
+| Takings (ticket sales) | **Tk 6,000–6,500 a day** before the metro, **4,000–5,500** after (owners, 2024, RESEARCH.md); the Tk 3,000–5,000 a driver reports is what was *left* after deposit, fuel and food in good times (RESEARCH.md, Raida driver). *Corrected 4 Oct: this row first said "gross about Tk 3,000", which is a net; the builder caught it.* | RESEARCH.md |
 
 ## What a real day looks like, from those numbers
 
@@ -94,8 +94,46 @@ the kilometres driven, the crew's food. The round-trip rhythm (race to the end, 
 then exists inside one session; the ring stays an instrument. Compressing the standstill hides the
 fatigue; simulating the rest of the route off-screen explains instead of forcing. Owner's call.
 
+## Tester's reply (4 Oct 2026): fuel, diesel or CNG
+
+On the builder's note 3 ("90–120 km a day does not square with the fuel figure"). Bangla search
+(বাস সিএনজি ডিজেল খরচ দিনে and around it):
+
+- **Diesel per trip, a real measurement.** BRTC's women's "pink bus" on Mirpur–Motijheel: 21 km
+  each way, 42 km a round trip; এক লিটার ডিজেলে ২ থেকে আড়াই কিলোমিটার চলে, "it does 2 to 2.5 km on
+  a litre"; এক ট্রিপে প্রায় ১৬ দশমিক ৮ থেকে ২১ লিটার, "16.8 to 21 litres a trip"; Tk 1,932–2,415 a
+  round trip at Tk 115 a litre (Amar Sangbad, Citizens Voice). At today's Tk 135: **Tk 2,270–2,835
+  per 42 km round trip, about Tk 54–68 a km**. That is worse than `docs/BUS.md`'s 3.5 km/l.
+- **So a diesel bus cannot run 90–120 km a day on these takings.** 100 km is 40–50 litres,
+  Tk 5,400–6,750, against takings of Tk 4,000–5,500 and a deposit of Tk 3,000–5,000. The builder is
+  right that something gives.
+- **CNG: how many is unknown.** The often-quoted "৯৫ শতাংশ বাস সিএনজিতে চলে" (95 % of Dhaka's
+  buses run on CNG) is, per NewsBangla24's check, an estimate nobody can source; BRTA officials put
+  CNG at 1–2 % of buses nationally. One snippet has Dhaka at 11,900 gas and 626 diesel of 12,526
+  buses (unconfirmed, and it contradicts BRTA). Daily Sangram reports CNG buses **posing as diesel**
+  (gas kit hidden, a fake diesel filler) to charge the diesel fare. So both kinds run, in a share no
+  one has counted, and the fare is set as if all were diesel.
+- **The ration.** During the 2026 shortage BPC capped a local bus at **70–80 litres of diesel a day**
+  (ITV, Prothom Alo): 140–200 km at 2–2.5 km/l. A cap, not a typical day.
+
+What I'd take from it: on diesel at these figures a city bus can only afford about **two round
+trips (80–90 km) or fewer**, and the crews who do more are on gas. For the game, "fuel cost per km"
+of about **Tk 55–65 for diesel** (well above `docs/BUS.md`'s figure) and roughly a third of that on
+CNG are the two ends; which bus the crew drives is a choice the owner makes for them. Unconfirmed
+beyond the pink-bus measurement.
+
+On the builder's notes 1 and 2: 1 is right and the row above is corrected. 2, "demand compression,
+not time compression": agreed. The sandbox drives a real quarter-hour; it is the crowds that are
+compressed, so charging a lap a trip's share is coherent and a faster clock would be the wrong fix.
+
 ## Sources
 
+- [Amar Sangbad: the pink bus does not even cover its fuel (2–2.5 km/l, 16.8–21 l a trip)](https://www.amarsangbad.com/bangladesh/news/359731)
+- [Citizens Voice: the women's pink bus loses Tk 50,000 a day](https://citizensvoicebd.com/bangladesh/143592/)
+- [NewsBangla24: how many CNG buses are there in Dhaka, really?](https://www.newsbangla24.com/news/165855/How-many-CNG-powered-buses-in-Dhaka)
+- [Daily Sangram: CNG buses charge the diesel fare](https://dailysangram.com/post/472706-%E0%A6%B8%E0%A6%BF%E0%A6%8F%E0%A6%A8%E0%A6%9C%E0%A6%BF-%E0%A6%9A%E0%A6%BE%E0%A6%B2%E0%A6%BF%E0%A6%A4-%E0%A6%AC%E0%A6%BE%E0%A6%B8%E0%A6%95%E0%A7%87-%E0%A6%A1%E0%A6%BF%E0%A6%9C%E0%A7%87%E0%A6%B2-%E0%A6%9A%E0%A6%BE%E0%A6%B2%E0%A6%BF%E0%A6%A4-%E0%A6%AC%E0%A6%B2%E0%A7%87-%E0%A6%85%E0%A6%A4%E0%A6%BF%E0%A6%B0%E0%A6%BF%E0%A6%95%E0%A7%8D%E0%A6%A4-%E0%A6%AD%E0%A6%BE%E0%A7%9C%E0%A6%BE-%E0%A6%86%E0%A6%A6%E0%A6%BE%E0%A7%9F-%E0%A6%AA%E0%A7%8D%E0%A6%B0%E0%A6%A4%E0%A6%BF%E0%A6%A6%E0%A6%BF%E0%A6%A8)
+- [ITV: how much fuel a motorcycle, car or bus may take a day (the ration)](https://www.itvbd.com/national/260410/)
+- [Amader Shomoy: all fares up 27 % for the 5 % of buses on diesel?](https://www.amadershomoy.com/bn/2021/11/08/1507956.asp)
 - [Bonik Barta: "বিশ্বে সবচেয়ে ভয়ংকর বাংলাদেশের বাস" (287 deaths per 10,000 buses)](https://www.bonikbarta.com/bangladesh/Upbfai8b7djgWPrq)
 - [Prothom Alo: five accident hotspots in Dhaka, most at night and in the morning](https://www.prothomalo.com/bangladesh/capital/lt6e8w5l60)
 - [Ittefaq: 1,384 killed on Dhaka's roads in six years](https://www.ittefaq.com.bd/801667/)
