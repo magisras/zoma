@@ -180,6 +180,26 @@ has been driving for several hours**; drivers say the traffic police give them a
 depot is pre-1971 and buses spend a lot of time in it for cracked glass and scraped bodies. Thin on
 the race, but the swap at the wheel and the one-fuel-one-lunch day are usable.
 
+The owner then supplied the audio and the Bangla spans were machine-transcribed (`tools/transcribe/`,
+Whisper large-v3; the Bangla came out only as rough English machine translation under music, so
+nothing below is a quote and all of it is unconfirmed). What Sujan and the others are talking about:
+
+- **The morning check is for the owner, not the bus.** "If the bus is damaged the owner will make
+  trouble: why did you take a damaged bus out, why on that road"; damage found later is blamed on the
+  driver. Matches `RESEARCH.md`: damage comes out of the crew.
+- **The day.** The route is named as Azimpur; out at 6 in the morning and back at 1 at night (one
+  reading of a garbled passage; a 19-hour day would fit the research's 12–17 and the video's
+  "disciplined to his schedule"). The one fuel stop is "gas, oil and water": a CNG bus, which bears on
+  the tester's fuel question above.
+- **Police.** "A police post at every point of our road … at every point we get [stopped] … they give
+  cases"; a phrase the model renders as "the land men getting paid" is most likely লাইনম্যান, the
+  lineman. Sergeants, cases and the line, in the driver's own account.
+- **On aggression.** "We are all brothers here … under a lot of pressure"; the rest is lost.
+- **The depot lineman.** Buses are in bad shape, riders went to the metro, "if new buses come the
+  people come back".
+- **Commuters.** Students late for school, jobs at risk, "people cannot drive properly". A resident on
+  the footbridges: people cross through traffic instead; "that is where the accidents come from".
+
 Independent of the video: the road transport minister names the same mechanism when announcing
 the one-company-per-route reform, একই রুটে বিচ্ছিন্নভাবে একাধিক মালিকের বাস আর চলবে না … যাত্রী
 তোলার প্রতিযোগিতা — "buses of several owners will no longer run separately on one route … the
