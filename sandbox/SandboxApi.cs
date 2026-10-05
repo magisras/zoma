@@ -229,8 +229,9 @@ namespace TwentyTons.Sandbox
             _sim.SpawnPlayerBus(packS + 18f, -2f);                   // sets the prototype's starting wear...
             if (continuing) { _sim.Condition.BrakeWear = wearCarried; _sim.Bus.BrakeWear = wearCarried; }   // ...unless the bus has a history
             // The two crews of the player's own company: one ahead, one behind, as the research describes.
-            _sim.SpawnRivalBus("Rafiq", DriverPersonality.Reckless(), packS + 36f, -2f);
-            _sim.SpawnRivalBus("Jamal", DriverPersonality.Spiteful(), packS, -2f);
+            // Standing, like the player: a spawn at cruise speed had Jamal into the player's tail inside two seconds.
+            _sim.SpawnRivalBus("Rafiq", DriverPersonality.Reckless(), packS + 36f, -2f).Speed = 0f;
+            _sim.SpawnRivalBus("Jamal", DriverPersonality.Spiteful(), packS, -2f).Speed = 0f;
             _sim.RecallCrews(_household);                    // Jamal remembers yesterday, a little less each night
             _accumulator = 0f;
 

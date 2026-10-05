@@ -209,8 +209,9 @@ public static class Headless
             // the middle. Rafiq has the first door at Block 11 unless the player takes it from him; Jamal is on the player's tail.
             float packS = SandboxWorld.ZoneS[0] + tuning.Passengers.ZoneHalfLengthMetres + 12f;
             sim.SpawnPlayerBus(packS + 18f, -2f);
-        sim.SpawnRivalBus("Rafiq", DriverPersonality.Reckless(), packS + 36f, -2f);
-        sim.SpawnRivalBus("Jamal", DriverPersonality.Spiteful(), packS, -2f);
+        // Standing, like the player: a spawn at cruise speed had Jamal into the player's tail inside two seconds, a scrape a day.
+        sim.SpawnRivalBus("Rafiq", DriverPersonality.Reckless(), packS + 36f, -2f).Speed = 0f;
+        sim.SpawnRivalBus("Jamal", DriverPersonality.Spiteful(), packS, -2f).Speed = 0f;
         return sim;
     }
 

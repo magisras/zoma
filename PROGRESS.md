@@ -476,6 +476,10 @@ in the headless runner and in the browser. Entries below are appended as steps l
   prints every route bus at every kerb: door order, waiting, off, on, aboard, stood. With it: the second
   door now gets nothing; careful is a distant third (40 riders against the crews' 118); the Dhaka autopilot
   51 against 98. `docs/PLAYTEST.md`.
+- 5 Oct, from the owner reading the trace: the crews spawned at cruise speed into the standing player's tail
+  (now standing), and the zone-approach brake stopped the Dhaka bus for a crowd another door owned (now
+  honours the pass rule). The player clears the first kerb; the day then shows the fatigue system ending an
+  empty, drifting driver's day with two knock-downs. The autopilot does not manage fatigue; a player must.
 
 **Where this leaves the project**
 

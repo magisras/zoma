@@ -451,3 +451,25 @@ Careful is a distant third now (40 against 118; on seed 1 it boarded 14 all day 
 The Dhaka autopilot is still not the leader (51 against 98; it won seed 5 with 87 and lost seed 4 with 27),
 for the reasons above. The "first %" column counts a kerb as first when no other door took anyone there in
 the last minute, which flatters a bus arriving to leftovers; the trace is the honest view.
+
+### Why the Dhaka autopilot stopped at a kerb it could not have (5 Oct 2026)
+
+Owner, reading the trace: "why at 0:22 do I stop to pick up 4? why not race past Rafiq and take the next big
+stop?" Two causes, both in the instrument, both fixed:
+
+1. **The crews spawned at cruise speed, 7 m behind a standing player.** Jamal was into the player's tail at
+   t = 1.2 s every day (a Tk 100 scrape before the first kerb, and the player shoved into Rafiq's band). The
+   pack now starts standing, as it does at a stand.
+2. **The zone-approach brake did not know about the pass rule.** `TooFastForZoneAhead` saw people waiting
+   and braked the bus to a stop just short of the kerb centre, while `WorkZone` (which knows a crew bus is
+   loading there and the crowd is its) said drive on. The bus sat at v = 0 until the loader left: 20–40 s at
+   the first kerb of every day. Now the approach brake honours the same rule.
+
+With both: the player arrives at Block 11 third, stands 0 s and goes; Jamal and Rafiq then take turns
+owning kerbs (Market 16 → +20, Kazipara 21 → +24, the Stand 25 → +34, Block 11 25 → +33; the second door
+gets 0 each time) and the player, behind both from the start, finds 0–9 at every kerb all day. On seed 1 the
+day then ends the research's way: an empty bus, "Rafiq is far ahead, easy", fatigue 0.87 by minute eleven,
+three micro-sleeps, the bus drifts onto the kerb at 20 km/h twice, two people down, Tk 6,000 each, seized.
+The autopilot never wakes itself; the fatigue system is doing exactly what it was built to do to a driver
+who ignores it. Batch: careful 21 riders against the crews' 108, Dhaka 44 against 95 with four knock-downs
+over six days (mean net −4,624). The careful bus is not just third now, it is nowhere: first at 19 % of kerbs.

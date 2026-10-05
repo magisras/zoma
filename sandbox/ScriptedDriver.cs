@@ -458,6 +458,10 @@ namespace TwentyTons.Sandbox
             float ds = sim.Corridor.DeltaS(bus.S, next.S);
             if (ds < 0f || ds > 70f) return false;
             bool worth = (next.Waiting.Count >= minCrowd && bus.Load.Count < Boarding.TooFullCount(sim)) || AnyoneFor(bus, next);
+            // The crowd a crew bus is already loading is its (Boarding: first door). The Dhaka driver does not brake for it:
+            // braking to a stop just short of the kerb for a crowd he was never going to get held him there for as long as
+            // the loader stood, every first kerb of the day.
+            if (worth && Current == Policy.Dhaka && DhakaSkipsTakenStops && !HelperMode && !AnyoneFor(bus, next) && RivalAI.BusLoadingAt(sim, bus, next) != null) worth = false;
             if (!worth) return false;
             float allowed = Mathf.Sqrt(2f * 2.5f * Mathf.Max(0f, ds - 4f));
             return bus.Speed > allowed;
