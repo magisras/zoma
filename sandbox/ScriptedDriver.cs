@@ -21,7 +21,7 @@ namespace TwentyTons.Sandbox
         public static Policy Current = Policy.Careful;
         public static float CapKmh = 25f;
         public static float HoldLateral = -2f;
-        public static float MaxDwellSeconds = 40f;     // long enough to take an ordinary crowd whole
+        public static float MaxDwellSeconds = 180f;    // the kerb is worked until bare (or, Dhaka, until a route bus closes from behind); 40 left people on every kerb
         public static int DhakaMinCrowd = 1;           // the Dhaka driver stops for anyone waving (3 was tried: no gain, the bus stops anyway for people getting off)
         // The pack (docs/ROUTE_AND_TRIPS.md): the three buses leave the stand together, the first at a stop takes all,
         // the pass happens while the leader loads. Both flags were off while rivals left 60–120 s apart; with the pack

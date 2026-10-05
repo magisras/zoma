@@ -471,6 +471,11 @@ in the headless runner and in the browser. Entries below are appended as steps l
   123): it loses the first kerb and the first junction and never gets the lead back. The instrument, not
   the model; next is a Dhaka policy on the crews' decision layer. Report 1131 (getting off) after that.
   119 tests.
+- 5 Oct: everyone leaves the depot empty (owner; `StartingPassengers` 0, was the physics sandbox's 30) and
+  the dwell cap is gone so the first door really takes the whole kerb (`RaceDwellSeconds` 180). `--trace`
+  prints every route bus at every kerb: door order, waiting, off, on, aboard, stood. With it: the second
+  door now gets nothing; careful is a distant third (40 riders against the crews' 118); the Dhaka autopilot
+  51 against 98. `docs/PLAYTEST.md`.
 
 **Where this leaves the project**
 

@@ -508,7 +508,7 @@ namespace TwentyTons.Tuning
         [Range(0f, 1f)] public float SoftBrakesAbove = 0.7f;
 
         [Tooltip("Passengers aboard at the start of the prototype. placeholder")]
-        public int StartingPassengers = 30;
+        public int StartingPassengers = 0;      // the shift starts at the depot, empty (owner, 5 Oct 2026); 30 was the first physics sandbox's test load
 
         [Tooltip("Off the corridor (past the kerb by this many metres) the bus is in the market stalls and " +
                  "loses speed fast. The world enforces, not the UI. placeholder")]
@@ -984,7 +984,7 @@ namespace TwentyTons.Tuning
         [Tooltip("Nerve removed while backing off. placeholder")]
         public float BackOffNerveDrop = 0.3f;
         [Tooltip("Longest a racing bus stays at a stop: grab and go, seconds. placeholder")]
-        public float RaceDwellSeconds = 40f;   // was 8: a grab-and-go left most of the crowd to the bus behind. The pack: the first door takes all
+        public float RaceDwellSeconds = 180f;  // the first door takes the whole kerb (video): it leaves when the kerb is bare or a route bus is on its tail, not on a clock. 40 left 8–14 on every kerb; 8 before that
         [Tooltip("Longest a 'wait and fill' bus stays, seconds. RESEARCH: drivers deliberately wait at early stops. placeholder")]
         public float WaitDwellSeconds = 40f;
         [Tooltip("Comfortable braking when pulling into a stop, m/s². placeholder")]

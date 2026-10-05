@@ -427,3 +427,27 @@ is the weak part now: the premise is about the player's driving, and the autopil
 for the instrument: build the Dhaka policy on the crews' own decision layer (pass at the door, hold the
 middle, run the cane when the box is clear) so the batch compares like with like. For the owner: the pack is
 in the sandbox (artifact): three buses leave the stand together, and the first kerb is Block 11.
+
+### Empty out of the depot, and the first door takes all (5 Oct 2026)
+
+Owner: "we all leave the depot with 0, we just started our shift." The player's 30 starting passengers were the
+first physics sandbox's test load; now every bus leaves empty (`StartingPassengers` 0; the rollover tests set
+their own load). And the trace above showed the leader leaving 8–14 people on every kerb because of the 40 s
+dwell cap, against the video's "the first takes everything": the cap is gone (`RaceDwellSeconds` and the
+autopilots' `MaxDwellSeconds` 180; a kerb is worked until bare, or, Dhaka, until a route bus is on the tail).
+
+`./tools/headless.sh 1 900 25 --dhaka --trace`, the first minutes: Rafiq takes Block 11 (14 waiting, +10, 0 left);
+you arrive second to 4 and get 0; Jamal takes Market (23, +18, 0 left) and Kazipara (19, +25 in 118 s, 0 left)
+while Rafiq arrives second to 0 and 13 and gets 1 and 0; Rafiq takes the Stand (25, +34, 0 left) and Jamal
+arrives second to 8 and gets 0; at 11:44 you take Kazipara first (23 waiting, +34) and the two crews behind you
+get 0 and 2. The second door gets nothing now, as the video says. `--batch 6 900`:
+
+```
+careful  mean net Tk   -589  fares   635  riders   40 (each crew bus  118)  first  53 %  stopsLost 5.0
+dhaka    mean net Tk   -476  fares   857  riders   51 (each crew bus   98)  first  48 %  stopsLost 6.2
+```
+
+Careful is a distant third now (40 against 118; on seed 1 it boarded 14 all day and was first at no kerb).
+The Dhaka autopilot is still not the leader (51 against 98; it won seed 5 with 87 and lost seed 4 with 27),
+for the reasons above. The "first %" column counts a kerb as first when no other door took anyone there in
+the last minute, which flatters a bus arriving to leftovers; the trace is the honest view.

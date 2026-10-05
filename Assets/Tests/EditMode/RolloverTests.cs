@@ -16,6 +16,7 @@ namespace TwentyTons.Tests
             var road = new Corridor(new List<Vector3> { new Vector3(0, 0, 0), new Vector3(0, 0, 3000) }, 10f);
             var sim = new TrafficSim(road, tuning, 8);
             sim.SpawnPlayerBus(100f, -2f);
+            sim.SetPassengerCount(sim.Player, 30);   // these scenes were written for a loaded bus; the shift itself now starts empty
             return sim;
         }
 
