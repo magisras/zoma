@@ -313,7 +313,8 @@ News Bangla: অধিকাংশ বাসমালিক তাদের চ�
 2,500 daily contract; whatever is earned after the contract money goes into the driver's and helper's pockets;
 the more trips a day, the more profit." Bangla Tribune: most on Tk 3,000 or more
 ([Bangla Tribune](https://www.banglatribune.com/others/806686/)). Three or more sources. The per-trip variant:
-Shikor Paribahan, Mirpur 12 to Jatrabari, paid driver and helper Tk 300 each a round trip, at most four a day
+Shikor Paribahan, Mirpur 12 to Jatrabari, paid Tk 300 a round trip for the driver and helper together (এই টাকা
+তারা দুজন ভাগ করে নিতেন, "the two of them shared it"), at most four a day
 ([Prothom Alo, "as many trips, as much money"](https://www.prothomalo.com/bangladesh/যত-‘ট্রিপ’-তত-টাকা));
 the owners' pledge to pay salaries instead "was never implemented". Drivers in their own words (Dhaka Tribune,
 English): "We have to bring all the money to the owners at night. After that, what is left is mine and my
@@ -358,6 +359,106 @@ cue for the block); the diagonal park across the lane as the block at a kerb; th
 the ledger's frame (Tk 2,500–3,000 a day, everything above it the crew's), with the per-trip Tk 300 as the
 other company model. And a reminder that nothing in the system holds the pack apart: the pack is what happens
 when nothing does.
+
+### From the full articles (owner downloaded the pages, 5 Oct 2026)
+
+The snippets above were checked against the complete texts of sixteen pages the owner saved. Everything
+held; these details are new or sharper. Quotes are verbatim.
+
+**"Number", in the crews' own words** ([Dhaka Post](https://www.dhakapost.com/national/403773)). Helper
+Farid Mia: আমাদেরটা যেমন ভিক্টর ক্লাসিক বাস, এই নামেরই আলাদা আলাদা মালিকের আরও ১০০টি বাস আছে। আমরা এসব একই
+নামের বাসকে সাংকেতিক ভাষায় বলি 'নাম্বার'। মানে, এগুলো একই রুটের প্রতিযোগী বাস — "ours is a Victor Classic;
+there are a hundred more buses of this name, each with a different owner. We call buses of the same name
+'number' in our code: they are the competitors on the same route." And the rule: পেছনে 'নাম্বার' গাড়ি দেখলে
+চালককে আমরা সতর্ক করে বলে দিই, 'ওস্তাদ, পিছনে নাম্বার।' তখন চালক গাড়িটি একটু ডানে বা বামে ক্রস করে দেয়।
+যেহেতু একই রুটের বাস, তাই বাসটি ওভারটেক করে সামনে গেলে, সামনের সব যাত্রী তারা নিয়ে নেবে — "when we see
+a number behind we warn the driver, 'Ostad, number behind.' The driver then angles the bus a little right
+or left. Since it is a bus of the same route, if it overtakes us it takes every passenger ahead." Driver
+Hafizul: অল্প সময়ের জন্য বাসটা এভাবে রেখে পাশ কাটিয়ে টান দিয়েছি — "I held the bus like that for a short
+while, then pulled away." Raida driver Abdul Malek: প্রতিদিনের জন্য বাসপ্রতি তিন থেকে চার হাজার টাকা খরচ
+আছে, যা মালিককে দিতে হয়। এরপর আছে রাস্তা খরচ … এরপর যে টাকা থাকবে, তা দিয়ে তেল খরচ এবং আমাদের বেতন।
+এমনও দিন আছে যখন জমা-খরচের টাকাও তুলতে পারি না — "there is a cost of three to four thousand a day per bus
+that goes to the owner. Then the road costs. From what is left, fuel and our wages. There are days we
+cannot raise even the deposit." He calls the diagonal park একটি প্রচলিত প্রথা, "an established custom", and
+says it sometimes costs a traffic case. A traffic sergeant: two police at a signal cannot book the several
+drivers doing it at once.
+
+**Why there is no coordination.** Prothom Alo ([disorder](https://www.prothomalo.com/bangladesh/বিশৃঙ্খল-গণপরিবহন-দেখার-কেউ-নেই)):
+about 5,500 buses and 2,000 owners in Dhaka, one owner per three buses; একই কোম্পানিতে একাধিক মালিক থাকার
+কারণে আগে যাওয়ার প্রতিযোগিতা হয়। আবার পেছনের বাস যাতে যেতে না পারে, এ জন্য বাসগুলো রাস্তাজুড়ে দাঁড়িয়ে থাকে —
+"because one company has many owners there is a competition to get ahead, and so the bus behind cannot
+pass, the buses stand across the road." Professor Shamsul Haque (BUET): ঢাকায় বাসচালকদের চোখ সড়ক বা
+সংকেত বাতির দিকে থাকে না। রাস্তার যাত্রী আর লুকিং গ্লাসের মাধ্যমে পেছন দিক থেকে একই পথের অন্য বাস আসছে কি
+না, সেটাই দেখেন চালকেরা — "a Dhaka bus driver's eyes are not on the road or the signals. He watches the
+passengers on the road, and in the mirror whether another bus of the same route is coming up behind."
+That sentence is the camera brief for the cab view. Three minibuses racing abreast at the Karwan Bazar
+fountain where there is no stop at all; six bus bays in the whole city.
+
+**The money, from the owners' side** ([News Bangla](https://www.newsbangla24.com/news/166932/)). Former
+Shikor and Akik owner Mahmud Hossain paid Tk 300 a round trip to driver and helper together, four trips a
+day at most, with linemen along the route keeping the waybill; on a good day Tk 1,500–2,000 was left for
+him, যাত্রী কম থাকলে ড্রাইভার-হেলপারকে নিজের পকেট থেকে দেয়া লাগত, "when passengers were few I paid the
+driver and helper from my own pocket." He now leases his two buses to crews for Tk 35,000 a month. Local
+bus owners give a daily target, রুট ভেদে ১৫শ টাকা থেকে ৩ হাজার টাকা, "Tk 1,500 to 3,000 by route", agreed
+with the drivers; তেল খরচ চালকের আর বাস মেরামত ও ট্রাফিক পুলিশের বিভিন্ন মামলার দায়িত্ব থাকে মালিকের ওপর —
+"fuel is the driver's; repairs and the traffic police's cases are the owner's." One Gabtoli–Gulistan owner:
+no waybill on a local bus so he cannot count passengers; he set a Tk 1,500 target, fills the tank in the
+morning and the crew returns it full at night. Owners themselves say the daily lease is a main cause of the
+disorder: দৈনিক টার্গেট পূরণ করতে রাস্তায় চালকেরা কে কার আগে যাবে এই প্রতিযোগিতা চলতে থাকে, "to meet the
+daily target the competition over who gets ahead goes on all day." The waybill was the owners' answer to
+crews under-reporting; when the sitting service and the waybill went in 2022, owners said they would go
+back to daily targets. **For the ledger:** the deposit model has two variants, and who pays a case differs
+between them; the game's "every fine from the crew's day" is the deposit variant drivers describe, not the
+lease variant this owner describes.
+
+**Per-trip, and what drivers want** ([Prothom Alo, as many trips](https://www.prothomalo.com/bangladesh/যত-‘ট্রিপ’-তত-টাকা)).
+Prajapati driver Khalek Mia: আগে বাস চালাতাম জমা হিসাবে … জমার টাকা, গ্যাস, লাইন খরচ তোলার পরে নিজের আর
+হেলপারের আয় তোলা লাগত। এখন ট্রিপ হিসাবে টাকা দেয়। কিন্তু ট্রিপ কম হলে আয় কম — "before, I drove on deposit:
+after the deposit, the gas and the line costs came our own and the helper's earnings. Now they pay per
+trip. Fewer trips, less income." Gabtoli Link driver Ohidul: a fixed daily wage would end the racing: তাহলে
+আর রাস্তায় পাড়াপাড়ি করবে না কোনো চালক. The 2018 owners' decision to end contract driving was never
+implemented; the association said crews do not drive the same owner's bus every day, so a monthly wage was
+"almost impossible".
+
+**One ride, in detail** ([Prothom Alo, 23 places](https://www.prothomalo.com/bangladesh/capital/cvkqsgoznt)):
+Shikor, Mirpur 11 to Zero Point, 12 km in two and a half hours, door open the whole way, 25 seats (a
+minibus) with 17 taken at boarding, eight pickups in the 1.25 km to Mirpur 10, standing room gone by
+Kazipara, a 45-minute jam at Shewrapara, then a row when the driver stopped for more passengers a minute
+after the jam cleared; a checker tried to flag the bus down past Karwan Bazar and the helper put money in his
+hand so he did not board; fare charged Tk 40 against a chart of 30. That is one lap of the game in a
+paragraph: the crowd thick at the origin, the bus full by the third kerb, the jam, the argument, the checker.
+
+**The crew's day** ([TBS Bangla](https://www.tbsnews.net/bangla/ফিচার/news-details-115038),
+[Bangla Tribune](https://www.banglatribune.com/others/806686/)). Shikor conductor Jumman: গাড়ি একবার রাস্তায়
+বের করলে সাত-আটশ টাকা খরচ আছে … লাইনের কাগজ নিতে দিনে দিতে হয় ৫৭০ টাকা — "once the bus is out there is
+seven or eight hundred of cost … the line paper is Tk 570 a day"; food allowance ৭০ টাকা, Tk 70 a meal a
+head, twice a day; some days not even four round trips, some days six; কমপক্ষে ১,৫০০ মানুষের সঙ্গে কথা
+চালাইতে হয়, "at least 1,500 people to deal with" on such a day, half of them trying to pay less. His ostad
+Abbas Ali, twenty years: আগে … সন্ধ্যার আগেই চার ট্রিপ হয়া যাইত। এহন চার ট্রিপ দিতেই কোনো কোনোদিন রাইত
+দশটা বাজে — "before, four trips were done by evening; now four trips take till ten at night"; 12–14 hours a
+day, four days a week, often sleeping in the bus; খারাপ ব্যবহার মাথায় নিয়ে ঘুরলে দিনে অ্যাকসিডেন্ট হইব
+পাঁচবার, "carry the bad behaviour around in your head and you would crash five times a day." Drivers on one
+day on, one day off, Tk 1,200–1,500 on a good day for two days' living; Mirpur Link: 18 hours; Bikash: three
+full trips a day, no time to rest; Tk 500–600 a day in waybill and chanda along the route from the crew's
+share, eight to ten places between Mirpur 12 and Azimpur; Shikor helper Babu: এক পয়সা কম নাই, আগে টাকা দেও —
+"not a paisa less: first hand over the money."
+
+**The gate pass** ([Kaler Alo](https://kaleralo.com/385863/2026/)): একসময় 'জিপি' বলতে স্টেশন থেকে বাস ছাড়ার
+তথ্যসংবলিত একটি গেট পাসকে বোঝানো হতো, "GP once meant a gate pass carrying the bus's departure details";
+now the long-distance association calls it বোবা চাঁদা, "mute extortion", Tk 5–15 thousand a day. Prothom Alo
+([the handover](https://www.prothomalo.com/bangladesh/sig1g8jlvk)): Tk 70 a day openly from every bus and
+truck; three kinds of levy, the third being দৈনিক ওয়েবিল বা গেটপাস (জিপি) চাঁদা to run under a company in
+Dhaka; 92 % of large bus companies run by politicians. The minister ([Ajker Patrika](https://www.ajkerpatrika.com/national/ajpk37j6ytxt3)):
+companies collect Tk 300–500 a bus a day with no account of where it goes, and a bus pays anything from
+Tk 500 to a lakh to be admitted to a company's route; and the drivers' own line to him: অন্য বাসকে বাধা না
+দিয়ে বা প্রতিযোগিতা না করে সেই টাকা দেওয়া সম্ভব হয় না — "without blocking other buses or competing, that
+money cannot be paid."
+
+**What the full texts change in the game's numbers.** Deposit Tk 3,000–4,000 a bus a day (driver) or a
+target of Tk 1,500–3,000 (owners), with the per-trip variant at Tk 300 a round trip for the pair; line
+paper Tk 570 and eight to ten payment points at Tk 500–600 a day; food Tk 70 a meal a head; four round
+trips a day if the jams allow, three on a bad day, six on a rare good one, and "four by evening" twenty years
+ago. The helper's call and the diagonal park are now documented from three independent papers.
 
 ### The math that holds, passengers only
 
