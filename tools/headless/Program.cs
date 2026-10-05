@@ -41,6 +41,7 @@ public static class Headless
             return Batch(seeds, secs);
         }
         bool verbose = list.Remove("-v");
+        bool trace = list.Remove("--trace");     // every bus of the route at every kerb: a table of the pack's day
         bool dhaka = list.Remove("--dhaka");
         // --crowd X: the same crowd rate multiplier the batch takes, for replaying one of its days.
         int cr = list.IndexOf("--crowd");
@@ -60,6 +61,8 @@ public static class Headless
         ScriptedDriver.CapKmh = capKmh;
         DemandZone zoneWas = null;
         int frame = 0;
+        var visits = new List<Visit>();
+        var open = new Dictionary<Agent, Visit>();
         int contactsWere = 0;
         int boardedAtOpen = 0;
         float openedAt = 0f;
@@ -84,6 +87,7 @@ public static class Headless
                 Console.WriteLine($"  t={t,6:0.0} {(doorWas ? "ARRIVE" : "LEAVE ")} {(z == null ? "-" : z.Name),-10} waiting {(z == null ? 0 : z.Waiting.Count),2}  aboard {bus.Load.Count,2}  S={bus.S:0}  fares {bus.Load.FaresTk:0}  otherDoors {otherDoors}{took}  crew ahead {(crewAhead == null ? "-" : aheadM.ToString("0") + " m")} behind {(crewBehind == null ? "-" : behindM.ToString("0") + " m")}");
             }
             frame++;
+            if (trace) TraceKerbs(sim, t, visits, open);
             if (verbose && bus.Load.ArrivedZone != null && frame % 600 == 0)
             {
                 DemandZone z = bus.Load.ArrivedZone;
@@ -118,7 +122,60 @@ public static class Headless
             }
         }
         Report(sim, seed, seconds, bus);
+        if (trace) PrintTrace(sim, visits, open, seconds);
         return sim.Metrics.PersonHit ? 2 : 0;
+    }
+
+    /// <summary>One bus at one kerb: what it found, what it did, how long it stood.</summary>
+    private sealed class Visit
+    {
+        public float Arrived, Left = -1f;
+        public Agent Bus;
+        public DemandZone Zone;
+        public int Order;                  // 1 = first door at this kerb this visit, 2 = a door was already there, ...
+        public int WaitingAtArrival, AboardAtArrival, BoardedBefore, AlightedBefore, AboardAtLeave, Boarded, Alighted, WaitingAtLeave;
+        public float StoodSeconds;
+    }
+
+    private static void TraceKerbs(TrafficSim sim, float t, List<Visit> visits, Dictionary<Agent, Visit> open)
+    {
+        foreach (Agent a in sim.Agents)
+        {
+            if (a.Load == null || (a.Brain == null && !a.IsPlayer)) continue;   // the route's buses: the player and the crews
+            Visit v;
+            open.TryGetValue(a, out v);
+            DemandZone here = a.Load.ArrivedZone;
+            if (v != null && here != v.Zone)
+            {
+                v.Left = t; v.AboardAtLeave = a.Load.Count; v.Boarded = a.Load.Boarded - v.BoardedBefore; v.Alighted = a.Load.Alighted - v.AlightedBefore;
+                v.WaitingAtLeave = v.Zone.Waiting.Count;
+                open.Remove(a); v = null;
+            }
+            if (v == null && here != null)
+            {
+                int doors = 0;
+                foreach (Agent o in sim.Agents) if (o != a && o.Load != null && o.Load.ArrivedZone == here && Mathf.Abs(sim.Corridor.DeltaS(here.S, o.S)) <= sim.Tuning.Passengers.ZoneHalfLengthMetres) doors++;
+                v = new Visit { Arrived = t, Bus = a, Zone = here, Order = doors + 1, WaitingAtArrival = here.Waiting.Count, AboardAtArrival = a.Load.Count, BoardedBefore = a.Load.Boarded, AlightedBefore = a.Load.Alighted };
+                visits.Add(v); open[a] = v;
+            }
+            if (v != null && a.Speed < 0.5f) v.StoodSeconds += 1f / 60f;
+        }
+    }
+
+    private static void PrintTrace(TrafficSim sim, List<Visit> visits, Dictionary<Agent, Visit> open, float end)
+    {
+        foreach (Visit v in open.Values) { v.Left = end; v.AboardAtLeave = v.Bus.Load.Count; v.Boarded = v.Bus.Load.Boarded - v.BoardedBefore; v.Alighted = v.Bus.Load.Alighted - v.AlightedBefore; v.WaitingAtLeave = v.Zone.Waiting.Count; }
+        Console.WriteLine();
+        Console.WriteLine("| t | bus | kerb | door | waiting there | off | on | aboard | stood | left on kerb |");
+        Console.WriteLine("|---|---|---|---|---|---|---|---|---|---|");
+        visits.Sort((x, y) => x.Arrived.CompareTo(y.Arrived));
+        foreach (Visit v in visits)
+        {
+            string name = v.Bus.IsPlayer ? "YOU (" + ScriptedDriver.Current + ")" : v.Bus.Brain.CrewName;
+            string door = v.Order == 1 ? "1st" : v.Order == 2 ? "2nd" : "3rd";
+            int min = (int)(v.Arrived / 60f), sec = (int)(v.Arrived % 60f);
+            Console.WriteLine($"| {min}:{sec:00} | {name} | {v.Zone.Name} | {door} | {v.WaitingAtArrival} | -{v.Alighted} | +{v.Boarded} | {v.AboardAtArrival} -> {v.AboardAtLeave} | {v.StoodSeconds:0} s | {v.WaitingAtLeave} |");
+        }
     }
 
     private static TrafficSim BuildWorld(int seed)
