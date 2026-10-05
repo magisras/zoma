@@ -75,3 +75,8 @@ tools/          check.sh (compile + test without Unity), UnityEngine stub, NUnit
 - **nerve** = a 0–1 number per driver; high nerve accepts a smaller gap and calls bluffs.
 - **zoma** = the owner's fixed daily deposit. It never moves.
 - **gap** = seconds between buses of the same company; "mind the gap" is the helper's job.
+
+## Sources and citing
+Every fact about Dhaka lives in `docs/sources/` (one file per source, numbered facts, `FACTS.md` index,
+`ENTITIES.md` names). Cite facts by id (`S-013.5`) in docs, tuning tooltips, voice-line notes and code
+comments. New research goes into a source file first, even what seems irrelevant now; then the index.
