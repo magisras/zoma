@@ -280,6 +280,85 @@ Buses of other companies share stretches of the road and take a slice as well, b
 turns your day to nothing is the one in your own colours. In the game that is the two named crews of
 the player's company (`RESEARCH.md`, "own company"), plus other companies' buses as passing traffic.
 
+### What the press says about dispatch, pay and the race (5 Oct 2026, two research passes)
+
+Two searches, one in Bangla (about fifty queries), one in French. Every news site is blocked from this
+environment, so the quotes are search-snippet fragments, verbatim but without their context; open the URL
+before quoting in the game.
+
+**How buses leave the stand.** No timetable: a BIP study says "no timetable is followed by the bus operators",
+and Prothom Alo, on 7,937 buses, 246 routes and about 3,000 owners: অপরিকল্পিত ও অপ্রয়োজনীয় পথ এবং অসংখ্য
+মালিক থাকার কারণে একই পথের বাসগুলো পাল্লাপাল্লিতে নামছে — "unplanned, unneeded routes and countless owners put
+the buses of one route into racing" ([Prothom Alo](https://www.prothomalo.com/bangladesh/ঢাকার-সড়কে-বাস-চালক-ও-ব্যবস্থাপনা-কোনোটাই-ঠিক-নেই)).
+Two sources. The old "time" system was the waybill: the route cut into segments, a checker (চেকার) at each
+point noting departure time and passenger count, the owner's take computed from it
+([Dhaka Tribune](https://www.dhakatribune.com/bangladesh/dhaka/292091/)). Scrapped August 2022; e-ticketing
+with association checkers replaced it on paper and "remains only on paper" ([Daily Star](https://www.thedailystar.net/news/bangladesh/transport/news/e-ticketing-remains-only-paper-3414226));
+in practice owners moved to a daily target: ওয়েবিল বাতিলের পরে স্থানীয় বাসগুলোর মালিকরা চালকদের দৈনিক টার্গেট
+দেওয়ার প্রবণতা — "after the waybill was abolished, owners of local buses tended to give drivers a daily target"
+([News Bangla](https://www.newsbangla24.com/news/166932/)). So nothing holds the buses apart on the road.
+The gate pass was once literally the departure slip: একসময় 'জিপি' বলতে স্টেশন থেকে বাস ছাড়ার তথ্যসংবলিত
+একটি গেট পাসকে বোঝানো হতো — "GP once meant a gate pass recording the bus's departure from the station"
+([Kaler Alo](https://kaleralo.com/385863/2026/)); today it is a daily fee, বাসপ্রতি ৩৬০ টাকা থেকে ৯৬০ টাকা
+a day to the owners' association ([Prothom Alo](https://www.prothomalo.com/bangladesh/sig1g8jlvk)), a Shikor
+conductor's ৫৭০ টাকা দৈনিক লাইনের কাগজ, "Tk 570 a day for the line paper" ([TBS Bangla](https://www.tbsnews.net/bangla/ফিচার/news-details-115038)).
+**Not found anywhere:** a company rule on the release interval, a fine for leaving early or "cutting the time"
+of the bus ahead, the phrase টাইম কাটা. The release is whoever is ready.
+
+**Pay, and why they race.** Minister: বাসমালিকের কাছ থেকে প্রতিদিন ৩ থেকে ৫ হাজার টাকা জমা দেওয়ার চাপ থাকায়
+চালকেরা সড়কে অশুভ প্রতিযোগিতায় জড়িয়ে পড়েন — "under the pressure of a Tk 3–5 thousand daily deposit to the
+owner, drivers fall into the unholy competition" ([Ajker Patrika](https://www.ajkerpatrika.com/national/ajpk37j6ytxt3)).
+News Bangla: অধিকাংশ বাসমালিক তাদের চালককে দৈনিক ২ হাজার ৫০০ টাকা চুক্তিতে দিয়ে দেন। চুক্তির টাকা পরিশোধের পর
+যা আয় হয়, সব বাস চালক ও সহকারীর পকেটে যায়। দিনে যত ট্রিপ তত লাভ — "most owners hand the bus over on a Tk
+2,500 daily contract; whatever is earned after the contract money goes into the driver's and helper's pockets;
+the more trips a day, the more profit." Bangla Tribune: most on Tk 3,000 or more
+([Bangla Tribune](https://www.banglatribune.com/others/806686/)). Three or more sources. The per-trip variant:
+Shikor Paribahan, Mirpur 12 to Jatrabari, paid driver and helper Tk 300 each a round trip, at most four a day
+([Prothom Alo, "as many trips, as much money"](https://www.prothomalo.com/bangladesh/যত-‘ট্রিপ’-তত-টাকা));
+the owners' pledge to pay salaries instead "was never implemented". Drivers in their own words (Dhaka Tribune,
+English): "We have to bring all the money to the owners at night. After that, what is left is mine and my
+helper's"; "If I fail to give a handsome amount to the bus owner at the end of the day, he will replace me
+with another driver… We try our best to pick up as many passengers as we can, even if that requires
+violating traffic rules" ([Dhaka Tribune](https://www.dhakatribune.com/bangladesh/dhaka/319002/)).
+
+**Same company, same route: they compete, and the helper calls it.** 'ওস্তাদ, পেছনে নাম্বার' — চালকের
+সহকারীর এই শব্দগুলো ঢাকার বাস-মিনিবাসে নিত্যদিন শোনা যায়। নাম্বার বলতে একই পথের অন্য বাসের আগমনকে বোঝায়।
+পেছনের বাসটি যাতে কোনোভাবেই আগে যেতে না পারে, সে জন্যই এই সতর্কবার্তা — "'Ostad, number behind!' The
+helper's words are heard every day on Dhaka's buses. 'Number' means another bus of the same route coming up.
+The warning exists so that the bus behind can by no means get ahead"
+([Prothom Alo](https://www.prothomalo.com/bangladesh/যত্রতত্র-থামছে-বাস-ঝুঁকি-নিয়ে-রাস্তা-পারাপার)). Dhaka Post
+saw it at Karwan Bazar: the helper shouts it, the Tanjil driver parks the bus diagonally across the road so
+the same-name bus cannot pass while he loads ([Dhaka Post](https://www.dhakapost.com/national/403773)). Three
+fatal races between two buses of one company are on record (Akash ×2, Pragati Sarani 2024; Shikor ×2,
+Jatrabari–Mirpur; Moumita at Chankharpul). No source describes same-company crews coordinating.
+
+**Why nobody waits or rushes ahead.** No direct quote; it follows from the above: a fixed deposit and a fixed
+day make idle time a loss, the "number" behind takes any kerb you leave, and the kerbs ahead were just swept
+(the Shikor bus loading at 23 places in 12 km). TBS calls it the driver's যাত্রীক্ষুধা, "passenger hunger".
+Inference.
+
+**The French side.** The France 24 piece (13 Apr 2026) is video only, no article, no AFP dispatch; France 2's
+lunchtime news ran the same report the day before with the same "buses in 12 % of road accidents" line (one
+source, two logos). M6 Info (Jan 2026): « des chauffeurs de bus font la course pour arriver avant les autres au
+prochain arrêt et prendre tous les clients » — "bus drivers race to arrive before the others at the next stop
+and take all the customers"; its "14 deaths a day" matches the Road Safety Foundation. The find is France 5,
+*Les Routes de l'impossible*, "Bangladesh, duel à tombeau ouvert" (52 min, 28 Aug 2026): « il faut choisir
+entre l'une des six compagnies de bus rivales, aux rabatteurs insistants … la concurrence se poursuit sur la
+route. Les chauffeurs n'hésitent pas à faire se frôler leurs carrosseries pour tenter d'arriver les premiers au
+prochain arrêt » — "you choose between one of six rival bus companies with pushy touts … the competition
+continues on the road; drivers let their bodywork brush to reach the next stop first"; its drivers Fazlur and
+Imran « travaillent parfois plus de vingt-quatre heures d'affilée », "sometimes work more than 24 hours
+straight" ([France TV press](https://www.francetvpro.fr/contenu-de-presse/77619164)). Nothing in French on pay
+or dispatch. A government timeline from the English press: 2018 owners vote to end daily contracts, never
+enforced; Dec 2024 ministry orders monthly hiring; Feb 2025 counter-based pink buses; Jan 2026 e-ticketing
+mandatory; 2026 one company per route, 388 routes to 40–45.
+
+**For the game.** Three things to build from this: the helper's line ওস্তাদ, পেছনে নাম্বার (a voice line and the
+cue for the block); the diagonal park across the lane as the block at a kerb; the owner's daily contract as
+the ledger's frame (Tk 2,500–3,000 a day, everything above it the crew's), with the per-trip Tk 300 as the
+other company model. And a reminder that nothing in the system holds the pack apart: the pack is what happens
+when nothing does.
+
 ### The math that holds, passengers only
 
 No fines, no scrapes. Three buses of one company leave Sayedabad together. A stop's crowd is the
