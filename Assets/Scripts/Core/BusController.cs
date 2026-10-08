@@ -37,10 +37,14 @@ namespace TwentyTons.Core
 
         /// <param name="roadFarEdge">Lateral of the far edge of the road on the +side: the oncoming carriageway's
         /// outer edge where there is one, so the wrong side is road, not market stalls.</param>
-        public void Step(Agent bus, Corridor corridor, BusSettings b, float dt, float roadFarEdge)
+        /// <summary>
+        /// The engine and the air brakes for this step, as accelerations (m/s²), with the air tanks and
+        /// the pedal lag advanced. Shared by the kinematic Step below and by the Unity physics body, so
+        /// the research numbers (power, lag, wear, air) drive both the same way.
+        /// </summary>
+        public void Forces(float speed, BusSettings b, float dt, out float engineAccel, out float brakeDecel)
         {
             float mass = MassKg(b);
-            float speed = bus.Speed;
             // Held (a sergeant's hand, the end of the day): the pedals are overridden, not overwritten.
             bool held = Held || HeldByRope;
             float throttleIn = held ? 0f : Throttle;
@@ -48,7 +52,7 @@ namespace TwentyTons.Core
 
             // Engine: a fixed power means acceleration falls as speed rises and as mass rises.
             float powerLimited = (b.EnginePowerKw * 1000f) / (mass * Mathf.Max(speed, 1f));
-            float engine = Mathf.Min(b.MaxAccelMs2, powerLimited) * Mathf.Clamp01(throttleIn);
+            engineAccel = Mathf.Min(b.MaxAccelMs2, powerLimited) * Mathf.Clamp01(throttleIn);
 
             // Air brakes: the drums follow the pedal with a lag, and only as hard as the air in the tanks
             // allows. The compressor refills while the engine runs; each application spends some (holding
@@ -58,7 +62,21 @@ namespace TwentyTons.Core
             float applied = Mathf.Max(0f, BrakeApplied - before);
             AirPressure = Mathf.Clamp01(AirPressure + dt / Mathf.Max(1f, b.AirBuildSeconds) - applied * b.AirPerApplication);
             // Brakes: worn pads keep only part of their bite. This is the loan against tomorrow.
-            float brake = b.BrakeDecelNewMs2 * (1f - b.BrakeWearLoss * Mathf.Clamp01(BrakeWear)) * BrakeApplied * AirPressure;
+            brakeDecel = b.BrakeDecelNewMs2 * (1f - b.BrakeWearLoss * Mathf.Clamp01(BrakeWear)) * BrakeApplied * AirPressure;
+        }
+
+        /// <summary>The front wheels follow the wheel, slower the faster the bus goes: the heavy steering.</summary>
+        public void TurnWheels(float speed, BusSettings b, float dt)
+        {
+            float rate = b.SteerRateDegPerSec * Mathf.Deg2Rad / (1f + speed / Mathf.Max(0.1f, b.SteerHeavinessSpeed));
+            float wanted = Mathf.Clamp(Steer, -1f, 1f) * b.MaxSteerAngleDeg * Mathf.Deg2Rad;
+            SteerAngle = Mathf.MoveTowards(SteerAngle, wanted, rate * dt);
+        }
+
+        public void Step(Agent bus, Corridor corridor, BusSettings b, float dt, float roadFarEdge)
+        {
+            float speed = bus.Speed;
+            Forces(speed, b, dt, out float engine, out float brake);
 
             // Losses: rolling resistance, air, and the market stalls if you leave the road.
             float drag = b.RollingDecelMs2 + b.AirDragPerMs2 * speed * speed;
@@ -69,9 +87,7 @@ namespace TwentyTons.Core
             speed = Mathf.Clamp(speed, 0f, b.MaxSpeedKmh / 3.6f);
 
             // Steering: the wheel turns slower the faster you go. That is the "heavy steering".
-            float rate = b.SteerRateDegPerSec * Mathf.Deg2Rad / (1f + speed / Mathf.Max(0.1f, b.SteerHeavinessSpeed));
-            float wanted = Mathf.Clamp(Steer, -1f, 1f) * b.MaxSteerAngleDeg * Mathf.Deg2Rad;
-            SteerAngle = Mathf.MoveTowards(SteerAngle, wanted, rate * dt);
+            TurnWheels(speed, b, dt);
 
             // Bicycle model: yaw rate = v / L × tan(δ).
             float yawRate = speed / Mathf.Max(0.5f, b.WheelbaseMetres) * (float)System.Math.Tan(SteerAngle);

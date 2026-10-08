@@ -516,6 +516,23 @@ namespace TwentyTons.Tuning
         public float OffRoadToleranceMetres = 2f;
         public float OffRoadDecelMs2 = 1.2f;
 
+        [Header("Suspension (Unity physics body, milestone 2)")]
+        [Tooltip("Body bounce frequency on its springs, Hz. A new coach is 1.3-1.5; a worn Dhaka bus on tired leaf springs about 1.0, " +
+                 "which is why it wallows. placeholder")]
+        public float SuspensionHz = 1.0f;
+        [Tooltip("Damping ratio of the shock absorbers: 0.3 is healthy, 0.12 is dampers that gave up years ago, so the body " +
+                 "keeps rocking for two or three cycles after a kerb or a hard stop. placeholder")]
+        public float SuspensionDamping = 0.14f;
+        [Tooltip("Suspension travel, metres. placeholder")]
+        public float SuspensionTravelMetres = 0.28f;
+        [Tooltip("Height of the loaded bus's centre of mass above the road, metres: a body on a truck chassis full of standing " +
+                 "people is top-heavy, which is the lean in every bend and the tip in a hard one. placeholder")]
+        public float CentreOfMassMetres = 1.4f;
+        [Tooltip("Front axle, metres ahead of the body's centre; the rear axle is this minus WheelbaseMetres. placeholder")]
+        public float FrontAxleMetres = 3.2f;
+        [Tooltip("Wheel radius, metres: 10.00-20 tyres on a Tata chassis. placeholder")]
+        public float WheelRadiusMetres = 0.52f;
+
         [Header("The rollover (RESEARCH: the Fraser film)")]
         [Tooltip("Further off the road than this (beyond the tolerance) at speed, the railing catches the wheels, metres. placeholder")]
         public float OffRoadRolloverMetres = 1.5f;

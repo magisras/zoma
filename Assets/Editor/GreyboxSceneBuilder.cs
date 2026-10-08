@@ -124,29 +124,26 @@ namespace TwentyTons.EditorTools
                 AssetDatabase.CreateAsset(tuning, tuningPath);
             }
             var route = AssetDatabase.LoadAssetAtPath<TextAsset>(WorldDir + "/route.json");
-
-            var bus = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            bus.name = "Player bus";
-            Object.DestroyImmediate(bus.GetComponent<Collider>());      // kinematic for now: nothing to collide with yet
             var shape = TwentyTons.Core.VehicleShape.For(TwentyTons.Tuning.VehicleClass.Bus);
-            bus.transform.localScale = new Vector3(shape.Width, shape.Height, shape.Length);
-            bus.GetComponent<MeshRenderer>().sharedMaterial = MakeMaterial(WorldDir + "/GreyboxBus.mat", new Color(0.85f, 0.55f, 0.15f));
-            // A darker slab on the nose so the front reads from the chase camera.
-            var nose = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            nose.name = "Nose";
-            Object.DestroyImmediate(nose.GetComponent<Collider>());
-            nose.transform.SetParent(bus.transform, false);
-            nose.transform.localPosition = new Vector3(0f, 0.1f, 0.5f);
-            nose.transform.localScale = new Vector3(1.02f, 0.5f, 0.02f);
-            nose.GetComponent<MeshRenderer>().sharedMaterial = MakeMaterial(WorldDir + "/GreyboxBusNose.mat", new Color(0.2f, 0.2f, 0.22f));
 
+            // The bus: a rigid body on wheel colliders (PhysicsBus), a blocky body to look at (BusBody),
+            // and the drive. Materials are plain colours; the real bus is a mesh for later.
+            var bus = new GameObject("Player bus");
+            Material paint = MakeMaterial(WorldDir + "/GreyboxBus.mat", new Color(0.85f, 0.55f, 0.15f));
+            Material glass = MakeMaterial(WorldDir + "/GreyboxBusGlass.mat", new Color(0.15f, 0.18f, 0.22f));
+            Material rubber = MakeMaterial(WorldDir + "/GreyboxBusRubber.mat", new Color(0.08f, 0.08f, 0.08f));
+            Material dark = MakeMaterial(WorldDir + "/GreyboxBusNose.mat", new Color(0.2f, 0.2f, 0.22f));
+            var physics = bus.AddComponent<TwentyTons.Unity.PhysicsBus>();
+            physics.Build(tuning.Bus, shape);
+            physics.WheelMeshes = TwentyTons.Unity.BusBody.Build(bus.transform, tuning.Bus, shape, paint, glass, rubber, dark);
             var drive = bus.AddComponent<TwentyTons.Unity.PlayerBusDrive>();
             drive.Tuning = tuning;
             drive.RouteJson = route;
             drive.SetUp();                                             // stands at the start lane in the saved scene
+            physics.UpdateWheelMeshes();
 
-            var chase = camera.AddComponent<TwentyTons.Unity.ChaseCamera>();
-            chase.Target = bus.transform;
+            var rig = camera.AddComponent<TwentyTons.Unity.CameraRig>();
+            rig.Target = bus.transform;
         }
 
         /// <summary>OBJ import settings from the plan: metres, no lightmap UVs, medium compression.</summary>

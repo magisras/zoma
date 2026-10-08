@@ -145,6 +145,22 @@ One entry per session. The next session reads this first.
   speed (`TyreScrubDecelMs2` 2.5 at full scrub), so a full-lock turn at city speed slows, as a bus does.
   119 tests pass; the 58 km/h swerve still tips.
 
+**Step 37 — milestone 2, first cut: the bus is a body on springs** (done, needs the owner's hands)
+
+- `PhysicsBus`: a 12 t rigid body on four wheel colliders, suspension from the table (`SuspensionHz` 1.0,
+  `SuspensionDamping` 0.14, travel 0.28 m, centre of mass 1.4 m up and higher with standing riders).
+  The core `BusController` now exposes `Forces()` and `TurnWheels()`, so the same engine, air-brake lag,
+  wear and heavy steering drive the wheels' torques and angles; the body is read back into the Agent.
+  `BusBody`: a blocky bus (shell, window band, windscreen, open left door, bumper, roof rail, four
+  tyres) until a mesh exists. `CameraRig`: C cycles chase, driver's seat (right-hand side), door step.
+- Measured: 0-38 km/h in 8 s empty, 34 km/h with 90 riders (17.9 t); a full-lock swerve at 35 km/h
+  leans 8° (the outer springs bottom: travel 0.28 over a 1.95 m track) at 3.9 m/s²; a hard stop from
+  30 km/h in 2.5 s with the nose down; 0.9 m median barrier stops the body dead (0.6 let the raycast
+  wheels ride over it; the collider's floor is 0.3 m); a 15 cm kerb is climbed at speed with a 10° lurch.
+- Not yet: damage, the rollover from physics (the core's check is not wired to the body), engine sound,
+  the lingering wallow (needs the owner's judgement on `SuspensionDamping`), real Ackermann, dual rear
+  tyres. The kinematic drive remains for a bus without a `PhysicsBus` and for the sandbox.
+
 ## 8 Oct 2026 — Moved to the owner's Mac
 
 - The cloud session was teleported into Claude Code on the MacBook Air; the game lives in

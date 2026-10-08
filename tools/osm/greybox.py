@@ -292,7 +292,7 @@ def load(path):
 KERB_HEIGHT = 0.15
 LINE_WIDTH = 0.15
 MEDIAN_WIDTH = 3.0
-MEDIAN_HEIGHT = 0.6
+MEDIAN_HEIGHT = 0.9          # a concrete barrier a wheel cannot climb; 0.6 let the physics bus ride over it
 MARK_Y = 0.02          # paint sits just above the road so the two do not fight for the pixel
 
 
