@@ -115,6 +115,12 @@ One entry per session. The next session reads this first.
   drag starts beyond. Tested: mount at 33 km/h, crawl along, back to the lane. A bus nosed into a
   building still stops dead and needs X to back off; the readout says ON THE PAVEMENT.
 
+**Step 34 — the wheel works in reverse** (done)
+
+- Owner: "when I go in reverse, why steering don't work?" The core model turns the front wheels only
+  inside its forward step, which reverse skips, so the angle froze. Reverse now turns the wheel with
+  the same rate rule. Tested: 4 s back with the wheel left swings the nose 33°, right swings it back.
+
 ## 8 Oct 2026 — Moved to the owner's Mac
 
 - The cloud session was teleported into Claude Code on the MacBook Air; the game lives in

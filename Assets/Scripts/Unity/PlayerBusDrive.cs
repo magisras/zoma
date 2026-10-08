@@ -184,7 +184,13 @@ namespace TwentyTons.Unity
         {
             const float pace = 1.4f;                                   // m/s, a helper walking beside
             Agent.Speed = 0f;
-            float yawRate = -pace / Mathf.Max(0.5f, Tuning.Bus.WheelbaseMetres) * Mathf.Tan(Bus.SteerAngle);
+            // The wheel: the core model turns the front wheels only in its own forward step, so turn
+            // them here the same way (rate-limited, full rate at a crawl) or reverse goes straight.
+            BusSettings b = Tuning.Bus;
+            float rate = b.SteerRateDegPerSec * Mathf.Deg2Rad;
+            float wanted = Mathf.Clamp(Bus.Steer, -1f, 1f) * b.MaxSteerAngleDeg * Mathf.Deg2Rad;
+            Bus.SteerAngle = Mathf.MoveTowards(Bus.SteerAngle, wanted, rate * dt);
+            float yawRate = -pace / Mathf.Max(0.5f, b.WheelbaseMetres) * Mathf.Tan(Bus.SteerAngle);
             Agent.Yaw += yawRate * dt;
             Vector3 forward = new Vector3(Mathf.Sin(Agent.Yaw), 0f, Mathf.Cos(Agent.Yaw));
             Agent.Position -= forward * (pace * dt);
