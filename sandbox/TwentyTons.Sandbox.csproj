@@ -28,7 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="../Assets/Scripts/**/*.cs" Link="Game/%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="../Assets/Scripts/**/*.cs" Exclude="../Assets/Scripts/Unity/**/*.cs" Link="Game/%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="../tools/unity-stubs/*.cs" Link="UnityStub/%(Filename)%(Extension)" />
   </ItemGroup>
 

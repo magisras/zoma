@@ -31,8 +31,9 @@ mcs -nologo -target:library -out:"$OUT/UnityEngine.dll" tools/unity-stubs/*.cs
 
 # 2. Game code: everything under Assets/Scripts (Unity compiles the same files via the asmdef).
 # File lists are built with a while-read loop, not mapfile: macOS ships bash 3.2, which lacks it.
+# Assets/Scripts/Unity holds the MonoBehaviour adapters: Unity-only, so neither this build nor the sandbox takes them.
 GAME=()
-while IFS= read -r f; do GAME+=("$f"); done < <(find Assets/Scripts -name '*.cs' | sort)
+while IFS= read -r f; do GAME+=("$f"); done < <(find Assets/Scripts -name '*.cs' -not -path 'Assets/Scripts/Unity/*' | sort)
 mcs -nologo -warn:4 -target:library -out:"$OUT/TwentyTons.dll" -r:"$OUT/UnityEngine.dll" "${GAME[@]}"
 
 # 3. Tests, built as a console exe with NUnitLite as the runner (no NUnit engine needed).

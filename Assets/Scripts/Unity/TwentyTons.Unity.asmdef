@@ -1,0 +1,17 @@
+{
+  "name": "TwentyTons.Unity",
+  "rootNamespace": "TwentyTons.Unity",
+  "references": [
+    "TwentyTons",
+    "Unity.InputSystem"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

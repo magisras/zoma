@@ -82,11 +82,53 @@ namespace TwentyTons.EditorTools
             camGo.transform.position = new Vector3(0f, 40f, 60f);
             camGo.transform.LookAt(new Vector3(100f, 0f, -400f));
 
+            AddPlayerBus(camGo);
+
             Directory.CreateDirectory("Assets/Scenes");
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
             AssetDatabase.SaveAssets();
             Report();
+        }
+
+        /// <summary>
+        /// Milestone 2, first cut: a grey box the keyboard drives with the core's bus model, and the
+        /// chase camera on it. Also makes Assets/Data/TuningTable.asset if it does not exist yet, so
+        /// every number the drive uses is the one table the project rules ask for.
+        /// </summary>
+        private static void AddPlayerBus(GameObject camera)
+        {
+            Directory.CreateDirectory("Assets/Data");
+            const string tuningPath = "Assets/Data/TuningTable.asset";
+            var tuning = AssetDatabase.LoadAssetAtPath<TwentyTons.Tuning.TuningTable>(tuningPath);
+            if (tuning == null)
+            {
+                tuning = ScriptableObject.CreateInstance<TwentyTons.Tuning.TuningTable>();
+                AssetDatabase.CreateAsset(tuning, tuningPath);
+            }
+            var route = AssetDatabase.LoadAssetAtPath<TextAsset>(WorldDir + "/route.json");
+
+            var bus = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            bus.name = "Player bus";
+            Object.DestroyImmediate(bus.GetComponent<Collider>());      // kinematic for now: nothing to collide with yet
+            var shape = TwentyTons.Core.VehicleShape.For(TwentyTons.Tuning.VehicleClass.Bus);
+            bus.transform.localScale = new Vector3(shape.Width, shape.Height, shape.Length);
+            bus.GetComponent<MeshRenderer>().sharedMaterial = MakeMaterial(WorldDir + "/GreyboxBus.mat", new Color(0.85f, 0.55f, 0.15f));
+            // A darker slab on the nose so the front reads from the chase camera.
+            var nose = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            nose.name = "Nose";
+            Object.DestroyImmediate(nose.GetComponent<Collider>());
+            nose.transform.SetParent(bus.transform, false);
+            nose.transform.localPosition = new Vector3(0f, 0.1f, 0.5f);
+            nose.transform.localScale = new Vector3(1.02f, 0.5f, 0.02f);
+            nose.GetComponent<MeshRenderer>().sharedMaterial = MakeMaterial(WorldDir + "/GreyboxBusNose.mat", new Color(0.2f, 0.2f, 0.22f));
+
+            var drive = bus.AddComponent<TwentyTons.Unity.PlayerBusDrive>();
+            drive.Tuning = tuning;
+            drive.RouteJson = route;
+
+            var chase = camera.AddComponent<TwentyTons.Unity.ChaseCamera>();
+            chase.Target = bus.transform;
         }
 
         /// <summary>OBJ import settings from the plan: metres, no lightmap UVs, medium compression.</summary>

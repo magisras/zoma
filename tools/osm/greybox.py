@@ -13,6 +13,8 @@ Reads the .osm XML (download: tools/osm/fetch.sh) and writes into the output fol
     centrelines.json  every drivable road as a polyline in metres, with class, width, name and the
                       junction nodes it shares: the input for the traffic corridors (milestone 3)
     markers.json      the named points of the route (stands, junctions) in local metres
+    route.json        the main road from the stand to the last marker as one polyline: the shortest
+                      path over primary ways, with the kerb-to-kerb width; the bus's first corridor
 
 Coordinates: local metres, origin at the Mirpur 12 stand, x east, y up, z north. OBJ files are
 right-handed and Unity mirrors x on import, so the files store -x; in Unity x is east again.
@@ -236,6 +238,51 @@ def building_height(tags):
     return DEFAULT_LEVELS * LEVEL_HEIGHT
 
 
+def main_road_route(centrelines, junctions):
+    """The bus's road: shortest path along primary ways from the first marker to the last, as one
+    polyline. Dijkstra over the ways' nodes; a few thousand of them, so plain lists do."""
+    import heapq
+    graph = {}
+    pos = {}
+    for way in centrelines:
+        if way["class"] not in ("primary", "primary_link", "secondary", "trunk"):
+            continue
+        for a, b, pa, pb in zip(way["nodes"], way["nodes"][1:], way["points"], way["points"][1:]):
+            pos[a], pos[b] = tuple(pa), tuple(pb)
+            d = math.dist(pa, pb)
+            graph.setdefault(a, []).append((b, d))
+            graph.setdefault(b, []).append((a, d))
+
+    def nearest(x, z):
+        return min(pos, key=lambda n: (pos[n][0] - x) ** 2 + (pos[n][1] - z) ** 2)
+
+    start = nearest(*to_local(MARKERS[0][1], MARKERS[0][2]))
+    goal = nearest(*to_local(MARKERS[-1][1], MARKERS[-1][2]))
+    dist, prev, heap = {start: 0.0}, {}, [(0.0, start)]
+    while heap:
+        d, n = heapq.heappop(heap)
+        if n == goal:
+            break
+        if d > dist.get(n, float("inf")):
+            continue
+        for m, w in graph.get(n, []):
+            nd = d + w
+            if nd < dist.get(m, float("inf")):
+                dist[m], prev[m] = nd, n
+                heapq.heappush(heap, (nd, m))
+    path, n = [], goal
+    while n in prev:
+        path.append(n)
+        n = prev[n]
+    path.append(start)
+    path.reverse()
+    points = [[round(pos[n][0], 2), round(pos[n][1], 2)] for n in path]
+    widths = [w["width"] for w in centrelines if w["class"] == "primary"]
+    # "xz" is the same polyline flat (x0, z0, x1, z1, ...): Unity's JsonUtility reads float[] but not nested lists.
+    return {"points": points, "xz": [c for p in points for c in p], "length": dist.get(goal, 0.0), "width": max(widths) if widths else 24.0,
+            "attribution": "Map data (c) OpenStreetMap contributors, ODbL"}
+
+
 def main(osm_path, out_dir, building_radius):
     os.makedirs(out_dir, exist_ok=True)
     nodes, ways = load(osm_path)
@@ -347,12 +394,16 @@ def main(osm_path, out_dir, building_radius):
         json.dump({"origin": {"lat": ORIGIN_LAT, "lon": ORIGIN_LON}, "frame": "x east, z north, metres",
                    "attribution": "Map data (c) OpenStreetMap contributors, ODbL",
                    "roads": centrelines, "junctions": junctions}, f)
+    route = main_road_route(centrelines, junctions)
+    with open(os.path.join(out_dir, "route.json"), "w") as f:
+        json.dump(route, f)
     with open(os.path.join(out_dir, "markers.json"), "w") as f:
         json.dump([{"name": n, "x": round(to_local(la, lo)[0], 1), "z": round(to_local(la, lo)[1], 1)} for n, la, lo in MARKERS], f, indent=1)
 
     print(f"roads: {len(centrelines)} ways, {roads.triangles} triangles in {len(roads.objects)} cells; {len(junctions)} junction nodes")
     print(f"buildings: {kept} kept within {building_radius:.0f} m of the main road ({skipped} beyond), {buildings.triangles} triangles in {len(buildings.objects)} cells")
     print(f"rail: {rail.triangles} triangles")
+    print(f"route: {len(route['points'])} points, {route['length']:.0f} m, width {route['width']:.0f} m")
     print(f"total {roads.triangles + buildings.triangles + rail.triangles} triangles (budget 400k, docs/OSM_IMPORT_PLAN.md)")
 
 

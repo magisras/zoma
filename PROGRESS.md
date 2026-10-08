@@ -24,6 +24,20 @@ One entry per session. The next session reads this first.
   the usual first-look fixes (face winding, road widths by class, pier spacing against the real
   piers, buildings overlapping the road where OSM footprints do).
 
+**Step 28 — first drive in Unity: the core bus model on the real road** (done, not yet felt)
+
+- `Assets/Scripts/Unity/` (own assembly `TwentyTons.Unity`, Unity-only, excluded from `check.sh` and the
+  sandbox): `PlayerBusDrive` moves a grey box with the core `BusController` (engine power, air brakes
+  with lag and wear, heavy steering, load mass) along the main road from `route.json`; keyboard via the
+  Input System; an IMGUI readout of speed, air, brakes, riders, lateral acceleration. `ChaseCamera`.
+- `tools/osm/greybox.py` now also writes `route.json`: the shortest path over primary ways from the
+  stand to Kazipara, 69 points, 3,326 m, as the bus's first corridor.
+- `GreyboxSceneBuilder` adds the bus, creates `Assets/Data/TuningTable.asset` (the one table) and
+  wires the camera. Keys: W/S, A/D, space, [ ] riders, R reset.
+- Kinematic only: no collisions with anything, the road is a drawing. Milestone 2 proper (wheel
+  physics, mass transfer, the worn-brake feel under a real suspension) is still ahead; this is to drive
+  the street tonight and decide what the physics must reproduce.
+
 ## 8 Oct 2026 — Moved to the owner's Mac
 
 - The cloud session was teleported into Claude Code on the MacBook Air; the game lives in
