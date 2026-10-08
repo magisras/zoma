@@ -106,6 +106,15 @@ One entry per session. The next session reads this first.
   the owner decides what Mirpur should feel like before more time goes here. Next candidates: rooftop
   water tanks and stair heads, AC units, hanging wires, a sky with haze, dust on the lens.
 
+**Step 33 — the kerb is mountable** (done)
+
+- Owner: "why I cannot go on curb, I just stuck and bus don't move". The sandbox's off-road rule
+  (past the corridor the bus is in the market stalls, 4 m/s² of drag against 1.8 of engine) was
+  reaching the pavement. Now the drive's corridor is the carriageway plus 2.5 m of pavement a side;
+  mounting the kerb costs 1.5 m/s and holds the bus to 12 km/h while a wheel is on it; the stalls'
+  drag starts beyond. Tested: mount at 33 km/h, crawl along, back to the lane. A bus nosed into a
+  building still stops dead and needs X to back off; the readout says ON THE PAVEMENT.
+
 ## 8 Oct 2026 — Moved to the owner's Mac
 
 - The cloud session was teleported into Claude Code on the MacBook Air; the game lives in

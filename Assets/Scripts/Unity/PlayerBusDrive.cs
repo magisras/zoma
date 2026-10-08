@@ -43,6 +43,15 @@ namespace TwentyTons.Unity
         /// <summary>One line of state for a test log.</summary>
         public string Status => $"t={_clock:0.0} s={Agent.S:0.0} lat={Agent.Lateral:0.00} v={Agent.Speed * 3.6f:0.0}km/h air={Bus.AirPressure:0.00} applied={Bus.BrakeApplied:0.00} wear={Bus.BrakeWear:0.00} riders={Bus.Passengers} yaw={Agent.Yaw * Mathf.Rad2Deg:0} latAcc={Mathf.Abs(Agent.Speed * Bus.LastYawRate):0.0}";
 
+        [Tooltip("Width of the pavement beside the carriageway, metres (greybox.py builds 2 m). On it the bus crawls.")]
+        public float PavementMetres = 2.5f;
+        [Tooltip("Top speed with wheels on the pavement, km/h: a kerb, people, stalls.")]
+        public float PavementKmh = 12f;
+        [Tooltip("Speed lost climbing the kerb, m/s: the bump.")]
+        public float KerbBumpMs = 1.5f;
+        private float _carriagewayHalf = 4f;
+        private bool _onPavement;
+
         public BusController Bus { get; private set; }
         public Agent Agent { get; private set; }
         public Corridor Corridor { get; private set; }
@@ -77,7 +86,7 @@ namespace TwentyTons.Unity
         }
 
         /// <summary>The route file is {"xz":[x0,z0,x1,z1,...],"width":w}; a fallback straight road if it is missing.</summary>
-        private static Corridor LoadRoute(TextAsset json)
+        private Corridor LoadRoute(TextAsset json)
         {
             if (json != null)
             {
@@ -86,7 +95,10 @@ namespace TwentyTons.Unity
                 {
                     var pts = new Vector3[r.xz.Length / 2];
                     for (int i = 0; i < pts.Length; i++) pts[i] = new Vector3(r.xz[2 * i], 0f, r.xz[2 * i + 1]);
-                    return new Corridor(pts, r.width > 0f ? r.width : 24f, false, "Rokeya Sarani");
+                    // The corridor is the carriageway plus the pavement on each side: the kerb is 15 cm and
+                    // a Dhaka bus mounts it; the market stalls (the model's off-road drag) start beyond.
+                    _carriagewayHalf = (r.width > 0f ? r.width : 24f) * 0.5f;
+                    return new Corridor(pts, _carriagewayHalf * 2f + 2f * PavementMetres, false, "Rokeya Sarani");
                 }
             }
             Debug.LogWarning("PlayerBusDrive: no route.json wired, driving a straight 3 km road");
@@ -147,8 +159,21 @@ namespace TwentyTons.Unity
                 _clock += h;
                 left -= h;
             }
+            Kerb();
             StopAtWalls();
             Apply();
+        }
+
+        /// <summary>
+        /// The kerb: wheels on the pavement cost a bump going up and hold the bus to a crawl while there.
+        /// The model's own off-road drag (the stalls) begins past the pavement, where the corridor ends.
+        /// </summary>
+        private void Kerb()
+        {
+            bool onPavement = Mathf.Abs(Agent.Lateral) > _carriagewayHalf;
+            if (onPavement && !_onPavement) Agent.Speed = Mathf.Max(0f, Agent.Speed - KerbBumpMs);
+            if (onPavement) Agent.Speed = Mathf.Min(Agent.Speed, PavementKmh / 3.6f);
+            _onPavement = onPavement;
         }
 
         /// <summary>
@@ -224,7 +249,7 @@ namespace TwentyTons.Unity
             string text =
                 $"{kmh,5:0} km/h   air {Bus.AirPressure * 100f,3:0} %   brakes {Bus.BrakeApplied * 100f,3:0} %  (wear {Bus.BrakeWear * 100f:0} %)\n" +
                 $"{Bus.Passengers} riders, {Bus.MassKg(Tuning.Bus) / 1000f:0.0} t   lateral {lateralG:0.0} m/s² (tips at {Tuning.Bus.RolloverLateralAccelMs2:0.0})\n" +
-                $"{Agent.S:0} m along, {Agent.Lateral:+0.0;-0.0} m across (kerb at {-Corridor.HalfWidth:0})\n" +
+                $"{Agent.S:0} m along, {Agent.Lateral:+0.0;-0.0} m across (kerb at {-_carriagewayHalf:0}){(_onPavement ? "  ON THE PAVEMENT" : "")}\n" +
                 "W/S drive, A/D steer, space full brake, X reverse, [ ] riders, R reset";
             GUI.Label(new Rect(16f, 12f, 900f, 120f), text, new GUIStyle(GUI.skin.label) { fontSize = 18, richText = false });
         }
