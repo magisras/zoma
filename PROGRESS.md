@@ -38,6 +38,18 @@ One entry per session. The next session reads this first.
   physics, mass transfer, the worn-brake feel under a real suspension) is still ahead; this is to drive
   the street tonight and decide what the physics must reproduce.
 
+**Step 29 — eyes on it: the CLI drives the open editor, renders views, the grey box was inside out** (done)
+
+- `com.unity.pipeline` (Unity's CLI bridge) is in the manifest: `unity command eval '<C#>'` runs in the open
+  editor, so scenes rebuild and reimport without quitting Unity. `Assets/Editor/SceneShots.cs` renders
+  the scene to PNG from a chase, top-down or free viewpoint; the terminal session reads the picture.
+- First look: every face pointed inward (roads and roofs down, walls in): the OBJ writer reversed faces to
+  compensate for Unity's x mirror, which was wrong. Checked by counting imported normals (19,381 down,
+  0 up on the roads), fixed in `greybox.py`, confirmed in the renders.
+- The bus now starts 8 m left of the centreline, in the left carriageway beside the pier line; the OSM
+  railway runs a few metres west of the road centreline, so the deck covers the western half of the
+  road from above. Real alignment to check against photographs later.
+
 ## 8 Oct 2026 — Moved to the owner's Mac
 
 - The cloud session was teleported into Claude Code on the MacBook Air; the game lives in

@@ -24,8 +24,9 @@ namespace TwentyTons.Unity
         public TextAsset RouteJson;
         [Tooltip("Metres along the route to start at; the stand is at 0.")]
         public float StartAlong = 30f;
-        [Tooltip("Metres across the road to start at; negative is the left (kerb) side. Bangladesh drives on the left.")]
-        public float StartLateral = -5f;
+        [Tooltip("Metres across the road to start at; negative is the left (kerb) side. Bangladesh drives on the left. " +
+                 "The metro deck is 10 m wide over the centreline, so the left carriageway starts past 5 m.")]
+        public float StartLateral = -8f;
         [Tooltip("How fast the steering input ramps, per second; the wheel itself is rate-limited in BusSettings.")]
         public float SteerInputRate = 3f;
 

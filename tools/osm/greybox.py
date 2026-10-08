@@ -18,6 +18,8 @@ Reads the .osm XML (download: tools/osm/fetch.sh) and writes into the output fol
 
 Coordinates: local metres, origin at the Mirpur 12 stand, x east, y up, z north. OBJ files are
 right-handed and Unity mirrors x on import, so the files store -x; in Unity x is east again.
+Faces are wound counter-clockwise seen from outside in the x-z shoelace sense, which Unity
+turns into outward normals after its mirror.
 Map data (c) OpenStreetMap contributors, ODbL. Keep the credit in the game.
 """
 import json
@@ -189,9 +191,11 @@ class ObjWriter:
                 for x, y, z in verts:
                     out.write(f"v {-x:.2f} {y:.2f} {z:.2f}\n")
                 for face in faces:
-                    # Negating x mirrors the mesh, which flips the winding; reverse it so Unity
-                    # still sees the outside of every face after its own mirror.
-                    out.write("f " + " ".join(str(offset + i) for i in reversed(face)) + "\n")
+                    # Negating x mirrors the mesh and Unity mirrors it back on import; the winding
+                    # survives both, so faces go out as built. (Reversing them here was tried first:
+                    # every road faced down and every wall faced in. Checked in the editor: a mesh's
+                    # calculated normals should come out "up" for roads and roofs.)
+                    out.write("f " + " ".join(str(offset + i) for i in face) + "\n")
                 offset += len(verts)
 
 
