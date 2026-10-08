@@ -227,34 +227,46 @@ class ObjWriter:
     seen from outside in the right-handed frame; x is negated on write (see the module note)."""
 
     def __init__(self):
-        self.objects = {}      # name -> (verts, faces); faces are index tuples into verts
+        self.objects = {}      # name -> (verts, faces, uvs, face_uv); faces are index tuples into verts
         self.triangles = 0
 
-    def add(self, name, verts, faces):
-        v, f = self.objects.setdefault(name, ([], []))
+    def add(self, name, verts, faces, uv=None):
+        """uv, when given, is one (u, v) for every face of this call: the facade shader reads
+        u = the block's random seed and v = its storeys from the mesh's texture coordinates."""
+        v, f, uvs, fuv = self.objects.setdefault(name, ([], [], [], []))
         base = len(v)
         v.extend(verts)
         f.extend(tuple(base + i for i in face) for face in faces)
+        if uv is not None:
+            uvs.append(uv)
+        fuv.extend([len(uvs) - 1 if uv is not None else -1] * len(faces))
         self.triangles += sum(len(face) - 2 for face in faces)
 
     def write(self, path):
         with open(path, "w") as out:
             out.write("# Twenty Tons grey box. Map data (c) OpenStreetMap contributors, ODbL.\n")
             offset = 1
+            uv_offset = 1
             for name in sorted(self.objects):
-                verts, faces = self.objects[name]
+                verts, faces, uvs, fuv = self.objects[name]
                 if not faces:
                     continue
                 out.write(f"o {name}\n")
                 for x, y, z in verts:
                     out.write(f"v {-x:.2f} {y:.2f} {z:.2f}\n")
-                for face in faces:
+                for u, w in uvs:
+                    out.write(f"vt {u:.4f} {w:.2f}\n")
+                for face, k in zip(faces, fuv):
                     # Negating x mirrors the mesh and Unity mirrors it back on import; the winding
                     # survives both, so faces go out as built. (Reversing them here was tried first:
                     # every road faced down and every wall faced in. Checked in the editor: a mesh's
                     # calculated normals should come out "up" for roads and roofs.)
-                    out.write("f " + " ".join(str(offset + i) for i in face) + "\n")
+                    if k >= 0:
+                        out.write("f " + " ".join(f"{offset + i}/{uv_offset + k}" for i in face) + "\n")
+                    else:
+                        out.write("f " + " ".join(str(offset + i) for i in face) + "\n")
                 offset += len(verts)
+                uv_offset += len(uvs)
 
 
 def cell_name(prefix, x, z):
@@ -692,7 +704,9 @@ def main(osm_path, out_dir, building_radius):
             faces.append((i, j, n + j, n + i))                     # wall, outward
         faces.extend((n + a, n + b, n + c) for a, b, c in ear_clip(pts))   # roof, upward
         faces.extend((c, b, a) for a, b, c in ear_clip(pts)) if elevated else None   # floor, downward
-        buildings.add(cell_name("Blocks", cx, cz), verts, faces)
+        storeys = 0.0 if elevated else round((h - base) / LEVEL_HEIGHT)
+        seed = (int(wid) * 2654435761 % 1000) / 1000.0            # stable per building across runs
+        buildings.add(cell_name("Blocks", cx, cz), verts, faces, uv=(seed, storeys))
         kept += 1
 
     # The metro viaduct runs down the middle of the main road on this stretch (RESEARCH.md: MRT Line 6

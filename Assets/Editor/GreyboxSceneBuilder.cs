@@ -45,13 +45,14 @@ namespace TwentyTons.EditorTools
             lightGo.transform.rotation = Quaternion.Euler(55f, -30f, 0f);
 
             // Materials: one for the road surface, one for everything else, so each is a batch.
-            // Grey box, but legible: asphalt dark, paint white, pavements pale, blocks warm, dirt in between.
-            Material ground = MakeMaterial(WorldDir + "/GreyboxGround.mat", new Color(0.56f, 0.52f, 0.44f));
-            Material road = MakeMaterial(WorldDir + "/GreyboxRoad.mat", new Color(0.22f, 0.22f, 0.24f));
-            Material block = MakeMaterial(WorldDir + "/GreyboxBlock.mat", new Color(0.80f, 0.74f, 0.64f));
-            Material rail = MakeMaterial(WorldDir + "/GreyboxRail.mat", new Color(0.50f, 0.52f, 0.56f));
+            // The procedural skin (Assets/World/Shaders/Surface.shader): a mode per surface, hashed from
+            // world position, so the street reads as Mirpur with no textures and no assets to license.
+            Material ground = MakeSurface(WorldDir + "/SkinDirt.mat", 4f);
+            Material road = MakeSurface(WorldDir + "/SkinAsphalt.mat", 1f);
+            Material block = MakeSurface(WorldDir + "/SkinFacade.mat", 0f);
+            Material rail = MakeSurface(WorldDir + "/SkinConcrete.mat", 3f);
             Material paint = MakeMaterial(WorldDir + "/GreyboxPaint.mat", new Color(0.92f, 0.92f, 0.88f));
-            Material kerb = MakeMaterial(WorldDir + "/GreyboxKerb.mat", new Color(0.68f, 0.68f, 0.66f));
+            Material kerb = MakeSurface(WorldDir + "/SkinPavement.mat", 2f);
             Material post = MakeMaterial(WorldDir + "/GreyboxPost.mat", new Color(0.20f, 0.70f, 0.35f));
 
             // Ground: a big plane a little under the roads so there are no holes between blocks.
@@ -162,6 +163,22 @@ namespace TwentyTons.EditorTools
             importer.addCollider = false;             // added per object below, roads and blocks only
             importer.materialImportMode = ModelImporterMaterialImportMode.None;
             importer.SaveAndReimport();
+        }
+
+        private static Material MakeSurface(string path, float mode)
+        {
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            Shader shader = Shader.Find("Twenty Tons/Surface");
+            if (shader == null) { Debug.LogError("Twenty Tons/Surface shader not found; is Assets/World/Shaders imported?"); return MakeMaterial(path, Color.grey); }
+            if (mat == null)
+            {
+                mat = new Material(shader);
+                AssetDatabase.CreateAsset(mat, path);
+            }
+            mat.shader = shader;
+            mat.SetFloat("_Mode", mode);
+            mat.SetColor("_Tint", Color.white);
+            return mat;
         }
 
         private static Material MakeMaterial(string path, Color color)

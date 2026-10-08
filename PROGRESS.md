@@ -90,6 +90,22 @@ One entry per session. The next session reads this first.
 - Result: Mirpur 12 stand to Kazipara, 3.2 km, 4 min 19 s at a 45 km/h cap, lane held within a metre,
   2.8 s off the carriageway at the Mirpur 10 bend. 332k triangles.
 
+**Step 32 — a Mirpur skin on the grey box, procedural, no assets** (done, first pass)
+
+- `Assets/World/Shaders/Surface.shader`: one URP shader, a `_Mode` per material. Facade mode paints a
+  window row per storey (storeys and a per-block seed travel in the mesh's texture coordinates from
+  `greybox.py`), roller shutters and signboards on shop rows, gates and barred windows on house rows,
+  slab lines, the concrete frame's columns, damp from the pavement, streaks from the roof, a tint per
+  block from a palette of Mirpur walls (raw concrete, lime wash, pale yellow, salmon, sky, brick).
+  Asphalt, pavement slabs, formwork concrete with rust on the piers, and dirt are the other modes.
+  Everything is hashed from world position: no textures, nothing downloaded, nothing to license.
+- Found the hard way: the Mac's shader compiler process dies, without a message, on a noise function
+  called inside a branch, and on a ternary between vector swizzles. All noise is now computed before
+  the branches, which only pick colours. Bisected with `ShaderUtil` and the editor log's IPC count.
+- Lighting is main light with shadows plus 0.45 of the sky ambient. Still a bit bright and uniform;
+  the owner decides what Mirpur should feel like before more time goes here. Next candidates: rooftop
+  water tanks and stair heads, AC units, hanging wires, a sky with haze, dust on the lens.
+
 ## 8 Oct 2026 — Moved to the owner's Mac
 
 - The cloud session was teleported into Claude Code on the MacBook Air; the game lives in
