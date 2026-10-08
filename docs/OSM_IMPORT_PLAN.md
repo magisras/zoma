@@ -8,6 +8,28 @@ Pipeline: **OpenStreetMap → Blender (blosm add-on) → FBX → Unity**. Everyt
 OSM data is ODbL-licensed: "© OpenStreetMap contributors" goes in the game credits and stays in
 this file.
 
+## 0. How it was actually done (8 Oct 2026)
+
+The Blender route below is still valid, but the first import went through a script instead, so it
+can be rerun from a terminal in seconds and the centrelines come out in the same pass:
+
+```
+./tools/osm/fetch.sh mirpur.osm                       # Overpass download of the box in section 1
+python3 tools/osm/greybox.py mirpur.osm Assets/World/Corridor01 300
+unity run . -- -executeMethod TwentyTons.EditorTools.GreyboxSceneBuilder.Build
+```
+
+`greybox.py` writes `Roads.obj` (ribbons by road class, one mesh per 250 m cell), `Buildings.obj`
+(footprints extruded 3 m a storey, only within 300 m of the main road: the whole box is 36,000
+footprints), `Rail.obj` (the MRT viaduct deck 12 m up with piers every 30 m in the median),
+`centrelines.json` (every drivable way with class, width, name and junction nodes: milestone 3's
+corridors) and `markers.json` (the route points of section 1 in local metres). Origin is the
+Mirpur 12 stand, x east, z north. `GreyboxSceneBuilder` (`Assets/Editor/`) makes the scene from them:
+ground, sun, four grey materials, colliders on roads, blocks and viaduct, the markers, the credit.
+First result: 1,719 road ways, 18,792 blocks, 237k triangles, inside the 400k budget.
+The `.osm` download stays out of the repo (gitignored); the OBJ files are in it for now, Git LFS
+when they grow.
+
 ## 1. Which 2–3 km
 
 The full route is ~15 km. The first chunk is the northern residential end, where the morning bus

@@ -53,3 +53,4 @@ tools/.cache/
 sandbox/bin/
 sandbox/obj/
 sandbox/out/
+*.slnx

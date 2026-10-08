@@ -2,6 +2,28 @@
 
 One entry per session. The next session reads this first.
 
+## Session 4 — 8 Oct 2026 — Milestone 1: the corridor as grey boxes in Unity
+
+**Step 27 — Unity project and the Mirpur 12 → Kazipara grey box** (done)
+
+- The repo is now a Unity 6.3 project (6000.3.22f1, URP): `ProjectSettings/`, `Packages/manifest.json`
+  (template packages minus Timeline, Visual Scripting, Collab, Multiplayer Center) and `Assets/Settings/`
+  (the URP assets) taken from a fresh Universal 3D template; every existing file got its `.meta`.
+  The core scripts and the test assembly compile in the editor unchanged.
+- `tools/osm/fetch.sh` downloads the box of `docs/OSM_IMPORT_PLAN.md` from Overpass (the `/api/map`
+  endpoint answers 406 now; the interpreter with a query works). `tools/osm/greybox.py` turns it into
+  `Assets/World/Corridor01/`: `Roads.obj`, `Buildings.obj`, `Rail.obj`, `centrelines.json`,
+  `markers.json`. No Blender in the loop; the plan's Blender route stays documented as an alternative.
+- `Assets/Editor/GreyboxSceneBuilder.cs` builds `Assets/Scenes/Corridor01_Greybox.unity` headless or
+  from the menu: ground, sun, four grey URP materials, mesh colliders on roads, blocks and the viaduct,
+  the four route markers, the ODbL credit object, a camera at the stand looking south.
+- Numbers: 1,719 road ways, 18,792 blocks within 300 m of the main road, the MRT viaduct with piers
+  every 30 m, 237k triangles, 4 renderers (Unity merged each OBJ's cells into one mesh; fine at this
+  size, split later if culling or streaming needs it). Route length stand → Kazipara 3.2 km.
+- Not done yet in milestone 1: eyes on it. The scene has not been looked at in the editor; expect
+  the usual first-look fixes (face winding, road widths by class, pier spacing against the real
+  piers, buildings overlapping the road where OSM footprints do).
+
 ## 8 Oct 2026 — Moved to the owner's Mac
 
 - The cloud session was teleported into Claude Code on the MacBook Air; the game lives in
