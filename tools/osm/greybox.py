@@ -9,7 +9,9 @@ from a terminal in a few seconds. Standard library only.
 Reads the .osm XML (download: tools/osm/fetch.sh) and writes into the output folder:
     Roads.obj         flat ribbons, one object per 250 m grid cell, at y = 0
     Buildings.obj     extruded footprints, one object per 250 m grid cell, roofs at 3 m a level
-    Rail.obj          the MRT Line 6 viaduct: a deck 12 m up with piers in the road median
+    Rail.obj          the MRT Line 6 viaduct along the main road: a deck 12 m up, piers in the median
+    Markings.obj      lane lines: solid edges, dashed lane lines, a double line down the middle
+    Kerbs.obj         raised pavements beside the main roads and the median barrier under the piers
     centrelines.json  every drivable road as a polyline in metres, with class, width, name and the
                       junction nodes it shares: the input for the traffic corridors (milestone 3)
     markers.json      the named points of the route (stands, junctions) in local metres
@@ -162,6 +164,62 @@ def ribbon(points, width):
     return verts, quads
 
 
+def offset_ribbon(points, offset, width, y=0.0):
+    """A ribbon whose centre runs `offset` metres to the left (+) or right (-) of the polyline,
+    at height y. Built from the plain ribbon by sliding its two edges."""
+    verts, quads = ribbon(points, 2.0)         # unit-ish ribbon: its edges give the normal direction
+    out = []
+    for i in range(0, len(verts), 2):
+        lx, _, lz = verts[i]
+        rx, _, rz = verts[i + 1]
+        cx, cz = (lx + rx) / 2.0, (lz + rz) / 2.0
+        nx, nz = (lx - rx) / 2.0, (lz - rz) / 2.0        # left-hand unit normal (ribbon was 2 m wide)
+        out.append((cx + nx * (offset + width / 2.0), y, cz + nz * (offset + width / 2.0)))
+        out.append((cx + nx * (offset - width / 2.0), y, cz + nz * (offset - width / 2.0)))
+    return out, quads
+
+
+def box_ribbon(points, offset, width, height):
+    """A raised strip: a ribbon's top at `height` plus its two long sides down to the ground."""
+    top, quads = offset_ribbon(points, offset, width, height)
+    base = [(x, 0.0, z) for x, _, z in top]
+    m = len(top)
+    faces = list(quads)
+    for i in range(0, m - 2, 2):
+        faces.append((i, m + i, m + i + 2, i + 2))             # left side, outward
+        faces.append((i + 3, m + i + 3, m + i + 1, i + 1))     # right side, outward
+    return top + base, faces
+
+
+def dashed(points, dash=3.0, gap=6.0):
+    """Split a polyline into short polylines: `dash` metres on, `gap` metres off."""
+    pieces, piece, on, left = [], [], True, dash
+    for i in range(len(points) - 1):
+        (x0, z0), (x1, z1) = points[i], points[i + 1]
+        seg = math.hypot(x1 - x0, z1 - z0)
+        t = 0.0
+        if on:
+            piece.append((x0, z0))
+        while seg - t > left:
+            t += left
+            f = t / seg
+            p = (x0 + (x1 - x0) * f, z0 + (z1 - z0) * f)
+            if on:
+                piece.append(p)
+                pieces.append(piece)
+                piece = []
+            else:
+                piece = [p]
+            on = not on
+            left = dash if on else gap
+        left -= seg - t
+        if on and (x1, z1) != (piece[-1] if piece else None):
+            piece.append((x1, z1))
+    if on and len(piece) > 1:
+        pieces.append(piece)
+    return pieces
+
+
 # ---------------------------------------------------------------- OBJ writing
 
 class ObjWriter:
@@ -217,6 +275,40 @@ def load(path):
             ways.append((el.get("id"), refs, tags))
             el.clear()
     return nodes, ways
+
+
+KERB_HEIGHT = 0.15
+LINE_WIDTH = 0.15
+MEDIAN_WIDTH = 3.0
+MEDIAN_HEIGHT = 0.6
+MARK_Y = 0.02          # paint sits just above the road so the two do not fight for the pixel
+
+
+def add_markings(markings, pts, width, cls, mx, mz):
+    """What a driver reads: solid edge lines, dashed lane lines three lanes a carriageway on the
+    main road, a double line down the middle of a two-way street."""
+    name = cell_name("Lines", mx, mz)
+    half = width / 2.0
+    for side in (+1, -1):
+        v, f = offset_ribbon(pts, side * (half - 0.3), LINE_WIDTH, MARK_Y)
+        markings.add(name, v, f)
+    if cls in ("primary", "trunk"):
+        # Two carriageways either side of the median; lanes of a third of each carriageway.
+        lane = (half - MEDIAN_WIDTH / 2.0) / 3.0
+        for side in (+1, -1):
+            for k in (1, 2):
+                for piece in dashed(pts):
+                    v, f = offset_ribbon(piece, side * (MEDIAN_WIDTH / 2.0 + lane * k), LINE_WIDTH, MARK_Y)
+                    markings.add(name, v, f)
+    else:
+        for off in (0.2, -0.2):
+            v, f = offset_ribbon(pts, off, LINE_WIDTH, MARK_Y)
+            markings.add(name, v, f)
+        if width >= 10.0:
+            for side in (+1, -1):
+                for piece in dashed(pts):
+                    v, f = offset_ribbon(piece, side * half / 2.0, LINE_WIDTH, MARK_Y)
+                    markings.add(name, v, f)
 
 
 def road_width(tags):
@@ -294,6 +386,8 @@ def main(osm_path, out_dir, building_radius):
 
     # Roads and centrelines.
     roads = ObjWriter()
+    markings = ObjWriter()
+    kerbs = ObjWriter()
     centrelines = []
     node_use = {}
     for wid, refs, tags in ways:
@@ -309,6 +403,12 @@ def main(osm_path, out_dir, building_radius):
         # The cell of the way's midpoint: a way crossing a cell border goes to one of them whole.
         mx, mz = pts[len(pts) // 2]
         roads.add(cell_name("Roads", mx, mz), verts, quads)
+        add_markings(markings, pts, width, tags["highway"], mx, mz)
+        if tags["highway"] in ("primary", "secondary", "tertiary"):
+            # Pavements: 2 m wide, a kerb high, both sides of the roads the bus uses.
+            for side in (+1, -1):
+                v, f = box_ribbon(pts, side * (width / 2.0 + 1.0), 2.0, KERB_HEIGHT)
+                kerbs.add(cell_name("Pavement", mx, mz), v, f)
         centrelines.append({
             "id": wid, "class": tags["highway"], "name": tags.get("name", ""),
             "name_bn": tags.get("name:bn", ""), "width": width,
@@ -316,6 +416,42 @@ def main(osm_path, out_dir, building_radius):
             "nodes": refs, "points": [[round(x, 2), round(z, 2)] for x, z in pts],
         })
     junctions = {r: list(local[r]) for r, n in node_use.items() if n >= 3 and r in local}
+
+    # Road surfaces as segments in a 50 m grid, so a footprint can ask cheaply whether it stands on
+    # a road. Mapped footprints do overlap mapped roads here and there, and a wall across the
+    # carriageway is worse than a missing house.
+    GRID = 50.0
+    road_grid = {}
+    for way in centrelines:
+        # Only the roads the bus drives: in the lanes the map's footprints and 7 m default widths
+        # overlap all the time, and dropping those houses hollows the city out (7,800 of 18,800 went).
+        if way["class"] not in ("primary", "primary_link", "secondary", "secondary_link", "tertiary", "tertiary_link"):
+            continue
+        half = way["width"] / 2.0 + 0.5
+        for (x0, z0), (x1, z1) in zip(way["points"], way["points"][1:]):
+            for gx in range(int(min(x0, x1) // GRID) - 1, int(max(x0, x1) // GRID) + 2):
+                for gz in range(int(min(z0, z1) // GRID) - 1, int(max(z0, z1) // GRID) + 2):
+                    road_grid.setdefault((gx, gz), []).append((x0, z0, x1, z1, half))
+
+    def on_a_road(x, z):
+        for (x0, z0, x1, z1, half) in road_grid.get((int(x // GRID), int(z // GRID)), ()):
+            dx, dz = x1 - x0, z1 - z0
+            l2 = dx * dx + dz * dz
+            t = 0.0 if l2 == 0 else max(0.0, min(1.0, ((x - x0) * dx + (z - z0) * dz) / l2))
+            px, pz = x0 + dx * t, z0 + dz * t
+            if (px - x) ** 2 + (pz - z) ** 2 < half * half:
+                return True
+        return False
+
+    def footprint_on_a_road(pts):
+        # Corners and edge midpoints: a long wall across a road has no corner on it.
+        for i, (x, z) in enumerate(pts):
+            if on_a_road(x, z):
+                return True
+            nx, nz = pts[(i + 1) % len(pts)]
+            if on_a_road((x + nx) / 2.0, (z + nz) / 2.0):
+                return True
+        return False
 
     # Buildings near the main road only: the whole box is 36,000 footprints, far past the scene
     # budget, and the bus never sees past the second row. --radius widens it.
@@ -330,7 +466,7 @@ def main(osm_path, out_dir, building_radius):
         return False
 
     buildings = ObjWriter()
-    kept = skipped = 0
+    kept = skipped = on_road = 0
     for wid, refs, tags in ways:
         if "building" not in tags or len(refs) < 4 or refs[0] != refs[-1]:
             continue
@@ -341,6 +477,9 @@ def main(osm_path, out_dir, building_radius):
         cz = sum(p[1] for p in pts) / len(pts)
         if not near_spine(cx, cz):
             skipped += 1
+            continue
+        if footprint_on_a_road(pts):
+            on_road += 1
             continue
         if polygon_area(pts) < 0:
             pts.reverse()
@@ -355,60 +494,59 @@ def main(osm_path, out_dir, building_radius):
         buildings.add(cell_name("Blocks", cx, cz), verts, faces)
         kept += 1
 
-    # The metro viaduct: deck plus piers along every railway way that is a bridge.
+    # The metro viaduct runs down the middle of the main road on this stretch (RESEARCH.md: MRT Line 6
+    # on Rokeya Sarani), so it is built along the road's own centreline, not the mapped railway, which
+    # sits a few metres off it: deck, piers every 30 m, and the median barrier between the carriageways.
+    route = main_road_route(centrelines, junctions)
     rail = ObjWriter()
-    for wid, refs, tags in ways:
-        if "railway" not in tags or tags.get("railway") in ("platform", "station", "level_crossing"):
-            continue
-        pts = [local[r] for r in refs if r in local]
-        if len(pts) < 2:
-            continue
-        verts, quads = ribbon(pts, RAIL_DECK_WIDTH)
-        # Raise the ribbon to the deck and give it a thickness: top, bottom and sides.
-        top = [(x, RAIL_DECK_HEIGHT, z) for x, _, z in verts]
-        bottom = [(x, RAIL_DECK_HEIGHT - RAIL_DECK_THICKNESS, z) for x, _, z in verts]
+    rpts = [tuple(p) for p in route["points"]]
+    if len(rpts) >= 2:
+        top, quads = offset_ribbon(rpts, 0.0, RAIL_DECK_WIDTH, RAIL_DECK_HEIGHT)
+        bottom = [(x, RAIL_DECK_HEIGHT - RAIL_DECK_THICKNESS, z) for x, _, z in top]
         m = len(top)
         faces = list(quads)                                            # top, seen from above
         faces += [tuple(m + i for i in reversed(q)) for q in quads]    # bottom, seen from below
         for i in range(0, m - 2, 2):
-            faces.append((i, i + 2, m + i + 2, m + i))                 # left side
-            faces.append((i + 3, i + 1, m + i + 1, m + i + 3))         # right side
+            faces.append((i, m + i, m + i + 2, i + 2))                 # left side
+            faces.append((i + 3, m + i + 3, m + i + 1, i + 1))         # right side
         rail.add("Viaduct", top + bottom, faces)
-        # Piers every RAIL_PIER_EVERY metres along the line.
         walked = 0.0
-        for i in range(len(pts) - 1):
-            (x0, z0), (x1, z1) = pts[i], pts[i + 1]
+        for i in range(len(rpts) - 1):
+            (x0, z0), (x1, z1) = rpts[i], rpts[i + 1]
             seg = math.hypot(x1 - x0, z1 - z0)
             t = walked
             while t < seg:
                 f = t / seg
                 px, pz = x0 + (x1 - x0) * f, z0 + (z1 - z0) * f
-                s = RAIL_PIER_SIZE / 2.0
-                base = [(px - s, 0.0, pz - s), (px + s, 0.0, pz - s), (px + s, 0.0, pz + s), (px - s, 0.0, pz + s)]
+                sz = RAIL_PIER_SIZE / 2.0
+                base = [(px - sz, 0.0, pz - sz), (px + sz, 0.0, pz - sz), (px + sz, 0.0, pz + sz), (px - sz, 0.0, pz + sz)]
                 topv = [(x, RAIL_DECK_HEIGHT - RAIL_DECK_THICKNESS, z) for x, _, z in base]
-                pf = [(0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)]
+                pf = [(0, 4, 5, 1), (1, 5, 6, 2), (2, 6, 7, 3), (3, 7, 4, 0)]
                 rail.add("Piers", base + topv, pf)
                 t += RAIL_PIER_EVERY
             walked = t - seg
+        v, f = box_ribbon(rpts, 0.0, MEDIAN_WIDTH, MEDIAN_HEIGHT)
+        kerbs.add("Median", v, f)
 
     roads.write(os.path.join(out_dir, "Roads.obj"))
     buildings.write(os.path.join(out_dir, "Buildings.obj"))
     rail.write(os.path.join(out_dir, "Rail.obj"))
+    markings.write(os.path.join(out_dir, "Markings.obj"))
+    kerbs.write(os.path.join(out_dir, "Kerbs.obj"))
     with open(os.path.join(out_dir, "centrelines.json"), "w") as f:
         json.dump({"origin": {"lat": ORIGIN_LAT, "lon": ORIGIN_LON}, "frame": "x east, z north, metres",
                    "attribution": "Map data (c) OpenStreetMap contributors, ODbL",
                    "roads": centrelines, "junctions": junctions}, f)
-    route = main_road_route(centrelines, junctions)
     with open(os.path.join(out_dir, "route.json"), "w") as f:
         json.dump(route, f)
     with open(os.path.join(out_dir, "markers.json"), "w") as f:
         json.dump([{"name": n, "x": round(to_local(la, lo)[0], 1), "z": round(to_local(la, lo)[1], 1)} for n, la, lo in MARKERS], f, indent=1)
 
     print(f"roads: {len(centrelines)} ways, {roads.triangles} triangles in {len(roads.objects)} cells; {len(junctions)} junction nodes")
-    print(f"buildings: {kept} kept within {building_radius:.0f} m of the main road ({skipped} beyond), {buildings.triangles} triangles in {len(buildings.objects)} cells")
-    print(f"rail: {rail.triangles} triangles")
+    print(f"buildings: {kept} kept within {building_radius:.0f} m of the main road ({skipped} beyond, {on_road} dropped for standing on a road), {buildings.triangles} triangles in {len(buildings.objects)} cells")
+    print(f"rail: {rail.triangles} triangles; markings {markings.triangles}; kerbs and median {kerbs.triangles}")
     print(f"route: {len(route['points'])} points, {route['length']:.0f} m, width {route['width']:.0f} m")
-    print(f"total {roads.triangles + buildings.triangles + rail.triangles} triangles (budget 400k, docs/OSM_IMPORT_PLAN.md)")
+    print(f"total {roads.triangles + buildings.triangles + rail.triangles + markings.triangles + kerbs.triangles} triangles (budget 400k, docs/OSM_IMPORT_PLAN.md)")
 
 
 if __name__ == "__main__":

@@ -38,6 +38,13 @@ namespace TwentyTons.Unity
 
         private void Awake()
         {
+            SetUp();
+        }
+
+        /// <summary>Build the corridor and the model and put the bus at its start. Public so the scene
+        /// builder can place the bus in edit mode too, instead of leaving it at the origin until Play.</summary>
+        public void SetUp()
+        {
             if (Tuning == null) Tuning = ScriptableObject.CreateInstance<TuningTable>();   // defaults, so the scene runs even unwired
             Corridor = LoadRoute(RouteJson);
             Agent = new Agent { Corridor = Corridor, Class = VehicleClass.Bus, Shape = VehicleShape.For(VehicleClass.Bus), IsPlayer = true };
@@ -77,6 +84,8 @@ namespace TwentyTons.Unity
             Bus.Throttle = Bus.Brake = Bus.Steer = 0f;
             _steerInput = 0f;
             Corridor.Project(Agent.Position, out Agent.S, out Agent.Lateral);
+            _lastFreePosition = Agent.Position;
+            _lastFreeYaw = Agent.Yaw;
             Apply();
         }
 
@@ -109,8 +118,36 @@ namespace TwentyTons.Unity
                 Bus.Step(Agent, Corridor, Tuning.Bus, h);
                 left -= h;
             }
+            StopAtWalls();
             Apply();
         }
+
+        /// <summary>
+        /// No physics yet, so walls are a rule: if the box the bus occupies after this frame's move
+        /// overlaps a collider (a block, a pier, the median), the move is undone and the bus stops dead.
+        /// A crash is not modelled, only prevented from being a ghost. The cast starts 0.3 m up, so the
+        /// road, the paint and the 0.15 m kerbs are not walls; the 0.6 m median is.
+        /// </summary>
+        private void StopAtWalls()
+        {
+            Vector3 half = new Vector3(Agent.Shape.Width * 0.5f - 0.05f, Agent.Shape.Height * 0.5f - 0.3f, Agent.Shape.Length * 0.5f - 0.05f);
+            Vector3 centre = Agent.Position + Vector3.up * (Agent.Shape.Height * 0.5f + 0.3f);
+            Quaternion rot = Quaternion.Euler(0f, Agent.Yaw * Mathf.Rad2Deg, 0f);
+            if (Physics.CheckBox(centre, half, rot, ~0, QueryTriggerInteraction.Ignore))
+            {
+                Agent.Position = _lastFreePosition;
+                Agent.Yaw = _lastFreeYaw;
+                Agent.Speed = 0f;
+                Corridor.Project(Agent.Position, out Agent.S, out Agent.Lateral);
+            }
+            else
+            {
+                _lastFreePosition = Agent.Position;
+                _lastFreeYaw = Agent.Yaw;
+            }
+        }
+        private Vector3 _lastFreePosition;
+        private float _lastFreeYaw;
 
         /// <summary>World pose from the model: the box sits on the road with its floor at y = 0.</summary>
         private void Apply()

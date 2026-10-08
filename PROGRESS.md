@@ -50,6 +50,22 @@ One entry per session. The next session reads this first.
   railway runs a few metres west of the road centreline, so the deck covers the western half of the
   road from above. Real alignment to check against photographs later.
 
+**Step 30 — a street you can read: markings, pavements, median, posts; walls stop the bus** (done)
+
+- Owner, first drive: "not clear where to drive, no actual road or markings, everything just grey
+  boxes" and "I go through the buildings that are on the street". Both fixed.
+- `greybox.py` writes `Markings.obj` (solid edge lines, dashed lane lines three a carriageway on the
+  main road, a double line down two-way streets) and `Kerbs.obj` (2 m pavements a kerb high beside the
+  roads the bus uses, a 0.6 m median barrier down the main road). The viaduct is now built along the
+  road's own centreline, not the mapped railway a few metres off it, so deck, piers and median agree.
+- Footprints that stand on a main road are dropped (1,009 of 18,800); on the lanes they are kept, since
+  7 m default widths overlap the map's houses everywhere and dropping them hollowed the city out.
+- Materials with contrast: dark asphalt, pale paint, warm blocks, dirt ground. A 40 m green post at each
+  route marker so the next stop shows from down the road. 347k triangles, still under 400k.
+- `PlayerBusDrive.StopAtWalls`: an overlap check of the bus's box after each move, from 0.3 m up; a hit
+  undoes the move and stops the bus. Blocks, piers and the median are walls; paint and kerbs are not.
+  Not a crash model, only the end of ghosting. The builder now places the bus at its start lane.
+
 ## 8 Oct 2026 — Moved to the owner's Mac
 
 - The cloud session was teleported into Claude Code on the MacBook Air; the game lives in

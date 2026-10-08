@@ -30,6 +30,8 @@ namespace TwentyTons.EditorTools
             ConfigureImport(WorldDir + "/Roads.obj");
             ConfigureImport(WorldDir + "/Buildings.obj");
             ConfigureImport(WorldDir + "/Rail.obj");
+            ConfigureImport(WorldDir + "/Markings.obj");
+            ConfigureImport(WorldDir + "/Kerbs.obj");
             AssetDatabase.Refresh();
 
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -43,10 +45,14 @@ namespace TwentyTons.EditorTools
             lightGo.transform.rotation = Quaternion.Euler(55f, -30f, 0f);
 
             // Materials: one for the road surface, one for everything else, so each is a batch.
-            Material ground = MakeMaterial(WorldDir + "/GreyboxGround.mat", new Color(0.62f, 0.62f, 0.60f));
-            Material road = MakeMaterial(WorldDir + "/GreyboxRoad.mat", new Color(0.36f, 0.36f, 0.38f));
-            Material block = MakeMaterial(WorldDir + "/GreyboxBlock.mat", new Color(0.72f, 0.70f, 0.66f));
-            Material rail = MakeMaterial(WorldDir + "/GreyboxRail.mat", new Color(0.55f, 0.56f, 0.60f));
+            // Grey box, but legible: asphalt dark, paint white, pavements pale, blocks warm, dirt in between.
+            Material ground = MakeMaterial(WorldDir + "/GreyboxGround.mat", new Color(0.56f, 0.52f, 0.44f));
+            Material road = MakeMaterial(WorldDir + "/GreyboxRoad.mat", new Color(0.22f, 0.22f, 0.24f));
+            Material block = MakeMaterial(WorldDir + "/GreyboxBlock.mat", new Color(0.80f, 0.74f, 0.64f));
+            Material rail = MakeMaterial(WorldDir + "/GreyboxRail.mat", new Color(0.50f, 0.52f, 0.56f));
+            Material paint = MakeMaterial(WorldDir + "/GreyboxPaint.mat", new Color(0.92f, 0.92f, 0.88f));
+            Material kerb = MakeMaterial(WorldDir + "/GreyboxKerb.mat", new Color(0.68f, 0.68f, 0.66f));
+            Material post = MakeMaterial(WorldDir + "/GreyboxPost.mat", new Color(0.20f, 0.70f, 0.35f));
 
             // Ground: a big plane a little under the roads so there are no holes between blocks.
             var plane = GameObject.CreatePrimitive(PrimitiveType.Plane);
@@ -59,6 +65,8 @@ namespace TwentyTons.EditorTools
             Place(WorldDir + "/Roads.obj", "Roads", road, withColliders: true);
             Place(WorldDir + "/Buildings.obj", "Blocks", block, withColliders: true);
             Place(WorldDir + "/Rail.obj", "MRT Line 6 viaduct", rail, withColliders: true);
+            Place(WorldDir + "/Markings.obj", "Lane markings", paint, withColliders: false);
+            Place(WorldDir + "/Kerbs.obj", "Pavements and median", kerb, withColliders: true);
 
             // Route markers: stands and junctions, as named empties for milestones 4 and 5.
             var markers = new GameObject("Route markers");
@@ -68,6 +76,14 @@ namespace TwentyTons.EditorTools
                 var go = new GameObject(m.name);
                 go.transform.SetParent(markers.transform);
                 go.transform.position = new Vector3(m.x, 0f, m.z);
+                // A tall green post at each one, so the next stop shows from down the road.
+                var pole = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                pole.name = "Post";
+                Object.DestroyImmediate(pole.GetComponent<Collider>());
+                pole.transform.SetParent(go.transform, false);
+                pole.transform.localPosition = new Vector3(0f, 20f, 0f);
+                pole.transform.localScale = new Vector3(2f, 40f, 2f);
+                pole.GetComponent<MeshRenderer>().sharedMaterial = post;
             }
 
             // The credit the ODbL licence asks for, in the scene where anyone opening it sees it.
@@ -126,6 +142,7 @@ namespace TwentyTons.EditorTools
             var drive = bus.AddComponent<TwentyTons.Unity.PlayerBusDrive>();
             drive.Tuning = tuning;
             drive.RouteJson = route;
+            drive.SetUp();                                             // stands at the start lane in the saved scene
 
             var chase = camera.AddComponent<TwentyTons.Unity.ChaseCamera>();
             chase.Target = bus.transform;
