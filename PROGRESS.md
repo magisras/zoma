@@ -2,6 +2,15 @@
 
 One entry per session. The next session reads this first.
 
+## 8 Oct 2026 — Moved to the owner's Mac
+
+- The cloud session was teleported into Claude Code on the MacBook Air; the game lives in
+  `~/Code/zuma`. Installed Mono via Homebrew and the .NET 8 SDK per-user (`~/.dotnet`, no sudo);
+  recipe in `docs/TESTING.md`.
+- `tools/check.sh` used `mapfile`, which macOS's bash 3.2 lacks; replaced with a while-read loop.
+  119 tests pass, `dotnet publish` of the sandbox builds, `tools/headless.sh` runs.
+- Next is unchanged: rebuild the Dhaka autopilot on the crews' decision layer (see Step 26).
+
 ## Session 3 — 2 Oct 2026 — Building the system in the sandbox
 
 Working through README milestones 3–6 in the engine-free core, each step tested in `check.sh`,

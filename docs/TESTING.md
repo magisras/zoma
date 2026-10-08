@@ -8,7 +8,10 @@ Everything below runs in a fresh cloud container or on a laptop; no Unity, no GP
 - Clone `github.com/magisras/zoma`, branch `main`.
 - In a Claude Code cloud session the start hook (`.claude/hooks/session-start.sh`) installs Mono
   and the .NET 8 SDK from Ubuntu's packages. Microsoft's download host is blocked there; nuget.org
-  is reachable. On a laptop: `brew install mono` and `brew install --cask dotnet-sdk`.
+  is reachable. On a Mac: `brew install mono`; for .NET the Homebrew cask needs an admin password, so
+  use Microsoft's per-user script instead, which installs into `~/.dotnet` without sudo:
+  `curl -sSL https://dot.net/v1/dotnet-install.sh | bash -s -- --channel 8.0` and add
+  `export DOTNET_ROOT="$HOME/.dotnet"; export PATH="$HOME/.dotnet:$PATH"` to `~/.zshrc`.
 - Check: `mcs --version` and `dotnet --version` both answer.
 
 ## The three instruments

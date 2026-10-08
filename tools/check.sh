@@ -30,11 +30,14 @@ NUNITLITE_DLL=$CACHE/nunitlite/lib/net45/nunitlite.dll
 mcs -nologo -target:library -out:"$OUT/UnityEngine.dll" tools/unity-stubs/*.cs
 
 # 2. Game code: everything under Assets/Scripts (Unity compiles the same files via the asmdef).
-mapfile -t GAME < <(find Assets/Scripts -name '*.cs' | sort)
+# File lists are built with a while-read loop, not mapfile: macOS ships bash 3.2, which lacks it.
+GAME=()
+while IFS= read -r f; do GAME+=("$f"); done < <(find Assets/Scripts -name '*.cs' | sort)
 mcs -nologo -warn:4 -target:library -out:"$OUT/TwentyTons.dll" -r:"$OUT/UnityEngine.dll" "${GAME[@]}"
 
 # 3. Tests, built as a console exe with NUnitLite as the runner (no NUnit engine needed).
-mapfile -t TESTS < <(find Assets/Tests -name '*.cs' | sort)
+TESTS=()
+while IFS= read -r f; do TESTS+=("$f"); done < <(find Assets/Tests -name '*.cs' | sort)
 mcs -nologo -warn:4 -target:exe -out:"$OUT/TwentyTons.Tests.exe" \
     -r:"$OUT/UnityEngine.dll" -r:"$OUT/TwentyTons.dll" -r:"$NUNIT_DLL" -r:"$NUNITLITE_DLL" \
     "${TESTS[@]}" tools/nunitlite/Program.cs
