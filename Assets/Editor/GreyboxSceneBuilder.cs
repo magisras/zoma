@@ -130,7 +130,7 @@ namespace TwentyTons.EditorTools
             // and the drive. Materials are plain colours; the real bus is a mesh for later.
             var bus = new GameObject("Player bus");
             Material paint = MakeMaterial(WorldDir + "/GreyboxBus.mat", new Color(0.85f, 0.55f, 0.15f));
-            Material glass = MakeMaterial(WorldDir + "/GreyboxBusGlass.mat", new Color(0.15f, 0.18f, 0.22f));
+            Material glass = MakeGlass(WorldDir + "/GreyboxBusGlass.mat", new Color(0.3f, 0.36f, 0.42f, 0.35f));
             Material rubber = MakeMaterial(WorldDir + "/GreyboxBusRubber.mat", new Color(0.08f, 0.08f, 0.08f));
             Material dark = MakeMaterial(WorldDir + "/GreyboxBusNose.mat", new Color(0.2f, 0.2f, 0.22f));
             var physics = bus.AddComponent<TwentyTons.Unity.PhysicsBus>();
@@ -175,6 +175,23 @@ namespace TwentyTons.EditorTools
             mat.shader = shader;
             mat.SetFloat("_Mode", mode);
             mat.SetColor("_Tint", Color.white);
+            return mat;
+        }
+
+        /// <summary>Tinted glass: URP Lit set up as transparent, so the driver and the helper can see out.</summary>
+        private static Material MakeGlass(string path, Color color)
+        {
+            Material mat = MakeMaterial(path, color);
+            mat.SetFloat("_Surface", 1f);                 // transparent
+            mat.SetFloat("_Blend", 0f);                   // alpha
+            mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            mat.SetFloat("_ZWrite", 0f);
+            mat.SetFloat("_Smoothness", 0.8f);
+            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            mat.SetOverrideTag("RenderType", "Transparent");
             return mat;
         }
 
