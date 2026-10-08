@@ -284,7 +284,7 @@ MEDIAN_HEIGHT = 0.6
 MARK_Y = 0.02          # paint sits just above the road so the two do not fight for the pixel
 
 
-def add_markings(markings, pts, width, cls, mx, mz):
+def add_markings(markings, pts, width, cls, mx, mz, oneway=False):
     """What a driver reads: solid edge lines, dashed lane lines three lanes a carriageway on the
     main road, a double line down the middle of a two-way street."""
     name = cell_name("Lines", mx, mz)
@@ -292,6 +292,14 @@ def add_markings(markings, pts, width, cls, mx, mz):
     for side in (+1, -1):
         v, f = offset_ribbon(pts, side * (half - 0.3), LINE_WIDTH, MARK_Y)
         markings.add(name, v, f)
+    if oneway:
+        # One carriageway: dashed lines between its lanes, nothing down the middle.
+        lanes = max(1, int(round(width / 3.5)))
+        for k in range(1, lanes):
+            for piece in dashed(pts):
+                v, f = offset_ribbon(piece, -half + k * width / lanes, LINE_WIDTH, MARK_Y)
+                markings.add(name, v, f)
+        return
     if cls in ("primary", "trunk"):
         # Two carriageways either side of the median; lanes of a third of each carriageway.
         lane = (half - MEDIAN_WIDTH / 2.0) / 3.0
@@ -311,11 +319,21 @@ def add_markings(markings, pts, width, cls, mx, mz):
                     markings.add(name, v, f)
 
 
+def is_oneway(tags):
+    return tags.get("oneway") in ("yes", "true", "1", "-1")
+
+
 def road_width(tags):
+    """Kerb to kerb. A one-way primary or secondary way is one carriageway of a dual carriageway
+    (Rokeya Sarani is mapped as two such ways about 20 m apart), so it gets a carriageway's width,
+    not the whole road's."""
     cls = tags.get("highway")
     try:
         if "width" in tags:
             return float(tags["width"].split()[0])
+        if is_oneway(tags) and cls in ("primary", "primary_link", "secondary", "secondary_link", "trunk"):
+            lanes = int(tags["lanes"]) if "lanes" in tags else 3
+            return max(8.0, lanes * 3.5)
         if "lanes" in tags:
             return max(ROAD_WIDTH.get(cls, 7.0), int(tags["lanes"]) * LANE_WIDTH)
     except ValueError:
@@ -334,30 +352,93 @@ def building_height(tags):
     return DEFAULT_LEVELS * LEVEL_HEIGHT
 
 
+def smooth_polyline(points, spacing=5.0, window=12.0, passes=3):
+    """Resample a polyline every `spacing` metres and smooth it with a moving average over
+    +-`window` metres, keeping the ends. Mapped node jitter puts 2 m jogs in a carriageway that
+    a bus at 45 km/h cannot follow; the real road has none. Used for the route (the bus's corridor)
+    and so for the median and the viaduct, not for the drawn road surface."""
+    pts = [tuple(p) for p in points]
+    if len(pts) < 3:
+        return [[round(x, 2), round(z, 2)] for x, z in pts]
+    dense = [pts[0]]
+    for (x0, z0), (x1, z1) in zip(pts, pts[1:]):
+        seg = math.hypot(x1 - x0, z1 - z0)
+        n = max(1, int(seg / spacing))
+        for k in range(1, n + 1):
+            f = k / n
+            dense.append((x0 + (x1 - x0) * f, z0 + (z1 - z0) * f))
+    half = max(1, int(window / spacing))
+    for _ in range(passes):
+        out = [dense[0]]
+        for i in range(1, len(dense) - 1):
+            lo, hi = max(0, i - half), min(len(dense) - 1, i + half)
+            xs = [dense[j][0] for j in range(lo, hi + 1)]
+            zs = [dense[j][1] for j in range(lo, hi + 1)]
+            out.append((sum(xs) / len(xs), sum(zs) / len(zs)))
+        out.append(dense[-1])
+        dense = out
+    return [[round(x, 2), round(z, 2)] for x, z in simplify(dense, 0.12)]
+
+
+def simplify(points, tolerance):
+    """Douglas-Peucker: drop points that lie within `tolerance` metres of the line between their
+    neighbours, so a smoothed polyline costs no more triangles than it needs."""
+    if len(points) < 3:
+        return list(points)
+    (x0, z0), (x1, z1) = points[0], points[-1]
+    dx, dz = x1 - x0, z1 - z0
+    l2 = dx * dx + dz * dz
+    worst, wd = 0, 0.0
+    for i in range(1, len(points) - 1):
+        x, z = points[i]
+        if l2 == 0:
+            d = math.hypot(x - x0, z - z0)
+        else:
+            t = max(0.0, min(1.0, ((x - x0) * dx + (z - z0) * dz) / l2))
+            d = math.hypot(x - (x0 + dx * t), z - (z0 + dz * t))
+        if d > wd:
+            worst, wd = i, d
+    if wd <= tolerance:
+        return [points[0], points[-1]]
+    return simplify(points[:worst + 1], tolerance)[:-1] + simplify(points[worst:], tolerance)
+
+
 def main_road_route(centrelines, junctions):
     """The bus's road: shortest path along primary ways from the first marker to the last, as one
     polyline. Dijkstra over the ways' nodes; a few thousand of them, so plain lists do."""
     import heapq
     graph = {}
     pos = {}
+    hop = {}        # (a, b) -> (way, index of a, index of b) on that way's smoothed points
     for way in centrelines:
         if way["class"] not in ("primary", "primary_link", "secondary", "trunk"):
             continue
-        for a, b, pa, pb in zip(way["nodes"], way["nodes"][1:], way["points"], way["points"][1:]):
+        idx = way.get("node_index", {})
+        nodes = [n for n in way["nodes"] if n in idx]
+        for a, b in zip(nodes, nodes[1:]):
+            pa, pb = way["points"][idx[a]], way["points"][idx[b]]
             pos[a], pos[b] = tuple(pa), tuple(pb)
             d = math.dist(pa, pb)
             graph.setdefault(a, []).append((b, d))
-            graph.setdefault(b, []).append((a, d))
+            hop[(a, b)] = (way, idx[a], idx[b])
+            if not way.get("oneway_flow"):
+                graph.setdefault(b, []).append((a, d))     # two-way: both directions
+                hop[(b, a)] = (way, idx[b], idx[a])
 
-    def nearest(x, z):
-        return min(pos, key=lambda n: (pos[n][0] - x) ** 2 + (pos[n][1] - z) ** 2)
+    def nearest(x, z, k=8):
+        return sorted(pos, key=lambda n: (pos[n][0] - x) ** 2 + (pos[n][1] - z) ** 2)[:k]
 
-    start = nearest(*to_local(MARKERS[0][1], MARKERS[0][2]))
-    goal = nearest(*to_local(MARKERS[-1][1], MARKERS[-1][2]))
-    dist, prev, heap = {start: 0.0}, {}, [(0.0, start)]
+    # Several candidate nodes at each end: the single nearest node to the stand is on the
+    # northbound carriageway, whose one-way flow never reaches Kazipara.
+    starts = nearest(*to_local(MARKERS[0][1], MARKERS[0][2]))
+    goals = set(nearest(*to_local(MARKERS[-1][1], MARKERS[-1][2])))
+    dist, prev, heap = {n: 0.0 for n in starts}, {}, [(0.0, n) for n in starts]
+    heapq.heapify(heap)
+    goal = None
     while heap:
         d, n = heapq.heappop(heap)
-        if n == goal:
+        if n in goals:
+            goal = n
             break
         if d > dist.get(n, float("inf")):
             continue
@@ -366,17 +447,114 @@ def main_road_route(centrelines, junctions):
             if nd < dist.get(m, float("inf")):
                 dist[m], prev[m] = nd, n
                 heapq.heappush(heap, (nd, m))
+    if goal is None:
+        raise SystemExit("no one-way-respecting path from the stand to the last marker")
     path, n = [], goal
     while n in prev:
         path.append(n)
         n = prev[n]
-    path.append(start)
+    path.append(n)
     path.reverse()
-    points = [[round(pos[n][0], 2), round(pos[n][1], 2)] for n in path]
-    widths = [w["width"] for w in centrelines if w["class"] == "primary"]
+    # Stitch the path from the ways' own smoothed points, so the corridor is the drawn carriageway.
+    points = [list(pos[path[0]])]
+    for a, b in zip(path, path[1:]):
+        way, ia, ib = hop[(a, b)]
+        step = 1 if ib >= ia else -1
+        for k in range(ia + step, ib + step, step):
+            points.append(list(way["points"][k]))
+    points = [[round(x, 2), round(z, 2)] for x, z in points]
+    on_path = set(path)
+    widths = [w["width"] for w in centrelines if w["class"] == "primary" and on_path.intersection(w["nodes"])]
     # "xz" is the same polyline flat (x0, z0, x1, z1, ...): Unity's JsonUtility reads float[] but not nested lists.
-    return {"points": points, "xz": [c for p in points for c in p], "length": dist.get(goal, 0.0), "width": max(widths) if widths else 24.0,
+    return {"points": points, "xz": [c for p in points for c in p], "length": dist.get(goal, 0.0), "width": min(widths) if widths else 10.0,
             "attribution": "Map data (c) OpenStreetMap contributors, ODbL"}
+
+
+def median_line(route, centrelines):
+    """Where the median is: halfway between the route's carriageway and the opposite one, found as
+    the nearest one-way primary segment that runs parallel to ours and lies to our right (left-hand
+    traffic: the oncoming carriageway is on the right). Where none is found, at a junction say, the
+    last offset is carried on, never the route line itself: that put piers in the bus's lane at
+    Kalshi Road. The MRT piers stand on this line (RESEARCH.md: the viaduct in the middle of Rokeya
+    Sarani)."""
+    others = []
+    for w in centrelines:
+        if w["class"] in ("primary", "trunk") and w.get("oneway_flow"):
+            others.extend(zip(w["points"], w["points"][1:]))
+    route_pts = [tuple(p) for p in route["points"]]
+    route_set = set(route_pts)
+    n = len(route_pts)
+    offsets = [None] * n
+    for i, (x, z) in enumerate(route_pts):
+        # Our direction here and the right-hand normal.
+        (ax, az), (bx, bz) = route_pts[max(0, i - 1)], route_pts[min(n - 1, i + 1)]
+        dx, dz = bx - ax, bz - az
+        l = math.hypot(dx, dz) or 1.0
+        dx, dz = dx / l, dz / l
+        rx, rz = dz, -dx                        # right of travel in the x-z plane
+        best, bd = None, 40.0
+        for (px0, pz0), (px1, pz1) in others:
+            if (px0, pz0) in route_set or (px1, pz1) in route_set:
+                continue                        # our own carriageway
+            sx, sz = px1 - px0, pz1 - pz0
+            sl = math.hypot(sx, sz) or 1.0
+            if abs((sx * dx + sz * dz) / sl) < 0.85:
+                continue                        # not parallel: a cross street
+            t = max(0.0, min(1.0, ((x - px0) * sx + (z - pz0) * sz) / (sl * sl)))
+            qx, qz = px0 + sx * t, pz0 + sz * t
+            right = (qx - x) * rx + (qz - z) * rz
+            along = (qx - x) * dx + (qz - z) * dz
+            if abs(along) > 15.0:
+                continue                        # not abeam of us: a segment far down the road
+            if right < 4.0 or right > bd:
+                continue                        # on our left, or further than the best so far
+            best, bd = right, right
+        offsets[i] = best / 2.0 if best is not None else None
+    # Carry offsets across gaps: previous known, else next known, else 10 m (a carriageway apart).
+    last = None
+    for i in range(n):
+        if offsets[i] is None:
+            offsets[i] = last
+        else:
+            last = offsets[i]
+    nxt = None
+    for i in range(n - 1, -1, -1):
+        if offsets[i] is None:
+            offsets[i] = nxt if nxt is not None else 10.0
+        else:
+            nxt = offsets[i]
+    out = []
+    for i, (x, z) in enumerate(route_pts):
+        (ax, az), (bx, bz) = route_pts[max(0, i - 1)], route_pts[min(n - 1, i + 1)]
+        dx, dz = bx - ax, bz - az
+        l = math.hypot(dx, dz) or 1.0
+        rx, rz = dz / l, -dx / l
+        out.append((x + rx * offsets[i], z + rz * offsets[i]))
+    return out
+
+
+def cut_at_junctions(points, gaps, half_gap=14.0):
+    """Split a polyline into pieces that stay clear of the given points: the median barrier opens
+    where a street crosses, as a real one does. Pieces shorter than a bus are dropped."""
+    pieces, piece = [], []
+    def near(x, z):
+        return any((x - gx) ** 2 + (z - gz) ** 2 < half_gap * half_gap for gx, gz in gaps)
+    for i in range(len(points) - 1):
+        (x0, z0), (x1, z1) = points[i], points[i + 1]
+        seg = math.hypot(x1 - x0, z1 - z0)
+        steps = max(1, int(seg / 4.0))
+        for k in range(steps + (1 if i == len(points) - 2 else 0)):
+            f = k / steps
+            p = (x0 + (x1 - x0) * f, z0 + (z1 - z0) * f)
+            if near(*p):
+                if len(piece) > 1:
+                    pieces.append(piece)
+                piece = []
+            else:
+                piece.append(p)
+    if len(piece) > 1:
+        pieces.append(piece)
+    return [pc for pc in pieces if math.dist(pc[0], pc[-1]) > 12.0]
 
 
 def main(osm_path, out_dir, building_radius):
@@ -399,21 +577,38 @@ def main(osm_path, out_dir, building_radius):
         for r in refs:
             node_use[r] = node_use.get(r, 0) + 1
         width = road_width(tags)
+        main = tags["highway"] in ("primary", "primary_link", "secondary", "secondary_link", "tertiary", "tertiary_link", "trunk")
+        node_index = {}
+        if main:
+            # Mapped node jitter puts 2 m jogs in a carriageway; the real road has none. Smooth the main
+            # roads (ends fixed, so junctions stay put) and remember where each node landed on the
+            # smoothed line, so the route can be stitched from these same points.
+            raw = pts
+            pts = [tuple(q) for q in smooth_polyline(raw)]
+            for r in refs:
+                if r in local:
+                    rx_, rz_ = local[r]
+                    node_index[r] = min(range(len(pts)), key=lambda k: (pts[k][0] - rx_) ** 2 + (pts[k][1] - rz_) ** 2)
         verts, quads = ribbon(pts, width)
         # The cell of the way's midpoint: a way crossing a cell border goes to one of them whole.
         mx, mz = pts[len(pts) // 2]
         roads.add(cell_name("Roads", mx, mz), verts, quads)
-        add_markings(markings, pts, width, tags["highway"], mx, mz)
+        oneway = is_oneway(tags)
+        if tags.get("oneway") == "-1":
+            pts.reverse()                              # drawn against the flow: make node order the flow
+        add_markings(markings, pts, width, tags["highway"], mx, mz, oneway)
         if tags["highway"] in ("primary", "secondary", "tertiary"):
-            # Pavements: 2 m wide, a kerb high, both sides of the roads the bus uses.
-            for side in (+1, -1):
+            # Pavements: 2 m wide, a kerb high, beside the roads the bus uses. A one-way carriageway
+            # has its kerb on the left of the flow only (left-hand traffic); the median is on its right.
+            for side in ((+1,) if oneway else (+1, -1)):
                 v, f = box_ribbon(pts, side * (width / 2.0 + 1.0), 2.0, KERB_HEIGHT)
                 kerbs.add(cell_name("Pavement", mx, mz), v, f)
         centrelines.append({
-            "id": wid, "class": tags["highway"], "name": tags.get("name", ""),
+            "id": wid, "class": tags["highway"], "name": tags.get("name", ""), "oneway_flow": oneway,
             "name_bn": tags.get("name:bn", ""), "width": width,
             "lanes": tags.get("lanes", ""), "oneway": tags.get("oneway", "no"),
             "nodes": refs, "points": [[round(x, 2), round(z, 2)] for x, z in pts],
+            "node_index": node_index,
         })
     junctions = {r: list(local[r]) for r, n in node_use.items() if n >= 3 and r in local}
 
@@ -478,19 +673,25 @@ def main(osm_path, out_dir, building_radius):
         if not near_spine(cx, cz):
             skipped += 1
             continue
-        if footprint_on_a_road(pts):
+        # An elevated structure (the metro stations: building=train_station, layer=3) straddles the
+        # road at viaduct level; built on the deck, not on the carriageway.
+        elevated = tags.get("building") == "train_station" or tags.get("layer", "0").lstrip("-").isdigit() and int(tags.get("layer", "0")) >= 1
+        if not elevated and footprint_on_a_road(pts):
             on_road += 1
             continue
         if polygon_area(pts) < 0:
             pts.reverse()
-        h = building_height(tags)
+        base = RAIL_DECK_HEIGHT if elevated else 0.0
+        h = base + (8.0 if elevated else building_height(tags))
         n = len(pts)
-        verts = [(x, 0.0, z) for x, z in pts] + [(x, h, z) for x, z in pts]
+        verts = [(x, base, z) for x, z in pts] + [(x, h, z) for x, z in pts]
+
         faces = []
         for i in range(n):
             j = (i + 1) % n
             faces.append((i, j, n + j, n + i))                     # wall, outward
         faces.extend((n + a, n + b, n + c) for a, b, c in ear_clip(pts))   # roof, upward
+        faces.extend((c, b, a) for a, b, c in ear_clip(pts)) if elevated else None   # floor, downward
         buildings.add(cell_name("Blocks", cx, cz), verts, faces)
         kept += 1
 
@@ -499,7 +700,7 @@ def main(osm_path, out_dir, building_radius):
     # sits a few metres off it: deck, piers every 30 m, and the median barrier between the carriageways.
     route = main_road_route(centrelines, junctions)
     rail = ObjWriter()
-    rpts = [tuple(p) for p in route["points"]]
+    rpts = median_line(route, centrelines)
     if len(rpts) >= 2:
         top, quads = offset_ribbon(rpts, 0.0, RAIL_DECK_WIDTH, RAIL_DECK_HEIGHT)
         bottom = [(x, RAIL_DECK_HEIGHT - RAIL_DECK_THICKNESS, z) for x, _, z in top]
@@ -525,8 +726,25 @@ def main(osm_path, out_dir, building_radius):
                 rail.add("Piers", base + topv, pf)
                 t += RAIL_PIER_EVERY
             walked = t - seg
-        v, f = box_ribbon(rpts, 0.0, MEDIAN_WIDTH, MEDIAN_HEIGHT)
-        kerbs.add("Median", v, f)
+        # The barrier opens where a main street crosses the route (a junction node of the route's
+        # carriageway shared with a primary/secondary/tertiary way that is not part of the route).
+        route_nodes = set()
+        for w in centrelines:
+            if any(tuple(p) in set(tuple(q) for q in route["points"]) for p in w["points"]) and w["class"] in ("primary", "trunk"):
+                route_nodes.update(w["nodes"])
+        cross = set()
+        for w in centrelines:
+            if w["class"] not in ("primary", "primary_link", "secondary", "secondary_link", "tertiary", "tertiary_link"):
+                continue
+            shared = [nd for nd in w["nodes"] if nd in route_nodes]
+            if shared and not all(nd in route_nodes for nd in w["nodes"]):
+                for nd in shared:
+                    if nd in junctions:
+                        cross.add(tuple(junctions[nd]))
+        for piece in cut_at_junctions(rpts, cross):
+            v, f = box_ribbon(piece, 0.0, MEDIAN_WIDTH, MEDIAN_HEIGHT)
+            kerbs.add("Median", v, f)
+        print(f"median barrier opens at {len(cross)} crossings")
 
     roads.write(os.path.join(out_dir, "Roads.obj"))
     buildings.write(os.path.join(out_dir, "Buildings.obj"))

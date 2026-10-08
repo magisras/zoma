@@ -66,6 +66,30 @@ One entry per session. The next session reads this first.
   undoes the move and stops the bus. Blocks, piers and the median are walls; paint and kerbs are not.
   Not a crash model, only the end of ghosting. The builder now places the bus at its start lane.
 
+**Step 31 — drive-tested from the terminal: the corridor, the pedals, the walls** (done)
+
+- `PlayerBusDrive` has scripted pedals (`Scripted`, `ScriptThrottle/Brake/Steer/Reverse`), `Tick` and
+  `Simulate(seconds, …)` so a terminal session drives it at 60 Hz through `unity command eval`; the
+  editor does not tick Play mode while its window is behind. Snippets and how-to: `tools/osm/drivetests/`.
+- Pedals (empty bus, worn brakes 50 %, air 40 % at the start): 0–40 km/h in 7.6 s (9.9 s with 90 riders);
+  stop from 40 km/h: 29.6 m worn, 13.7 m new brakes with full air, 22.6 m worn with 90 riders (shorter
+  only because the longer run built more air: the model's brake decel does not scale with mass; a
+  tuning question for the owner). Full lock at 40 km/h: 43° of yaw in 1.5 s at the 7 m/s² tyre limit.
+- Collisions: the first rule undid the move, so a bus that touched the median could never move again.
+  Now the bus is pushed out of what it hits (`Physics.ComputePenetration`) and stopped; `X` reverses
+  at a walking pace. Verified: hit the median at 15 km/h, backed off, drove on.
+- The full route, with an aim point 8 m plus one second ahead: every stop found a real fault in the
+  grey box, each fixed in `greybox.py`:
+  Rokeya Sarani is two one-way carriageways 20 m apart (each had been drawn 24 m wide with its own
+  median; now 8–10 m, pavement on the kerb side, median and viaduct on the midline between them);
+  the median search matched a cross street at Kalshi Road (now parallel, right-hand, abeam only, with
+  the offset carried through junctions and the barrier opening at main crossings); mapped node jitter
+  put 2 m jogs in the carriageway (main roads smoothed at the source, the route stitched from the same
+  points, Douglas-Peucker to keep the triangle count); and the Mirpur 10 metro station, a 70 × 180 m
+  `building=train_station` with `layer=3`, stood across the road (elevated buildings now sit on the deck).
+- Result: Mirpur 12 stand to Kazipara, 3.2 km, 4 min 19 s at a 45 km/h cap, lane held within a metre,
+  2.8 s off the carriageway at the Mirpur 10 bend. 332k triangles.
+
 ## 8 Oct 2026 — Moved to the owner's Mac
 
 - The cloud session was teleported into Claude Code on the MacBook Air; the game lives in

@@ -13,8 +13,8 @@ namespace TwentyTons.Unity
     /// Vehicle Physics Pro (or Unity's wheel colliders) replaces the integration later, reading the
     /// same BusSettings numbers.
     ///
-    /// Keys: W/up throttle, S/down brake, A/D or left/right steer, space full brake, R back to the
-    /// stand, [ and ] ten riders off and on (to feel the mass).
+    /// Keys: W/up throttle, S/down brake, A/D or left/right steer, space full brake, X reverse at a
+    /// walk, R back to the stand, [ and ] ten riders off and on (to feel the mass).
     /// </summary>
     public sealed class PlayerBusDrive : MonoBehaviour
     {
@@ -24,11 +24,24 @@ namespace TwentyTons.Unity
         public TextAsset RouteJson;
         [Tooltip("Metres along the route to start at; the stand is at 0.")]
         public float StartAlong = 30f;
-        [Tooltip("Metres across the road to start at; negative is the left (kerb) side. Bangladesh drives on the left. " +
-                 "The metro deck is 10 m wide over the centreline, so the left carriageway starts past 5 m.")]
-        public float StartLateral = -8f;
+        [Tooltip("Metres across the carriageway to start at; negative is the left (kerb) side. Bangladesh drives on the left, " +
+                 "and route.json is the southbound carriageway, so -2.5 is the kerb lane.")]
+        public float StartLateral = -2.5f;
         [Tooltip("How fast the steering input ramps, per second; the wheel itself is rate-limited in BusSettings.")]
         public float SteerInputRate = 3f;
+
+        /// <summary>
+        /// Scripted hands on the pedals, for drive tests run from the terminal (`unity command eval`):
+        /// while Scripted is true these replace the keyboard. Instance is the bus in the open scene.
+        /// </summary>
+        public static bool Scripted;
+        public static float ScriptThrottle, ScriptBrake, ScriptSteer;
+        public static bool ScriptReverse;
+        private bool _reverse;
+        public static PlayerBusDrive Instance { get; private set; }
+
+        /// <summary>One line of state for a test log.</summary>
+        public string Status => $"t={_clock:0.0} s={Agent.S:0.0} lat={Agent.Lateral:0.00} v={Agent.Speed * 3.6f:0.0}km/h air={Bus.AirPressure:0.00} applied={Bus.BrakeApplied:0.00} wear={Bus.BrakeWear:0.00} riders={Bus.Passengers} yaw={Agent.Yaw * Mathf.Rad2Deg:0} latAcc={Mathf.Abs(Agent.Speed * Bus.LastYawRate):0.0}";
 
         public BusController Bus { get; private set; }
         public Agent Agent { get; private set; }
@@ -38,6 +51,7 @@ namespace TwentyTons.Unity
 
         private void Awake()
         {
+            Instance = this;
             SetUp();
         }
 
@@ -54,6 +68,11 @@ namespace TwentyTons.Unity
                 AirPressure = Tuning.Bus.AirPressureAtDayStart,
                 Passengers = Tuning.Bus.StartingPassengers,
             };
+            _box = GetComponent<BoxCollider>();
+            if (_box == null) _box = gameObject.AddComponent<BoxCollider>();
+            _box.isTrigger = true;
+            _box.center = Vector3.zero;
+            _box.size = Vector3.one;                       // the cube is scaled to the bus, so the collider is too
             PlaceAtStart();
         }
 
@@ -83,29 +102,38 @@ namespace TwentyTons.Unity
             Bus.SteerAngle = 0f;
             Bus.Throttle = Bus.Brake = Bus.Steer = 0f;
             _steerInput = 0f;
+            _clock = 0f;
             Corridor.Project(Agent.Position, out Agent.S, out Agent.Lateral);
-            _lastFreePosition = Agent.Position;
-            _lastFreeYaw = Agent.Yaw;
             Apply();
         }
 
         private void Update()
         {
             Keyboard k = Keyboard.current;
-            if (k == null) return;
+            if (k == null && !Scripted) return;
+            if (k == null) k = InputSystem.AddDevice<Keyboard>();     // a headless test still needs the object
             float dt = Time.deltaTime;
 
             float throttle = (k.wKey.isPressed || k.upArrowKey.isPressed) ? 1f : 0f;
             float brake = (k.sKey.isPressed || k.downArrowKey.isPressed) ? 0.6f : 0f;   // a normal stop; space is the panic
             if (k.spaceKey.isPressed) brake = 1f;
             float steerWanted = (k.aKey.isPressed || k.leftArrowKey.isPressed ? -1f : 0f) + (k.dKey.isPressed || k.rightArrowKey.isPressed ? 1f : 0f);
-            // The input ramps so a tap is a nudge and a hold is full lock; the wheel's own speed is in BusSettings.
-            _steerInput = Mathf.MoveTowards(_steerInput, steerWanted, SteerInputRate * dt * (steerWanted == 0f ? 2f : 1f));
+            bool reverse = k.xKey.isPressed;
+            if (Scripted) { throttle = ScriptThrottle; brake = ScriptBrake; steerWanted = ScriptSteer; reverse = ScriptReverse; }
+            _reverse = reverse;
 
             if (k.rKey.wasPressedThisFrame) { PlaceAtStart(); return; }
             if (k.rightBracketKey.wasPressedThisFrame) Bus.Passengers = Mathf.Min(Tuning.Bus.CrushCapacity, Bus.Passengers + 10);
             if (k.leftBracketKey.wasPressedThisFrame) Bus.Passengers = Mathf.Max(0, Bus.Passengers - 10);
 
+            Tick(dt, throttle, brake, steerWanted);
+        }
+
+        /// <summary>One frame of driving: the pedals go to the model, the model moves the bus, walls are checked.</summary>
+        public void Tick(float dt, float throttle, float brake, float steerWanted)
+        {
+            // The input ramps so a tap is a nudge and a hold is full lock; the wheel's own speed is in BusSettings.
+            _steerInput = Mathf.MoveTowards(_steerInput, steerWanted, SteerInputRate * dt * (steerWanted == 0f ? 2f : 1f));
             Bus.Throttle = throttle;
             Bus.Brake = brake;
             Bus.Steer = _steerInput;
@@ -115,12 +143,41 @@ namespace TwentyTons.Unity
             while (left > 0f)
             {
                 float h = Mathf.Min(step, left);
-                Bus.Step(Agent, Corridor, Tuning.Bus, h);
+                if (_reverse && Agent.Speed < 0.5f) Reverse(h); else Bus.Step(Agent, Corridor, Tuning.Bus, h);
+                _clock += h;
                 left -= h;
             }
             StopAtWalls();
             Apply();
         }
+
+        /// <summary>
+        /// Reverse gear, the simple way: the core model only goes forward, so backing up is a walking
+        /// pace along the bus's own axis with the front wheels steering it, enough to get off a wall.
+        /// </summary>
+        private void Reverse(float dt)
+        {
+            const float pace = 1.4f;                                   // m/s, a helper walking beside
+            Agent.Speed = 0f;
+            float yawRate = -pace / Mathf.Max(0.5f, Tuning.Bus.WheelbaseMetres) * Mathf.Tan(Bus.SteerAngle);
+            Agent.Yaw += yawRate * dt;
+            Vector3 forward = new Vector3(Mathf.Sin(Agent.Yaw), 0f, Mathf.Cos(Agent.Yaw));
+            Agent.Position -= forward * (pace * dt);
+            Corridor.Project(Agent.Position, out Agent.S, out Agent.Lateral);
+        }
+
+        /// <summary>
+        /// Drive for a while from the terminal with the scripted pedals, at 60 Hz, without waiting for the
+        /// editor's own frames (which stop when its window is not in front). Returns the status after.
+        /// </summary>
+        public string Simulate(float seconds, float throttle, float brake, float steer, bool reverse = false)
+        {
+            _reverse = reverse;
+            int frames = Mathf.RoundToInt(seconds * 60f);
+            for (int i = 0; i < frames; i++) Tick(1f / 60f, throttle, brake, steer);
+            return Status;
+        }
+        private float _clock;
 
         /// <summary>
         /// No physics yet, so walls are a rule: if the box the bus occupies after this frame's move
@@ -133,21 +190,23 @@ namespace TwentyTons.Unity
             Vector3 half = new Vector3(Agent.Shape.Width * 0.5f - 0.05f, Agent.Shape.Height * 0.5f - 0.3f, Agent.Shape.Length * 0.5f - 0.05f);
             Vector3 centre = Agent.Position + Vector3.up * (Agent.Shape.Height * 0.5f + 0.3f);
             Quaternion rot = Quaternion.Euler(0f, Agent.Yaw * Mathf.Rad2Deg, 0f);
-            if (Physics.CheckBox(centre, half, rot, ~0, QueryTriggerInteraction.Ignore))
+            Collider[] hits = Physics.OverlapBox(centre, half, rot, ~0, QueryTriggerInteraction.Ignore);
+            if (hits.Length == 0) return;
+            // Pushed out of whatever was hit, by the shortest way, and stopped. Pushing out instead of
+            // undoing the move means the bus can be steered away again afterwards; a bus glued to the
+            // median by its own collision rule was the first drive test's finding.
+            Vector3 push = Vector3.zero;
+            foreach (Collider other in hits)
             {
-                Agent.Position = _lastFreePosition;
-                Agent.Yaw = _lastFreeYaw;
-                Agent.Speed = 0f;
-                Corridor.Project(Agent.Position, out Agent.S, out Agent.Lateral);
+                if (Physics.ComputePenetration(_box, centre, rot, other, other.transform.position, other.transform.rotation, out Vector3 dir, out float dist))
+                    push += dir * dist;
             }
-            else
-            {
-                _lastFreePosition = Agent.Position;
-                _lastFreeYaw = Agent.Yaw;
-            }
+            push.y = 0f;
+            Agent.Position += push + push.normalized * 0.05f;
+            Agent.Speed = 0f;
+            Corridor.Project(Agent.Position, out Agent.S, out Agent.Lateral);
         }
-        private Vector3 _lastFreePosition;
-        private float _lastFreeYaw;
+        private BoxCollider _box;    // the bus's own shape for the penetration query; a trigger, so it is never a wall itself
 
         /// <summary>World pose from the model: the box sits on the road with its floor at y = 0.</summary>
         private void Apply()
@@ -166,7 +225,7 @@ namespace TwentyTons.Unity
                 $"{kmh,5:0} km/h   air {Bus.AirPressure * 100f,3:0} %   brakes {Bus.BrakeApplied * 100f,3:0} %  (wear {Bus.BrakeWear * 100f:0} %)\n" +
                 $"{Bus.Passengers} riders, {Bus.MassKg(Tuning.Bus) / 1000f:0.0} t   lateral {lateralG:0.0} m/s² (tips at {Tuning.Bus.RolloverLateralAccelMs2:0.0})\n" +
                 $"{Agent.S:0} m along, {Agent.Lateral:+0.0;-0.0} m across (kerb at {-Corridor.HalfWidth:0})\n" +
-                "W/S drive, A/D steer, space full brake, [ ] riders, R reset";
+                "W/S drive, A/D steer, space full brake, X reverse, [ ] riders, R reset";
             GUI.Label(new Rect(16f, 12f, 900f, 120f), text, new GUIStyle(GUI.skin.label) { fontSize = 18, richText = false });
         }
 
