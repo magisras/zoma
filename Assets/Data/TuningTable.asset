@@ -111,7 +111,7 @@ MonoBehaviour:
     SoftBrakesAbove: 0.7
     StartingPassengers: 0
     OffRoadToleranceMetres: 2
-    OffRoadDecelMs2: 4
+    OffRoadDecelMs2: 1.2
     OffRoadRolloverMetres: 1.5
     RolloverSpeedMs: 10
     TyreGripMs2: 7

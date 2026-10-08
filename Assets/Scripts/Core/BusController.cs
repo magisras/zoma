@@ -81,7 +81,14 @@ namespace TwentyTons.Core
             if (speed > 0.5f)
             {
                 float maxYaw = b.TyreGripMs2 / speed;
+                float asked = Mathf.Abs(yawRate);
                 yawRate = Mathf.Clamp(yawRate, -maxYaw, maxYaw);
+                // Scrub: the front sliding costs speed, the more the further past the grip the wheel asks.
+                if (asked > maxYaw)
+                {
+                    float scrub = b.TyreScrubDecelMs2 * Mathf.Clamp01((asked - maxYaw) / maxYaw);
+                    speed = Mathf.Max(0f, speed - scrub * dt);
+                }
             }
             LastYawRate = yawRate;
             bus.Yaw += yawRate * dt;

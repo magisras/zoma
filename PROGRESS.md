@@ -133,6 +133,18 @@ One entry per session. The next session reads this first.
 - The median barrier itself stays a wall except at the three main crossings: a bus crosses at a gap,
   as it does on Rokeya Sarani. Gaps are 28 m; turn inside them.
 
+**Step 36 — off the road is a crawl, and scrubbing tyres cost speed** (done)
+
+- Owner stuck a second time: on the dirt between two blocks beyond the far pavement, 20 riders aboard,
+  nothing touching the bus. The sandbox's off-road drag (4 m/s²) beat the engine (1.8), a dead stop.
+  `OffRoadDecelMs2` is 1.2 now, in the table and in `Assets/Data/TuningTable.asset`, and the drive caps
+  off-road speed at 8 km/h; the readout says OFF THE ROAD. Stalls and people will be real obstacles.
+- That broke `FullLockAtCitySpeedScrubsTheTyresAndDoesNotTip`: the test had passed only because the
+  drag stopped the bus once its full-lock circle left the road; without it the engine pushed the circle
+  past 36 km/h and the tipping rule fired. The honest fix is in the model: scrubbing front tyres bleed
+  speed (`TyreScrubDecelMs2` 2.5 at full scrub), so a full-lock turn at city speed slows, as a bus does.
+  119 tests pass; the 58 km/h swerve still tips.
+
 ## 8 Oct 2026 — Moved to the owner's Mac
 
 - The cloud session was teleported into Claude Code on the MacBook Air; the game lives in

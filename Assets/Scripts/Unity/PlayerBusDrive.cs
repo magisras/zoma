@@ -49,8 +49,10 @@ namespace TwentyTons.Unity
         public float PavementKmh = 12f;
         [Tooltip("Speed lost climbing the kerb, m/s: the bump.")]
         public float KerbBumpMs = 1.5f;
+        [Tooltip("Top speed with the wheels off the road altogether, km/h: dirt and rubble between blocks.")]
+        public float OffRoadKmh = 8f;
         private float _carriagewayHalf = 4f;
-        private bool _onPavement;
+        private bool _onPavement, _offRoad;
         private float[] _farS, _farEdge;      // distance along the route -> lateral of the far kerb (right side)
 
         /// <summary>How far to the right of the route line the oncoming carriageway's far kerb is, here.</summary>
@@ -196,6 +198,9 @@ namespace TwentyTons.Unity
             if (onPavement && !_onPavement) Agent.Speed = Mathf.Max(0f, Agent.Speed - KerbBumpMs);
             if (onPavement) Agent.Speed = Mathf.Min(Agent.Speed, PavementKmh / 3.6f);
             _onPavement = onPavement;
+            // Off the road altogether (dirt, rubble between blocks): a heavy crawl, never a dead stop.
+            _offRoad = Agent.Lateral < -Corridor.HalfWidth || Agent.Lateral > far;
+            if (_offRoad) Agent.Speed = Mathf.Min(Agent.Speed, OffRoadKmh / 3.6f);
         }
 
         /// <summary>
@@ -277,7 +282,7 @@ namespace TwentyTons.Unity
             string text =
                 $"{kmh,5:0} km/h   air {Bus.AirPressure * 100f,3:0} %   brakes {Bus.BrakeApplied * 100f,3:0} %  (wear {Bus.BrakeWear * 100f:0} %)\n" +
                 $"{Bus.Passengers} riders, {Bus.MassKg(Tuning.Bus) / 1000f:0.0} t   lateral {lateralG:0.0} m/s² (tips at {Tuning.Bus.RolloverLateralAccelMs2:0.0})\n" +
-                $"{Agent.S:0} m along, {Agent.Lateral:+0.0;-0.0} m across (kerb at {-_carriagewayHalf:0}){(_onPavement ? "  ON THE PAVEMENT" : "")}\n" +
+                $"{Agent.S:0} m along, {Agent.Lateral:+0.0;-0.0} m across (kerb at {-_carriagewayHalf:0}){(_offRoad ? "  OFF THE ROAD" : _onPavement ? "  ON THE PAVEMENT" : "")}\n" +
                 "W/S drive, A/D steer, space full brake, X reverse, [ ] riders, R reset";
             GUI.Label(new Rect(16f, 12f, 900f, 120f), text, new GUIStyle(GUI.skin.label) { fontSize = 18, richText = false });
         }

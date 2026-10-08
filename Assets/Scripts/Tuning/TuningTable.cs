@@ -510,10 +510,11 @@ namespace TwentyTons.Tuning
         [Tooltip("Passengers aboard at the start of the prototype. placeholder")]
         public int StartingPassengers = 0;      // the shift starts at the depot, empty (owner, 5 Oct 2026); 30 was the first physics sandbox's test load
 
-        [Tooltip("Off the corridor (past the kerb by this many metres) the bus is in the market stalls and " +
-                 "loses speed fast. The world enforces, not the UI. placeholder")]
+        [Tooltip("Off the corridor (past the kerb by this many metres) the bus is on dirt, rubble and stalls and " +
+                 "loses speed. The world enforces, not the UI. Under MaxAccelMs2 (1.8), so the bus still crawls: 4 " +
+                 "stopped it dead on bare ground in the Unity street (owner stuck twice, 8 Oct). placeholder")]
         public float OffRoadToleranceMetres = 2f;
-        public float OffRoadDecelMs2 = 4f;
+        public float OffRoadDecelMs2 = 1.2f;
 
         [Header("The rollover (RESEARCH: the Fraser film)")]
         [Tooltip("Further off the road than this (beyond the tolerance) at speed, the railing catches the wheels, metres. placeholder")]
@@ -525,6 +526,10 @@ namespace TwentyTons.Tuning
         [Tooltip("What the tyres hold before they scrub, m/s². Dry tarmac gives a bus about 0.7 g; asked for more, the front " +
                  "washes out and the bus runs wide instead of turning (or tipping). docs/BUS.md §5.")]
         public float TyreGripMs2 = 7f;
+        [Tooltip("What scrubbing tyres cost in speed, m/s², at full scrub (the wheel asking twice what the grip gives). " +
+                 "A bus at full lock bleeds speed to the front tyres sliding; without it a full-lock circle at city speed " +
+                 "accelerated past the rollover speed once the off-road drag no longer stopped it. docs/BUS.md §5. placeholder")]
+        public float TyreScrubDecelMs2 = 2.5f;
 
         [Tooltip("A turn has to hold the lateral acceleration above the tipping figure this long before the bus goes over, " +
                  "seconds: a twenty-ton body rolls onto its outer springs first. A flick of the wheel is not a rollover. docs/BUS.md §5.")]
