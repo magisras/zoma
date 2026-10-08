@@ -121,6 +121,18 @@ One entry per session. The next session reads this first.
   inside its forward step, which reverse skips, so the angle froze. Reverse now turns the wheel with
   the same rate rule. Tested: 4 s back with the wheel left swings the nose 33°, right swings it back.
 
+**Step 35 — the wrong side is road** (done)
+
+- Owner: "I am stuck on the sidewalk, I cannot get into the opposite street". The drive's corridor was
+  the carriageway plus pavements, so the median gap and the oncoming carriageway counted as off the
+  road (the stalls' drag) and as pavement (the crawl). `greybox.py` now writes `farEdge` per route
+  point (the far kerb beyond the oncoming carriageway, from the median line); the drive feeds it to
+  the core model's `roadFarEdge` and uses it for the pavement rule. Tested: 15 km/h into the Kalshi
+  Road gap, across the median, onto the oncoming carriageway at 25 km/h. Past the far kerb the crawl
+  and the buildings apply, as on our own side.
+- The median barrier itself stays a wall except at the three main crossings: a bus crosses at a gap,
+  as it does on Rokeya Sarani. Gaps are 28 m; turn inside them.
+
 ## 8 Oct 2026 — Moved to the owner's Mac
 
 - The cloud session was teleported into Claude Code on the MacBook Air; the game lives in

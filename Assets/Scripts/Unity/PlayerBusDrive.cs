@@ -51,6 +51,17 @@ namespace TwentyTons.Unity
         public float KerbBumpMs = 1.5f;
         private float _carriagewayHalf = 4f;
         private bool _onPavement;
+        private float[] _farS, _farEdge;      // distance along the route -> lateral of the far kerb (right side)
+
+        /// <summary>How far to the right of the route line the oncoming carriageway's far kerb is, here.</summary>
+        private float FarEdgeAt(float s)
+        {
+            if (_farS == null) return Corridor.HalfWidth;
+            int i = 1;
+            while (i < _farS.Length - 1 && _farS[i] < s) i++;
+            float t = Mathf.InverseLerp(_farS[i - 1], _farS[i], s);
+            return Mathf.Lerp(_farEdge[i - 1], _farEdge[i], t);
+        }
 
         public BusController Bus { get; private set; }
         public Agent Agent { get; private set; }
@@ -98,7 +109,15 @@ namespace TwentyTons.Unity
                     // The corridor is the carriageway plus the pavement on each side: the kerb is 15 cm and
                     // a Dhaka bus mounts it; the market stalls (the model's off-road drag) start beyond.
                     _carriagewayHalf = (r.width > 0f ? r.width : 24f) * 0.5f;
-                    return new Corridor(pts, _carriagewayHalf * 2f + 2f * PavementMetres, false, "Rokeya Sarani");
+                    var corridor = new Corridor(pts, _carriagewayHalf * 2f + 2f * PavementMetres, false, "Rokeya Sarani");
+                    // The far kerb of the oncoming carriageway, per route point, keyed by distance along.
+                    if (r.farEdge != null && r.farEdge.Length == pts.Length)
+                    {
+                        _farS = new float[pts.Length];
+                        _farEdge = r.farEdge;
+                        for (int i = 1; i < pts.Length; i++) _farS[i] = _farS[i - 1] + Vector3.Distance(pts[i - 1], pts[i]);
+                    }
+                    return corridor;
                 }
             }
             Debug.LogWarning("PlayerBusDrive: no route.json wired, driving a straight 3 km road");
@@ -155,7 +174,7 @@ namespace TwentyTons.Unity
             while (left > 0f)
             {
                 float h = Mathf.Min(step, left);
-                if (_reverse && Agent.Speed < 0.5f) Reverse(h); else Bus.Step(Agent, Corridor, Tuning.Bus, h);
+                if (_reverse && Agent.Speed < 0.5f) Reverse(h); else Bus.Step(Agent, Corridor, Tuning.Bus, h, FarEdgeAt(Agent.S));
                 _clock += h;
                 left -= h;
             }
@@ -170,7 +189,10 @@ namespace TwentyTons.Unity
         /// </summary>
         private void Kerb()
         {
-            bool onPavement = Mathf.Abs(Agent.Lateral) > _carriagewayHalf;
+            // The left kerb's pavement, or the far pavement beyond the oncoming carriageway. The median
+            // gap and the wrong side are road: the wrong side is a decision the game is about.
+            float far = FarEdgeAt(Agent.S);
+            bool onPavement = Agent.Lateral < -_carriagewayHalf || Agent.Lateral > far - PavementMetres;
             if (onPavement && !_onPavement) Agent.Speed = Mathf.Max(0f, Agent.Speed - KerbBumpMs);
             if (onPavement) Agent.Speed = Mathf.Min(Agent.Speed, PavementKmh / 3.6f);
             _onPavement = onPavement;
@@ -260,6 +282,6 @@ namespace TwentyTons.Unity
             GUI.Label(new Rect(16f, 12f, 900f, 120f), text, new GUIStyle(GUI.skin.label) { fontSize = 18, richText = false });
         }
 
-        [System.Serializable] private class RouteFile { public float[] xz; public float width; public float length; }
+        [System.Serializable] private class RouteFile { public float[] xz; public float width; public float length; public float[] farEdge; }
     }
 }

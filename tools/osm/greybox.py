@@ -769,6 +769,19 @@ def main(osm_path, out_dir, building_radius):
         json.dump({"origin": {"lat": ORIGIN_LAT, "lon": ORIGIN_LON}, "frame": "x east, z north, metres",
                    "attribution": "Map data (c) OpenStreetMap contributors, ODbL",
                    "roads": centrelines, "junctions": junctions}, f)
+    # Where the opposite carriageway is, per route point: the median line's offset to the right, and
+    # the far kerb beyond it (the other carriageway is as wide as ours, plus its pavement). The drive
+    # treats everything up to the far kerb as road: crossing to the wrong side is the game, not a wall.
+    rpts_route = [tuple(p) for p in route["points"]]
+    far = []
+    for i, (x, z) in enumerate(rpts_route):
+        (ax, az), (bx, bz) = rpts_route[max(0, i - 1)], rpts_route[min(len(rpts_route) - 1, i + 1)]
+        dx, dz = bx - ax, bz - az
+        l = math.hypot(dx, dz) or 1.0
+        rx_, rz_ = dz / l, -dx / l
+        off = (rpts[i][0] - x) * rx_ + (rpts[i][1] - z) * rz_
+        far.append(round(off * 2.0 + route["width"] / 2.0 + 2.5, 1))
+    route["farEdge"] = far
     with open(os.path.join(out_dir, "route.json"), "w") as f:
         json.dump(route, f)
     with open(os.path.join(out_dir, "markers.json"), "w") as f:
