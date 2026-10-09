@@ -32,6 +32,10 @@ namespace TwentyTons.EditorTools
             ConfigureImport(WorldDir + "/Rail.obj");
             ConfigureImport(WorldDir + "/Markings.obj");
             ConfigureImport(WorldDir + "/Kerbs.obj");
+            ConfigureImport(WorldDir + "/Walls.obj");
+            ConfigureImport(WorldDir + "/Median.obj");
+            EnsureLayer("Wheels");
+            EnsureLayer("NoWheels");
             AssetDatabase.Refresh();
 
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -68,6 +72,16 @@ namespace TwentyTons.EditorTools
             Place(WorldDir + "/Rail.obj", "MRT Line 6 viaduct", rail, withColliders: true);
             Place(WorldDir + "/Markings.obj", "Lane markings", paint, withColliders: false);
             Place(WorldDir + "/Kerbs.obj", "Pavements and median", kerb, withColliders: true);
+            // The median barrier and the invisible tall wall over it go on a layer the wheels ignore: a wheel
+            // ray that finds the top of a barrier climbs it; the body still meets both (PhysicsBus sets the matrix).
+            int noWheels = LayerMask.NameToLayer("NoWheels");
+            // The barrier itself is only drawn: with a collider its 1.1 m top face lifts a body that has pushed
+            // into the wall by one step, and from there the body climbs. The tall wall alone does the stopping.
+            var median = Place(WorldDir + "/Median.obj", "Median barrier", kerb, withColliders: false);
+            if (median != null) foreach (var t in median.GetComponentsInChildren<Transform>()) t.gameObject.layer = noWheels;
+            var walls = Place(WorldDir + "/Walls.obj", "Invisible walls", kerb, withColliders: true);
+            if (walls != null) foreach (var r in walls.GetComponentsInChildren<MeshRenderer>()) r.enabled = false;
+            if (walls != null) foreach (var t in walls.GetComponentsInChildren<Transform>()) t.gameObject.layer = noWheels;
 
             // Route markers: stands and junctions, as named empties for milestones 4 and 5.
             var markers = new GameObject("Route markers");
@@ -146,6 +160,20 @@ namespace TwentyTons.EditorTools
             rig.Target = bus.transform;
         }
 
+        /// <summary>Make sure a named layer exists in the project's TagManager (first free user layer).</summary>
+        private static void EnsureLayer(string name)
+        {
+            if (LayerMask.NameToLayer(name) >= 0) return;
+            var tagManager = new SerializedObject(AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset")[0]);
+            SerializedProperty layers = tagManager.FindProperty("layers");
+            for (int i = 8; i < layers.arraySize; i++)
+            {
+                SerializedProperty slot = layers.GetArrayElementAtIndex(i);
+                if (string.IsNullOrEmpty(slot.stringValue)) { slot.stringValue = name; tagManager.ApplyModifiedProperties(); return; }
+            }
+            Debug.LogError("no free layer for " + name);
+        }
+
         /// <summary>OBJ import settings from the plan: metres, no lightmap UVs, medium compression.</summary>
         private static void ConfigureImport(string path)
         {
@@ -208,10 +236,10 @@ namespace TwentyTons.EditorTools
             return mat;
         }
 
-        private static void Place(string path, string name, Material material, bool withColliders)
+        private static GameObject Place(string path, string name, Material material, bool withColliders)
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-            if (prefab == null) { Debug.LogError("missing " + path); return; }
+            if (prefab == null) { Debug.LogError("missing " + path); return null; }
             var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
             go.name = name;
             go.transform.position = Vector3.zero;
@@ -222,6 +250,7 @@ namespace TwentyTons.EditorTools
                 if (withColliders) r.gameObject.AddComponent<MeshCollider>();
                 GameObjectUtility.SetStaticEditorFlags(r.gameObject, StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccluderStatic | StaticEditorFlags.OccludeeStatic);
             }
+            return go;
         }
 
         /// <summary>What the scene costs: printed to the log, compared with the plan's budget.</summary>

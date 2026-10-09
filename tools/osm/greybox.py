@@ -12,6 +12,9 @@ Reads the .osm XML (download: tools/osm/fetch.sh) and writes into the output fol
     Rail.obj          the MRT Line 6 viaduct along the main road: a deck 12 m up, piers in the median
     Markings.obj      lane lines: solid edges, dashed lane lines, a double line down the middle
     Kerbs.obj         raised pavements beside the main roads and the median barrier under the piers
+    Median.obj        the median barrier under the piers, its own mesh: in Unity it goes on a layer the
+                      wheels ignore (the body still hits it), so a bus cannot climb it
+    Walls.obj         invisible colliders: a tall wall over the median barrier, same layer
     centrelines.json  every drivable road as a polyline in metres, with class, width, name and the
                       junction nodes it shares: the input for the traffic corridors (milestone 3)
     markers.json      the named points of the route (stands, junctions) in local metres
@@ -292,7 +295,10 @@ def load(path):
 KERB_HEIGHT = 0.15
 LINE_WIDTH = 0.15
 MEDIAN_WIDTH = 3.0
-MEDIAN_HEIGHT = 0.9          # a concrete barrier a wheel cannot climb; 0.6 let the physics bus ride over it
+WALL_HEIGHT = 4.5            # the invisible collider over the median: taller than the bus body (3.2 m + clearance).
+                             # A hollow mesh shorter than the body has its top face inside the body's box the moment
+                             # they overlap, and that face lifts the box: that is how the bus climbed 1.1 and 2.6 m walls.
+MEDIAN_HEIGHT = 1.1          # a concrete barrier the body cannot ride up; 0.6 and 0.9 both let the physics bus climb onto it
 MARK_Y = 0.02          # paint sits just above the road so the two do not fight for the pixel
 
 
@@ -362,6 +368,11 @@ def building_height(tags):
     except ValueError:
         pass
     return DEFAULT_LEVELS * LEVEL_HEIGHT
+
+
+def body_safe(height):
+    """No block shorter than the bus body (3.2 m plus clearance): see WALL_HEIGHT."""
+    return max(height, 3.8)
 
 
 def smooth_polyline(points, spacing=5.0, window=12.0, passes=3):
@@ -694,7 +705,7 @@ def main(osm_path, out_dir, building_radius):
         if polygon_area(pts) < 0:
             pts.reverse()
         base = RAIL_DECK_HEIGHT if elevated else 0.0
-        h = base + (8.0 if elevated else building_height(tags))
+        h = base + (8.0 if elevated else body_safe(building_height(tags)))
         n = len(pts)
         verts = [(x, base, z) for x, z in pts] + [(x, h, z) for x, z in pts]
 
@@ -714,6 +725,8 @@ def main(osm_path, out_dir, building_radius):
     # sits a few metres off it: deck, piers every 30 m, and the median barrier between the carriageways.
     route = main_road_route(centrelines, junctions)
     rail = ObjWriter()
+    walls = ObjWriter()
+    median = ObjWriter()
     rpts = median_line(route, centrelines)
     if len(rpts) >= 2:
         top, quads = offset_ribbon(rpts, 0.0, RAIL_DECK_WIDTH, RAIL_DECK_HEIGHT)
@@ -757,7 +770,9 @@ def main(osm_path, out_dir, building_radius):
                         cross.add(tuple(junctions[nd]))
         for piece in cut_at_junctions(rpts, cross):
             v, f = box_ribbon(piece, 0.0, MEDIAN_WIDTH, MEDIAN_HEIGHT)
-            kerbs.add("Median", v, f)
+            median.add("Median", v, f)
+            v, f = box_ribbon(piece, 0.0, MEDIAN_WIDTH, WALL_HEIGHT)
+            walls.add("MedianWall", v, f)
         print(f"median barrier opens at {len(cross)} crossings")
 
     roads.write(os.path.join(out_dir, "Roads.obj"))
@@ -765,6 +780,8 @@ def main(osm_path, out_dir, building_radius):
     rail.write(os.path.join(out_dir, "Rail.obj"))
     markings.write(os.path.join(out_dir, "Markings.obj"))
     kerbs.write(os.path.join(out_dir, "Kerbs.obj"))
+    walls.write(os.path.join(out_dir, "Walls.obj"))
+    median.write(os.path.join(out_dir, "Median.obj"))
     with open(os.path.join(out_dir, "centrelines.json"), "w") as f:
         json.dump({"origin": {"lat": ORIGIN_LAT, "lon": ORIGIN_LON}, "frame": "x east, z north, metres",
                    "attribution": "Map data (c) OpenStreetMap contributors, ODbL",
@@ -789,9 +806,9 @@ def main(osm_path, out_dir, building_radius):
 
     print(f"roads: {len(centrelines)} ways, {roads.triangles} triangles in {len(roads.objects)} cells; {len(junctions)} junction nodes")
     print(f"buildings: {kept} kept within {building_radius:.0f} m of the main road ({skipped} beyond, {on_road} dropped for standing on a road), {buildings.triangles} triangles in {len(buildings.objects)} cells")
-    print(f"rail: {rail.triangles} triangles; markings {markings.triangles}; kerbs and median {kerbs.triangles}")
+    print(f"rail: {rail.triangles} triangles; markings {markings.triangles}; kerbs {kerbs.triangles}; median {median.triangles}")
     print(f"route: {len(route['points'])} points, {route['length']:.0f} m, width {route['width']:.0f} m")
-    print(f"total {roads.triangles + buildings.triangles + rail.triangles + markings.triangles + kerbs.triangles} triangles (budget 400k, docs/OSM_IMPORT_PLAN.md)")
+    print(f"total {roads.triangles + buildings.triangles + rail.triangles + markings.triangles + kerbs.triangles + median.triangles} triangles (budget 400k, docs/OSM_IMPORT_PLAN.md)")
 
 
 if __name__ == "__main__":

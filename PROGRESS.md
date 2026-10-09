@@ -209,6 +209,21 @@ One entry per session. The next session reads this first.
 - Note for next time: a public field on a MonoBehaviour is saved in the scene, so changing its
   default in C# changes nothing until the scene is rebuilt. That hid the new threshold for one run.
 
+**Step 42 — the bus cannot climb the median; T tows it back** (done)
+
+- Owner: "look I'm stuck": high-centred on the median barrier, one front wheel on top, the opposite
+  rear in the air, the body resting on the concrete. Three things, all found by instrumented runs:
+  a wheel ray that finds the top of a wall climbs it, and a body lifted a little by a contact finds
+  it; a hollow mesh obstacle shorter than the body has its top face inside the body's box the moment
+  they overlap horizontally, and that face lifts the box (so 1.1 and 2.6 m walls were both climbed);
+  the 1.1 m barrier's own collider was that first lift. Now: the median is drawn only (`Median.obj`,
+  no collider); an invisible 4.5 m wall over it (`Walls.obj`) does the stopping; wheels are on a layer
+  that ignores it (`Wheels` × `NoWheels` off in the matrix, set by `PhysicsBus`); the body's collider
+  floor is 0.2 m with a slippery skin; no block is shorter than the body (3.8 m). Rammed at 35, 50 and
+  55 km/h, full lock, empty and with 90 riders: body stays down, all wheels on the road, reverses off.
+- `T` tows the bus back onto the kerb lane at the same point of the route, standing: the people and
+  the truck of a real beaching, to be charged by the ledger later. The readout names it.
+
 ## 8 Oct 2026 — Moved to the owner's Mac
 
 - The cloud session was teleported into Claude Code on the MacBook Air; the game lives in

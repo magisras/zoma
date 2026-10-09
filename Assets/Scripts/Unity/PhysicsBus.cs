@@ -22,6 +22,7 @@ namespace TwentyTons.Unity
 
         private BusSettings _b;
         private float _wheelRadius;
+        private static PhysicsMaterial _skin;
 
         /// <summary>Make the body and the wheels on this object. Called by the scene builder and on load.</summary>
         public void Build(BusSettings b, VehicleShape shape)
@@ -42,9 +43,13 @@ namespace TwentyTons.Unity
             box.isTrigger = false;
             // Ground clearance of the collider: low enough that a 0.9 m median barrier or a pier meets the
             // body before the raycast wheels can ride up onto it, high enough to clear a 0.15 m kerb.
-            float floor = 0.3f;
+            float floor = 0.2f;
             box.center = new Vector3(0f, (floor + shape.Height) * 0.5f, 0f);
             box.size = new Vector3(shape.Width, shape.Height - floor, shape.Length);
+            // Steel on concrete slides: a low-friction skin so the body scrapes along a wall or a pier
+            // instead of sticking to it and lifting itself up (the owner was high-centred on the median).
+            if (_skin == null) _skin = new PhysicsMaterial("Bus skin") { dynamicFriction = 0.15f, staticFriction = 0.15f, bounciness = 0f, frictionCombine = PhysicsMaterialCombine.Minimum };
+            box.material = _skin;
 
             Wheels = new WheelCollider[4];
             float track = shape.Width * 0.5f - 0.3f;
@@ -86,6 +91,14 @@ namespace TwentyTons.Unity
             SetLoad(0);
             // The sub-steps PhysX uses for the wheels at speed: more keep a heavy bus from jittering.
             Wheels[0].ConfigureVehicleSubsteps(5f, 12, 15);
+            // Wheels on their own layer, blind to the median barrier and the invisible walls (layer NoWheels):
+            // a wheel ray that finds the top of a wall climbs it, and lifted a little by a contact it finds it.
+            int wheels = LayerMask.NameToLayer("Wheels"), noWheels = LayerMask.NameToLayer("NoWheels");
+            if (wheels >= 0 && noWheels >= 0)
+            {
+                for (int i = 0; i < 4; i++) Wheels[i].gameObject.layer = wheels;
+                UnityEngine.Physics.IgnoreLayerCollision(wheels, noWheels, true);
+            }
         }
 
         /// <summary>Riders aboard: mass and the centre of mass (standing people raise it).</summary>

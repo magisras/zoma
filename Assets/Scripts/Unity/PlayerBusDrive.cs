@@ -154,6 +154,26 @@ namespace TwentyTons.Unity
             else Apply();
         }
 
+        /// <summary>
+        /// The tow: a bus beached on the median or wedged in a lane gets pushed back onto the road by
+        /// the people around it, or dragged by a truck. Here, for now, it is put on the kerb lane at the
+        /// same point of the route, standing, facing along it. The ledger will charge for it later.
+        /// </summary>
+        public void Tow()
+        {
+            float s = Agent.S;
+            Agent.Position = Corridor.PositionAt(s, StartLateral);
+            Vector3 ahead = Corridor.PositionAt(s + 5f, StartLateral) - Agent.Position;
+            Agent.Yaw = Mathf.Atan2(ahead.x, ahead.z);
+            Agent.Speed = 0f;
+            Bus.SteerAngle = 0f;
+            Rolled = false; _rolledAt = -1f;
+            Corridor.Project(Agent.Position, out Agent.S, out Agent.Lateral);
+            _lastLateral = Agent.Lateral; _wasOnPavement = false;
+            if (Physics != null) Physics.Teleport(Agent.Position, Agent.Yaw);
+            else Apply();
+        }
+
         // ---------------------------------------------------------------- input
 
         private void Update()
@@ -170,6 +190,7 @@ namespace TwentyTons.Unity
             if (Scripted) { throttle = ScriptThrottle; brake = ScriptBrake; steerWanted = ScriptSteer; reverse = ScriptReverse; }
 
             if (k.rKey.wasPressedThisFrame) { PlaceAtStart(); return; }
+            if (k.tKey.wasPressedThisFrame) { Tow(); return; }
             if (k.rightBracketKey.wasPressedThisFrame) SetRiders(Bus.Passengers + 10);
             if (k.leftBracketKey.wasPressedThisFrame) SetRiders(Bus.Passengers - 10);
 
@@ -366,12 +387,12 @@ namespace TwentyTons.Unity
         {
             if (Bus == null) return;
             float kmh = (Physics != null ? Physics.ForwardSpeed : Agent.Speed) * 3.6f;   // signed: negative when backing
-            string where = Rolled ? "  ON ITS SIDE (R to right it)" : _offRoad ? "  OFF THE ROAD" : _onPavement ? "  ON THE PAVEMENT" : "";
+            string where = Rolled ? "  ON ITS SIDE (T: the men right it)" : _offRoad ? "  OFF THE ROAD" : _onPavement ? "  ON THE PAVEMENT" : "";
             string text =
                 $"{kmh,5:0} km/h   air {Bus.AirPressure * 100f,3:0} %   brakes {Bus.BrakeApplied * 100f,3:0} %  (wear {Bus.BrakeWear * 100f:0} %)\n" +
                 $"{Bus.Passengers} riders, {Bus.MassKg(Tuning.Bus) / 1000f:0.0} t   lateral {LateralAccel:0.0} m/s²   lean {Roll:+0.0;-0.0}°\n" +
                 $"{Agent.S:0} m along, {Agent.Lateral:+0.0;-0.0} m across (kerb at {-_carriagewayHalf:0}){where}\n" +
-                "W/S drive, A/D steer, space full brake, X reverse, [ ] riders, C camera, R reset";
+                "W/S drive, A/D steer, space full brake, X reverse, [ ] riders, C camera, T tow back to the lane, R back to the stand";
             GUI.Label(new Rect(16f, 12f, 900f, 120f), text, new GUIStyle(GUI.skin.label) { fontSize = 18, richText = false });
         }
 
