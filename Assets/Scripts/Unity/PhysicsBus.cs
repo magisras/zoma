@@ -115,7 +115,7 @@ namespace TwentyTons.Unity
             AntiRoll(0, 1);
             AntiRoll(2, 3);
 
-            float driveForce = Body.mass * engineAccel * (reverse ? -0.35f : 1f);
+            float driveForce = Body.mass * engineAccel * (reverse ? -0.5f : 1f);     // reverse gear: low, strong enough to climb off a kerb
             float motorTorque = driveForce * _wheelRadius * 0.5f;              // two driven wheels
             float brakeTorque = Body.mass * brakeDecel * _wheelRadius * 0.25f;  // four braked wheels
             if (reverse && forwardSpeed > 0.5f) { motorTorque = 0f; brakeTorque = Mathf.Max(brakeTorque, Body.mass * 2f * _wheelRadius * 0.25f); }
@@ -124,8 +124,9 @@ namespace TwentyTons.Unity
                 Wheels[i].motorTorque = i >= 2 ? motorTorque : 0f;
                 Wheels[i].brakeTorque = brakeTorque;
             }
-            // The governor: the engine will not push past the top speed.
+            // The governor: the engine will not push past the top speed; reverse is a walking pace.
             if (forwardSpeed * 3.6f > _b.MaxSpeedKmh) for (int i = 2; i < 4; i++) Wheels[i].motorTorque = 0f;
+            if (reverse && forwardSpeed < -2.5f) for (int i = 2; i < 4; i++) Wheels[i].motorTorque = 0f;
         }
 
         /// <summary>

@@ -179,6 +179,14 @@ One entry per session. The next session reads this first.
   45 climbs (9°); sideways at 25 climbs (11°); sideways at 45 with 60 riders goes to 35° and comes
   back; sideways at 50 with 90 riders goes over. R rights it for now; the rope and the men come later.
 
+**Step 39 — reverse is a gear** (done)
+
+- Owner: "when I get on curb, reverse not always work". In the physics body reverse was a negative
+  torque scaled by the core engine's output, and the core gives nothing without the throttle, so X
+  alone did nothing. X now opens the throttle (reverse gear, half torque, walking pace). Tested: onto
+  the pavement at 25 km/h, stop, X with the wheel turned, back on the road in six seconds. The
+  readout shows the signed speed, negative when backing.
+
 ## 8 Oct 2026 — Moved to the owner's Mac
 
 - The cloud session was teleported into Claude Code on the MacBook Air; the game lives in

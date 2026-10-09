@@ -53,7 +53,7 @@ namespace TwentyTons.Unity
         public PhysicsBus Physics { get; private set; }
 
         /// <summary>One line of state for a test log.</summary>
-        public string Status => $"t={_clock:0.0} s={Agent.S:0.0} lat={Agent.Lateral:0.00} v={Agent.Speed * 3.6f:0.0}km/h air={Bus.AirPressure:0.00} applied={Bus.BrakeApplied:0.00} wear={Bus.BrakeWear:0.00} riders={Bus.Passengers} yaw={Agent.Yaw * Mathf.Rad2Deg:0} latAcc={LateralAccel:0.0} roll={Roll:0.0}";
+        public string Status => $"t={_clock:0.0} s={Agent.S:0.0} lat={Agent.Lateral:0.00} v={(Physics != null ? Physics.ForwardSpeed : Agent.Speed) * 3.6f:0.0}km/h air={Bus.AirPressure:0.00} applied={Bus.BrakeApplied:0.00} wear={Bus.BrakeWear:0.00} riders={Bus.Passengers} yaw={Agent.Yaw * Mathf.Rad2Deg:0} latAcc={LateralAccel:0.0} roll={Roll:0.0}";
 
         private float _steerInput, _throttle, _brake, _steerWanted, _clock;
         private bool _reverse, _onPavement, _offRoad;
@@ -195,7 +195,8 @@ namespace TwentyTons.Unity
         private void PhysicsStep(float dt)
         {
             _steerInput = Mathf.MoveTowards(_steerInput, _steerWanted, SteerInputRate * dt * (_steerWanted == 0f ? 2f : 1f));
-            Bus.Throttle = _throttle;
+            // Reverse is a gear: X alone opens the throttle, the body gets a backward torque.
+            Bus.Throttle = _reverse ? Mathf.Max(_throttle, 1f) : _throttle;
             Bus.Brake = _brake;
             Bus.Steer = _steerInput;
             float forward = Physics.ForwardSpeed;
@@ -355,7 +356,7 @@ namespace TwentyTons.Unity
         private void OnGUI()
         {
             if (Bus == null) return;
-            float kmh = Agent.Speed * 3.6f;
+            float kmh = (Physics != null ? Physics.ForwardSpeed : Agent.Speed) * 3.6f;   // signed: negative when backing
             string where = Rolled ? "  ON ITS SIDE (R to right it)" : _offRoad ? "  OFF THE ROAD" : _onPavement ? "  ON THE PAVEMENT" : "";
             string text =
                 $"{kmh,5:0} km/h   air {Bus.AirPressure * 100f,3:0} %   brakes {Bus.BrakeApplied * 100f,3:0} %  (wear {Bus.BrakeWear * 100f:0} %)\n" +
