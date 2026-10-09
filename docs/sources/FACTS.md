@@ -135,3 +135,12 @@ or inference. Add rows as research lands; never delete a row, mark it superseded
 | Jan 2026 | mandatory e-ticketing | S-022.8 |
 | Feb–Apr 2026 | one company per route, 388 routes to 40–45 | S-022.8 |
 | Apr 2026 | AI traffic cameras | S-022.5 |
+
+## The bus itself
+
+| Fact | Source | Grade |
+|---|---|---|
+| Locally built body on a truck chassis: flat front, high waistline, grilled sliding windows, one left door, roof hatches | S-026.1 | A |
+| The helper rides in the open left door | S-026.2, S-017 | A |
+| The route painted along the side as a list of stops with a route number | S-026.3 | A |
+| Two sizes at the kerb: the 52-seat full-size and the minibus with a roof rack | S-026.4 | A |

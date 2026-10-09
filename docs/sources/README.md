@@ -50,3 +50,4 @@ with attribution in the game and its docs; do not republish the texts.
 | S-023 | Research sweep: Bangla press and forums | 5 Oct 2026 | bn |
 | S-024 | The owner's statements | Oct 2026 | — |
 | S-025 | Earlier research documents in this repo | — | — |
+| S-026 | Street photographs of Dhaka local buses (Commons) | 2012–18 | — |
