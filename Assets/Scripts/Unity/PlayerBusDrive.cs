@@ -215,13 +215,21 @@ namespace TwentyTons.Unity
             // road altogether at speed (the ditch, the railing). Both need RolloverSpeedMs, 36 km/h.
             BusSettings b = Tuning.Bus;
             float lateralVel = (Agent.Lateral - _lastLateral) / dt;
-            bool kerbHit = _onPavement && !_wasOnPavement && Mathf.Abs(lateralVel) > KerbTripSidewaysMs;
+            // A 15 cm kerb trips a bus only when it is thrown at it sideways at speed, and a top-heavy
+            // (loaded, people standing) bus far sooner than an empty one: the threshold is the full-load
+            // figure, up to 60 % higher for an empty bus. Owner, 9 Oct: an empty bus at 40 km/h at 34°
+            // went over under the first rule, which no real bus would.
+            float load = Mathf.Clamp01(Bus.Passengers / (float)Mathf.Max(1, b.CrushCapacity));
+            float tripAt = KerbTripSidewaysMs * (1f + 0.6f * (1f - load));
+            bool kerbHit = _onPavement && !_wasOnPavement && Mathf.Abs(lateralVel) > tripAt;
             float beyond = Mathf.Max(-Agent.Lateral - Corridor.HalfWidth, Agent.Lateral - far) - b.OffRoadToleranceMetres;
             if (!Rolled && forward >= b.RolloverSpeedMs && (kerbHit || beyond > b.OffRoadRolloverMetres))
             {
                 Rolled = true;
                 _rolledAt = _clock;
                 Physics.Trip(lateralVel < 0f ? -1f : 1f);
+                float angle = Mathf.Atan2(Mathf.Abs(lateralVel), Mathf.Max(0.1f, forward)) * Mathf.Rad2Deg;
+                Debug.Log($"TRIP: {(kerbHit ? "kerb" : "off the road")} at {forward * 3.6f:0} km/h, sideways {Mathf.Abs(lateralVel):0.0} m/s ({angle:0}° to the kerb), threshold {tripAt:0.0}, {Bus.Passengers} riders, s={Agent.S:0} lat={Agent.Lateral:0.0}");
             }
             _wasOnPavement = _onPavement;
             _lastLateral = Agent.Lateral;
@@ -235,9 +243,10 @@ namespace TwentyTons.Unity
         public bool Rolled { get; private set; }
         private float _rolledAt = -1f, _lastLateral;
         private bool _wasOnPavement;
-        [Tooltip("Sideways speed into the kerb that trips the outer wheels, m/s, at or above the rollover speed. A bus drifting " +
-                 "onto the pavement at a shallow angle climbs it; one thrown at it sideways goes over. placeholder")]
-        public float KerbTripSidewaysMs = 2.5f;
+        [Tooltip("Sideways speed into the kerb that trips a fully loaded bus, m/s, at or above the rollover speed; an empty bus " +
+                 "needs 60 % more. 4.5 is 40 km/h at about 24° for a full bus, 40° for an empty one. A shallow drift onto the " +
+                 "pavement climbs it; a bus thrown at the kerb sideways goes over. placeholder")]
+        public float KerbTripSidewaysMs = 4.5f;
 
         private void SyncAgentFromBody()
         {

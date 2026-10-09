@@ -196,6 +196,19 @@ One entry per session. The next session reads this first.
   tired dampers. Full lock at 50 with 90 riders: 11.6°, stays up. Sideways into the kerb at 50 with 90:
   over. The Step 38 lean figures were measured with the bar backwards and are superseded.
 
+**Step 41 — the kerb trip needs a load and a real sideways hit** (done)
+
+- Owner: "I just hit a curb and fell over, this does not make sense." The record: empty bus, 40 km/h,
+  34° onto the kerb, tripped by a 2.5 m/s sideways threshold that ignored the load. No real empty bus
+  goes over on a 15 cm kerb like that. The threshold is now `KerbTripSidewaysMs` 4.5 for a full bus,
+  60 % higher for an empty one, and every trip is logged (`TRIP: …` in the editor log, with speed,
+  sideways speed, angle, threshold, riders) so the next surprise can be read instead of guessed.
+- Measured from the kerb lane at full lock, 40 to 55 km/h, empty or 90 riders: the bus climbs the
+  kerb with 5-10° of lurch and stays up, because from the kerb lane it cannot reach the kerb at more
+  than about 15°. A trip now needs a steep hit from further out across the carriageway, loaded.
+- Note for next time: a public field on a MonoBehaviour is saved in the scene, so changing its
+  default in C# changes nothing until the scene is rebuilt. That hid the new threshold for one run.
+
 ## 8 Oct 2026 — Moved to the owner's Mac
 
 - The cloud session was teleported into Claude Code on the MacBook Air; the game lives in
