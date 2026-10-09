@@ -161,6 +161,24 @@ One entry per session. The next session reads this first.
   the lingering wallow (needs the owner's judgement on `SuspensionDamping`), real Ackermann, dual rear
   tyres. The kinematic drive remains for a bus without a `PhysicsBus` and for the sandbox.
 
+## 9 Oct 2026
+
+**Step 38 — the bus tips the way a real one does: tyres first, then a trip** (done)
+
+- Owner: "I think I am too easy to make bus fall on its side. Do real buses have such bad balance?"
+  No: on dry tarmac a loaded bus holds about 0.65 g sideways and ploughs wide before it tips at about
+  0.7 g; nearly every real rollover is tripped (docs/BUS.md §5). The first physics body had tyres at
+  about 1 g and the centre of mass at 1.4 m, so the body went over with the tyres still holding.
+- Now: `TyreSidewaysGrip` 0.65 on the wheel colliders' friction curve, an anti-roll bar per axle
+  (`AntiRollNewtonsPerMetre` 60k), centre of mass 1.1 m (asset updated). Full lock at 40, 50 and
+  55 km/h, empty and with 90 riders: 8-11° of lean, ploughs, stays up. Three swerves at 45 with 60
+  riders: 8°, stays up.
+- The trip: raycast wheels climb a kerb smoothly, so the tripped rollover is a rule from the core
+  (`RolloverSpeedMs` 36 km/h, `OffRoadRolloverMetres`) plus `KerbTripSidewaysMs` 2.5: hit the kerb
+  sideways at speed and `PhysicsBus.Trip` throws the body over physically. Measured: shallow mount at
+  45 climbs (9°); sideways at 25 climbs (11°); sideways at 45 with 60 riders goes to 35° and comes
+  back; sideways at 50 with 90 riders goes over. R rights it for now; the rope and the men come later.
+
 ## 8 Oct 2026 — Moved to the owner's Mac
 
 - The cloud session was teleported into Claude Code on the MacBook Air; the game lives in

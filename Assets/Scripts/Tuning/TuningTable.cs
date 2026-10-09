@@ -527,7 +527,13 @@ namespace TwentyTons.Tuning
         public float SuspensionTravelMetres = 0.28f;
         [Tooltip("Height of the loaded bus's centre of mass above the road, metres: a body on a truck chassis full of standing " +
                  "people is top-heavy, which is the lean in every bend and the tip in a hard one. placeholder")]
-        public float CentreOfMassMetres = 1.4f;
+        public float CentreOfMassMetres = 1.1f;
+        [Tooltip("What the tyres hold sideways as a fraction of the weight (friction curve peak). Dry tarmac under a loaded bus " +
+                 "is about 0.65-0.7: the front washes out and the bus ploughs wide before it tips (docs/BUS.md §5). placeholder")]
+        public float TyreSidewaysGrip = 0.65f;
+        [Tooltip("Anti-roll bar stiffness, N per metre of difference in suspension compression across an axle. Every bus " +
+                 "chassis has one; it limits the lean and keeps the inner wheels down. placeholder")]
+        public float AntiRollNewtonsPerMetre = 60000f;
         [Tooltip("Front axle, metres ahead of the body's centre; the rear axle is this minus WheelbaseMetres. placeholder")]
         public float FrontAxleMetres = 3.2f;
         [Tooltip("Wheel radius, metres: 10.00-20 tyres on a Tata chassis. placeholder")]

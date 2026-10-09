@@ -112,9 +112,18 @@ MonoBehaviour:
     StartingPassengers: 0
     OffRoadToleranceMetres: 2
     OffRoadDecelMs2: 1.2
+    SuspensionHz: 1
+    SuspensionDamping: 0.14
+    SuspensionTravelMetres: 0.28
+    CentreOfMassMetres: 1.1
+    TyreSidewaysGrip: 0.65
+    AntiRollNewtonsPerMetre: 60000
+    FrontAxleMetres: 3.2
+    WheelRadiusMetres: 0.52
     OffRoadRolloverMetres: 1.5
     RolloverSpeedMs: 10
     TyreGripMs2: 7
+    TyreScrubDecelMs2: 2.5
     RolloverHoldSeconds: 0.8
     RolloverLateralAccelMs2: 6.5
   Spawn:

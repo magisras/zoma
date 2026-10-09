@@ -75,7 +75,13 @@ namespace TwentyTons.Unity
                 w.suspensionSpring = new JointSpring { spring = k, damper = c, targetPosition = 0.5f };
                 w.mass = 60f;
                 var fwd = w.forwardFriction; fwd.stiffness = 1.0f; w.forwardFriction = fwd;
-                var side = w.sidewaysFriction; side.stiffness = i < 2 ? 0.9f : 1.0f; w.sidewaysFriction = side;
+                // Sideways: the real grip of a loaded bus on tarmac, so it ploughs before it tips. The curve's
+                // peak is the grip; past the slip the force settles a little lower.
+                var side = w.sidewaysFriction;
+                side.extremumSlip = 0.25f; side.extremumValue = b.TyreSidewaysGrip;
+                side.asymptoteSlip = 0.6f; side.asymptoteValue = b.TyreSidewaysGrip * 0.85f;
+                side.stiffness = 1.0f;
+                w.sidewaysFriction = side;
             }
             SetLoad(0);
             // The sub-steps PhysX uses for the wheels at speed: more keep a heavy bus from jittering.
@@ -106,6 +112,9 @@ namespace TwentyTons.Unity
             Wheels[0].steerAngle = steerDeg;
             Wheels[1].steerAngle = steerDeg;
 
+            AntiRoll(0, 1);
+            AntiRoll(2, 3);
+
             float driveForce = Body.mass * engineAccel * (reverse ? -0.35f : 1f);
             float motorTorque = driveForce * _wheelRadius * 0.5f;              // two driven wheels
             float brakeTorque = Body.mass * brakeDecel * _wheelRadius * 0.25f;  // four braked wheels
@@ -117,6 +126,28 @@ namespace TwentyTons.Unity
             }
             // The governor: the engine will not push past the top speed.
             if (forwardSpeed * 3.6f > _b.MaxSpeedKmh) for (int i = 2; i < 4; i++) Wheels[i].motorTorque = 0f;
+        }
+
+        /// <summary>
+        /// The anti-roll bar of an axle: a force pair proportional to how differently the two wheels are
+        /// compressed, pushing the outer side up and the inner side down. Keeps the lean to what a bus
+        /// shows and the inner wheels on the road until the tyres have let go.
+        /// </summary>
+        private void AntiRoll(int left, int right)
+        {
+            WheelCollider l = Wheels[left], r = Wheels[right];
+            float travelL = Compression(l), travelR = Compression(r);
+            float force = (travelL - travelR) * _b.AntiRollNewtonsPerMetre;
+            if (l.isGrounded) Body.AddForceAtPosition(l.transform.up * -force, l.transform.position);
+            if (r.isGrounded) Body.AddForceAtPosition(r.transform.up * force, r.transform.position);
+        }
+
+        /// <summary>How far this wheel's spring is compressed, metres, 0 when hanging free.</summary>
+        private float Compression(WheelCollider w)
+        {
+            if (!w.GetGroundHit(out WheelHit hit)) return 0f;
+            float extension = (-w.transform.InverseTransformPoint(hit.point).y - w.radius) / w.suspensionDistance;
+            return (1f - Mathf.Clamp01(extension)) * w.suspensionDistance;
         }
 
         /// <summary>Hold the bus to a speed with the brakes (the pavement crawl, the dirt): a soft cap.</summary>
@@ -138,6 +169,20 @@ namespace TwentyTons.Unity
                 WheelMeshes[i].position = pos;
                 WheelMeshes[i].rotation = rot;
             }
+        }
+
+        /// <summary>
+        /// The tripped rollover (docs/BUS.md §5: nearly every bus rollover is a kerb, a ditch or a railing
+        /// catching the wheels at speed). Raycast wheels climb a kerb smoothly, so the trip is a rule from
+        /// the core's Rollover: past the road at speed, the outer wheels catch and the body is thrown over.
+        /// `side` is +1 to fall to the right, -1 to the left.
+        /// </summary>
+        public void Trip(float side)
+        {
+            if (Body == null) return;
+            float impulse = Body.mass * 6.5f;                               // enough to put twenty tons past its balance
+            Body.AddTorque(-transform.forward * side * impulse, ForceMode.Impulse);
+            Body.AddForce(Vector3.up * Body.mass * 2.5f, ForceMode.Impulse);
         }
 
         /// <summary>Put the body somewhere, at rest.</summary>

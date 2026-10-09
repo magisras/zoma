@@ -149,6 +149,7 @@ namespace TwentyTons.Unity
             _steerInput = 0f;
             _clock = 0f;
             Corridor.Project(Agent.Position, out Agent.S, out Agent.Lateral);
+            Rolled = false; _rolledAt = -1f; _lastLateral = Agent.Lateral; _wasOnPavement = false;
             if (Physics != null) Physics.Teleport(Agent.Position, Agent.Yaw);
             else Apply();
         }
@@ -207,9 +208,35 @@ namespace TwentyTons.Unity
             if (_offRoad) Physics.Cap(OffRoadKmh / 3.6f, forward);
             else if (_onPavement) Physics.Cap(PavementKmh / 3.6f, forward);
 
+            // The tripped rollover: leaving the road further than the tolerance at speed, the wheels catch
+            // (the core's rule, Rollover.Check "left the road at speed"); the body is thrown physically.
+            // Two trips: the kerb hit sideways at speed (the outer wheels catch the step), and leaving the
+            // road altogether at speed (the ditch, the railing). Both need RolloverSpeedMs, 36 km/h.
+            BusSettings b = Tuning.Bus;
+            float lateralVel = (Agent.Lateral - _lastLateral) / dt;
+            bool kerbHit = _onPavement && !_wasOnPavement && Mathf.Abs(lateralVel) > KerbTripSidewaysMs;
+            float beyond = Mathf.Max(-Agent.Lateral - Corridor.HalfWidth, Agent.Lateral - far) - b.OffRoadToleranceMetres;
+            if (!Rolled && forward >= b.RolloverSpeedMs && (kerbHit || beyond > b.OffRoadRolloverMetres))
+            {
+                Rolled = true;
+                _rolledAt = _clock;
+                Physics.Trip(lateralVel < 0f ? -1f : 1f);
+            }
+            _wasOnPavement = _onPavement;
+            _lastLateral = Agent.Lateral;
+            if (Rolled && Mathf.Abs(Physics.RollDegrees) < 20f && _clock - _rolledAt > 3f) Rolled = false;   // righted (R) or it rocked back
+
             SyncAgentFromBody();
             _clock += dt;
         }
+
+        /// <summary>On its side. R puts it back on its wheels for now; the rope and the men come later.</summary>
+        public bool Rolled { get; private set; }
+        private float _rolledAt = -1f, _lastLateral;
+        private bool _wasOnPavement;
+        [Tooltip("Sideways speed into the kerb that trips the outer wheels, m/s, at or above the rollover speed. A bus drifting " +
+                 "onto the pavement at a shallow angle climbs it; one thrown at it sideways goes over. placeholder")]
+        public float KerbTripSidewaysMs = 2.5f;
 
         private void SyncAgentFromBody()
         {
@@ -329,7 +356,7 @@ namespace TwentyTons.Unity
         {
             if (Bus == null) return;
             float kmh = Agent.Speed * 3.6f;
-            string where = _offRoad ? "  OFF THE ROAD" : _onPavement ? "  ON THE PAVEMENT" : "";
+            string where = Rolled ? "  ON ITS SIDE (R to right it)" : _offRoad ? "  OFF THE ROAD" : _onPavement ? "  ON THE PAVEMENT" : "";
             string text =
                 $"{kmh,5:0} km/h   air {Bus.AirPressure * 100f,3:0} %   brakes {Bus.BrakeApplied * 100f,3:0} %  (wear {Bus.BrakeWear * 100f:0} %)\n" +
                 $"{Bus.Passengers} riders, {Bus.MassKg(Tuning.Bus) / 1000f:0.0} t   lateral {LateralAccel:0.0} m/s²   lean {Roll:+0.0;-0.0}°\n" +
