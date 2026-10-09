@@ -54,3 +54,15 @@ sandbox/bin/
 sandbox/obj/
 sandbox/out/
 *.slnx
+
+# The world is generated, not stored: make world (Overpass download -> tools/osm/greybox.py -> the
+# scene builder). route.json, chunks.json and markers.json stay in git; the meshes and chunk scenes do not.
+Assets/World/Corridor01/Chunk_*/
+Assets/World/Corridor01/Chunk_*.meta
+Assets/World/Corridor01/centrelines.json
+Assets/World/Corridor01/centrelines.json.meta
+Assets/Scenes/Chunks/
+Assets/Scenes/Chunks.meta
+
+# Python caches
+__pycache__/

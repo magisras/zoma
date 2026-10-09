@@ -8,31 +8,40 @@ Pipeline: **OpenStreetMap → Blender (blosm add-on) → FBX → Unity**. Everyt
 OSM data is ODbL-licensed: "© OpenStreetMap contributors" goes in the game credits and stays in
 this file.
 
-## 0. How it was actually done (8 Oct 2026)
+## 0. How it was actually done (8 Oct 2026, the whole route 10 Oct)
 
-The Blender route below is still valid, but the first import went through a script instead, so it
-can be rerun from a terminal in seconds and the centrelines come out in the same pass:
+The Blender route below is still valid, but the import goes through a script instead, so it can be
+rerun from a terminal in seconds and the centrelines come out in the same pass:
 
 ```
-./tools/osm/fetch.sh mirpur.osm                       # Overpass download of the box in section 1
-python3 tools/osm/greybox.py mirpur.osm Assets/World/Corridor01 300
-unity run . -- -executeMethod TwentyTons.EditorTools.GreyboxSceneBuilder.Build
+make world          # = the three lines below
+./tools/osm/fetch.sh route.osm                        # Overpass download of the corridor along the markers
+python3 tools/osm/greybox.py route.osm Assets/World/Corridor01 300
+unity run . -- -executeMethod TwentyTons.EditorTools.GreyboxSceneBuilder.Build   # or the menu, with the editor open
 ```
 
-`greybox.py` writes `Roads.obj` (ribbons by road class, one mesh per 250 m cell), `Buildings.obj`
-(footprints extruded 3 m a storey, only within 300 m of the main road: the whole box is 36,000
-footprints), `Rail.obj` (the MRT viaduct deck 12 m up with piers every 30 m in the median),
-`centrelines.json` (every drivable way with class, width, name and junction nodes: milestone 3's
-corridors) and `markers.json` (the route points of section 1 in local metres). Origin is the
-Mirpur 12 stand, x east, z north. `GreyboxSceneBuilder` (`Assets/Editor/`) makes the scene from them:
-ground, sun, four grey materials, colliders on roads, blocks and viaduct, the markers, the credit.
-First result: 1,719 road ways, 18,792 blocks, 237k triangles, inside the 400k budget.
-The `.osm` download stays out of the repo (gitignored); the OBJ files are in it for now, Git LFS
-when they grow.
+`greybox.py` carries the route's 16 markers (Mirpur 12 to Azimpur, S-007.6's pickups), stitches the
+route through them in order along the main roads (one-way flow respected, roundabouts with the
+flow), and writes `Chunk_NN/` folders, one per kilometre of route, each with `Roads.obj` (ribbons by
+road class), `Buildings.obj` (footprints extruded 3 m a storey, within 300 m of the route),
+`Rail.obj` (the MRT viaduct 12 m up with piers every 30 m in the median, only where the mapped metro
+follows the road), `Markings.obj`, `Kerbs.obj` (pavements, clipped where they would lie on another
+road), `Median.obj` (drawn only) and `Walls.obj` (the invisible collider over the median). Beside
+them: `route.json` (the polyline, its width, the far kerb per point, which points are dual
+carriageway), `chunks.json` (each chunk's stretch of the route, the streamer's index), `markers.json`,
+`centrelines.json` (every drivable way: milestone 3's corridors). Origin is the Mirpur 12 stand,
+x east, z north.
+
+`GreyboxSceneBuilder` (`Assets/Editor/`) makes one scene per chunk under `Assets/Scenes/Chunks/`
+and the base scene `Corridor01_Greybox` with the sun, the ground, the markers, the bus and the
+`WorldStreamer`, which loads the chunks within 1.2 km of the bus and unloads those beyond 1.7 km.
+Three chunks at a time is under 150k triangles. The 13.6 km route is 14 chunks, 350k triangles in
+all. The `.osm` download, the chunk folders, the chunk scenes and `centrelines.json` are not in
+git: `make world` regenerates them (the owner chose this over Git LFS, 10 Oct 2026).
 
 ## 1. Which 2–3 km
 
-The full route is ~15 km. The first chunk is the northern residential end, where the morning bus
+The full route is 13.6 km as stitched (RESEARCH.md said ~15). The first chunk is the northern residential end, where the morning bus
 fills up and most of the deliberate waiting happens (RESEARCH.md, "The full/empty dial"):
 
 | Point | What it is | Approx. coordinates (lat, lon) |

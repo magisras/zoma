@@ -27,16 +27,57 @@ namespace TwentyTons.EditorTools
         [MenuItem("Twenty Tons/Build Corridor01 grey box")]
         public static void Build()
         {
-            ConfigureImport(WorldDir + "/Roads.obj");
-            ConfigureImport(WorldDir + "/Buildings.obj");
-            ConfigureImport(WorldDir + "/Rail.obj");
-            ConfigureImport(WorldDir + "/Markings.obj");
-            ConfigureImport(WorldDir + "/Kerbs.obj");
-            ConfigureImport(WorldDir + "/Walls.obj");
-            ConfigureImport(WorldDir + "/Median.obj");
+            // One folder per kilometre of route (tools/osm/greybox.py); each becomes a scene of its own
+            // that WorldStreamer loads around the bus. The folders are not in git: make world.
+            string[] chunkDirs = Directory.GetDirectories(WorldDir, "Chunk_*");
+            System.Array.Sort(chunkDirs, string.CompareOrdinal);
+            if (chunkDirs.Length == 0) { Debug.LogError("no " + WorldDir + "/Chunk_* folders: run make world first"); return; }
+            string[] files = { "Roads.obj", "Buildings.obj", "Rail.obj", "Markings.obj", "Kerbs.obj", "Walls.obj", "Median.obj" };
+            foreach (string dir in chunkDirs)
+                foreach (string f in files)
+                    if (File.Exists(dir + "/" + f)) ConfigureImport(dir.Replace('\\', '/') + "/" + f);
             EnsureLayer("Wheels");
             EnsureLayer("NoWheels");
             AssetDatabase.Refresh();
+
+            // Materials: one per surface, so each is a batch. The procedural skin
+            // (Assets/World/Shaders/Surface.shader): a mode per surface, hashed from world position,
+            // so the street reads as Mirpur with no textures and no assets to license.
+            Material ground = MakeSurface(WorldDir + "/SkinDirt.mat", 4f);
+            Material road = MakeSurface(WorldDir + "/SkinAsphalt.mat", 1f);
+            Material block = MakeSurface(WorldDir + "/SkinFacade.mat", 0f);
+            Material rail = MakeSurface(WorldDir + "/SkinConcrete.mat", 3f);
+            Material paint = MakeMaterial(WorldDir + "/GreyboxPaint.mat", new Color(0.92f, 0.92f, 0.88f));
+            Material kerb = MakeSurface(WorldDir + "/SkinPavement.mat", 2f);
+            Material post = MakeMaterial(WorldDir + "/GreyboxPost.mat", new Color(0.20f, 0.70f, 0.35f));
+
+            // The chunk scenes: only the meshes; light, ground and the bus live in the base scene.
+            Directory.CreateDirectory("Assets/Scenes/Chunks");
+            var chunkScenes = new List<string>();
+            int noWheels = LayerMask.NameToLayer("NoWheels");
+            foreach (string dirRaw in chunkDirs)
+            {
+                string dir = dirRaw.Replace('\\', '/');
+                string name = Path.GetFileName(dir);
+                Scene chunk = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                Place(dir + "/Roads.obj", "Roads", road, withColliders: true);
+                Place(dir + "/Buildings.obj", "Blocks", block, withColliders: true);
+                Place(dir + "/Rail.obj", "MRT Line 6 viaduct", rail, withColliders: true);
+                Place(dir + "/Markings.obj", "Lane markings", paint, withColliders: false);
+                Place(dir + "/Kerbs.obj", "Pavements", kerb, withColliders: true);
+                // The median barrier and the invisible tall wall over it go on a layer the wheels ignore: a
+                // wheel ray that finds the top of a barrier climbs it; the body still meets both (PhysicsBus
+                // sets the matrix). The barrier itself is only drawn: with a collider its 1.1 m top face
+                // lifts a body that has pushed into the wall by one step, and from there the body climbs.
+                var median = Place(dir + "/Median.obj", "Median barrier", kerb, withColliders: false);
+                if (median != null) foreach (var t in median.GetComponentsInChildren<Transform>()) t.gameObject.layer = noWheels;
+                var walls = Place(dir + "/Walls.obj", "Invisible walls", kerb, withColliders: true);
+                if (walls != null) foreach (var r in walls.GetComponentsInChildren<MeshRenderer>()) r.enabled = false;
+                if (walls != null) foreach (var t in walls.GetComponentsInChildren<Transform>()) t.gameObject.layer = noWheels;
+                string path = "Assets/Scenes/Chunks/Corridor01_" + name + ".unity";
+                EditorSceneManager.SaveScene(chunk, path);
+                chunkScenes.Add(path);
+            }
 
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
@@ -48,40 +89,15 @@ namespace TwentyTons.EditorTools
             light.shadows = LightShadows.Soft;
             lightGo.transform.rotation = Quaternion.Euler(55f, -30f, 0f);
 
-            // Materials: one for the road surface, one for everything else, so each is a batch.
-            // The procedural skin (Assets/World/Shaders/Surface.shader): a mode per surface, hashed from
-            // world position, so the street reads as Mirpur with no textures and no assets to license.
-            Material ground = MakeSurface(WorldDir + "/SkinDirt.mat", 4f);
-            Material road = MakeSurface(WorldDir + "/SkinAsphalt.mat", 1f);
-            Material block = MakeSurface(WorldDir + "/SkinFacade.mat", 0f);
-            Material rail = MakeSurface(WorldDir + "/SkinConcrete.mat", 3f);
-            Material paint = MakeMaterial(WorldDir + "/GreyboxPaint.mat", new Color(0.92f, 0.92f, 0.88f));
-            Material kerb = MakeSurface(WorldDir + "/SkinPavement.mat", 2f);
-            Material post = MakeMaterial(WorldDir + "/GreyboxPost.mat", new Color(0.20f, 0.70f, 0.35f));
-
-            // Ground: a big plane a little under the roads so there are no holes between blocks.
+            // Ground: a big plane a little under the roads so there are no holes between blocks,
+            // sized to the whole route with a margin.
+            RouteBounds bounds = ReadRouteBounds(WorldDir + "/route.json");
             var plane = GameObject.CreatePrimitive(PrimitiveType.Plane);
             plane.name = "Ground";
-            plane.transform.position = new Vector3(400f, -0.05f, -1600f);     // centred on the chunk
-            plane.transform.localScale = new Vector3(500f, 1f, 500f);         // a Unity plane is 10 m
+            plane.transform.position = new Vector3(bounds.CentreX, -0.05f, bounds.CentreZ);
+            plane.transform.localScale = new Vector3((bounds.SizeX + 2000f) / 10f, 1f, (bounds.SizeZ + 2000f) / 10f);   // a Unity plane is 10 m
             plane.GetComponent<MeshRenderer>().sharedMaterial = ground;
             GameObjectUtility.SetStaticEditorFlags(plane, StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccludeeStatic);
-
-            Place(WorldDir + "/Roads.obj", "Roads", road, withColliders: true);
-            Place(WorldDir + "/Buildings.obj", "Blocks", block, withColliders: true);
-            Place(WorldDir + "/Rail.obj", "MRT Line 6 viaduct", rail, withColliders: true);
-            Place(WorldDir + "/Markings.obj", "Lane markings", paint, withColliders: false);
-            Place(WorldDir + "/Kerbs.obj", "Pavements and median", kerb, withColliders: true);
-            // The median barrier and the invisible tall wall over it go on a layer the wheels ignore: a wheel
-            // ray that finds the top of a barrier climbs it; the body still meets both (PhysicsBus sets the matrix).
-            int noWheels = LayerMask.NameToLayer("NoWheels");
-            // The barrier itself is only drawn: with a collider its 1.1 m top face lifts a body that has pushed
-            // into the wall by one step, and from there the body climbs. The tall wall alone does the stopping.
-            var median = Place(WorldDir + "/Median.obj", "Median barrier", kerb, withColliders: false);
-            if (median != null) foreach (var t in median.GetComponentsInChildren<Transform>()) t.gameObject.layer = noWheels;
-            var walls = Place(WorldDir + "/Walls.obj", "Invisible walls", kerb, withColliders: true);
-            if (walls != null) foreach (var r in walls.GetComponentsInChildren<MeshRenderer>()) r.enabled = false;
-            if (walls != null) foreach (var t in walls.GetComponentsInChildren<Transform>()) t.gameObject.layer = noWheels;
 
             // Route markers: stands and junctions, as named empties for milestones 4 and 5.
             var markers = new GameObject("Route markers");
@@ -113,13 +129,38 @@ namespace TwentyTons.EditorTools
             camGo.transform.position = new Vector3(0f, 40f, 60f);
             camGo.transform.LookAt(new Vector3(100f, 0f, -400f));
 
-            AddPlayerBus(camGo);
+            GameObject bus = AddPlayerBus(camGo);
+
+            // The streamer: the chunks around the bus, loaded as it drives.
+            var streamer = new GameObject("World streamer").AddComponent<TwentyTons.Unity.WorldStreamer>();
+            streamer.ChunksJson = AssetDatabase.LoadAssetAtPath<TextAsset>(WorldDir + "/chunks.json");
+            streamer.ScenePaths = chunkScenes.ToArray();
+            streamer.Target = bus.transform;
 
             Directory.CreateDirectory("Assets/Scenes");
             EditorSceneManager.SaveScene(scene, ScenePath);
-            EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
+            var buildScenes = new List<EditorBuildSettingsScene> { new EditorBuildSettingsScene(ScenePath, true) };
+            foreach (string path in chunkScenes) buildScenes.Add(new EditorBuildSettingsScene(path, true));
+            EditorBuildSettings.scenes = buildScenes.ToArray();
             AssetDatabase.SaveAssets();
+            // The first two chunks open beside the base scene, so the editor shows the stand, not an empty plane.
+            for (int i = 0; i < 2 && i < chunkScenes.Count; i++) EditorSceneManager.OpenScene(chunkScenes[i], OpenSceneMode.Additive);
             Report();
+        }
+
+        private struct RouteBounds { public float CentreX, CentreZ, SizeX, SizeZ; }
+        [System.Serializable] private class RouteXz { public float[] xz; }
+
+        private static RouteBounds ReadRouteBounds(string path)
+        {
+            var r = JsonUtility.FromJson<RouteXz>(File.ReadAllText(path));
+            float x0 = float.MaxValue, x1 = float.MinValue, z0 = float.MaxValue, z1 = float.MinValue;
+            for (int i = 0; i + 1 < r.xz.Length; i += 2)
+            {
+                x0 = Mathf.Min(x0, r.xz[i]); x1 = Mathf.Max(x1, r.xz[i]);
+                z0 = Mathf.Min(z0, r.xz[i + 1]); z1 = Mathf.Max(z1, r.xz[i + 1]);
+            }
+            return new RouteBounds { CentreX = (x0 + x1) * 0.5f, CentreZ = (z0 + z1) * 0.5f, SizeX = x1 - x0, SizeZ = z1 - z0 };
         }
 
         /// <summary>
@@ -127,7 +168,7 @@ namespace TwentyTons.EditorTools
         /// chase camera on it. Also makes Assets/Data/TuningTable.asset if it does not exist yet, so
         /// every number the drive uses is the one table the project rules ask for.
         /// </summary>
-        private static void AddPlayerBus(GameObject camera)
+        private static GameObject AddPlayerBus(GameObject camera)
         {
             Directory.CreateDirectory("Assets/Data");
             const string tuningPath = "Assets/Data/TuningTable.asset";
@@ -158,6 +199,7 @@ namespace TwentyTons.EditorTools
 
             var rig = camera.AddComponent<TwentyTons.Unity.CameraRig>();
             rig.Target = bus.transform;
+            return bus;
         }
 
         /// <summary>Make sure a named layer exists in the project's TagManager (first free user layer).</summary>
@@ -238,6 +280,7 @@ namespace TwentyTons.EditorTools
 
         private static GameObject Place(string path, string name, Material material, bool withColliders)
         {
+            if (!File.Exists(path)) return null;              // a chunk with no viaduct has no Rail.obj
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             if (prefab == null) { Debug.LogError("missing " + path); return null; }
             var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
@@ -263,7 +306,7 @@ namespace TwentyTons.EditorTools
                 triangles += f.sharedMesh.triangles.Length / 3;
                 renderers++;
             }
-            Debug.Log($"Corridor01 grey box: {renderers} renderers, {triangles} triangles (budget: 400k triangles, 150 draw calls after batching)");
+            Debug.Log($"Corridor01 grey box, base scene and the first two chunks: {renderers} renderers, {triangles} triangles (budget: 400k triangles, 150 draw calls after batching, for the three chunks loaded at a time)");
         }
 
         [System.Serializable] private class Marker { public string name; public float x; public float z; }

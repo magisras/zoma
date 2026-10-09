@@ -8,6 +8,48 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Corridor01_Greybox.unity
     guid: 21c17b15e388640e1b3f163838b12275
+  - enabled: 1
+    path: Assets/Scenes/Chunks/Corridor01_Chunk_00.unity
+    guid: 040f82fd75f444f0ea7fdf3aaee12b2e
+  - enabled: 1
+    path: Assets/Scenes/Chunks/Corridor01_Chunk_01.unity
+    guid: bc954477665a840829d4b3bb6ad7fddf
+  - enabled: 1
+    path: Assets/Scenes/Chunks/Corridor01_Chunk_02.unity
+    guid: e9e590679426e474884c6bba8a46875c
+  - enabled: 1
+    path: Assets/Scenes/Chunks/Corridor01_Chunk_03.unity
+    guid: 8a5192e80fbd34ee9b42ab79c300afab
+  - enabled: 1
+    path: Assets/Scenes/Chunks/Corridor01_Chunk_04.unity
+    guid: 84a8e6674a63d48b5a6bbdedab3781c2
+  - enabled: 1
+    path: Assets/Scenes/Chunks/Corridor01_Chunk_05.unity
+    guid: e2bd0d0f9c09a4b479381872834203a8
+  - enabled: 1
+    path: Assets/Scenes/Chunks/Corridor01_Chunk_06.unity
+    guid: 60ca4dd321f46447897fda86e55b3b53
+  - enabled: 1
+    path: Assets/Scenes/Chunks/Corridor01_Chunk_07.unity
+    guid: b8568cf36b3764453b406cba0ad0e80d
+  - enabled: 1
+    path: Assets/Scenes/Chunks/Corridor01_Chunk_08.unity
+    guid: dafbdd8c9c14f42e99ea8706658c758e
+  - enabled: 1
+    path: Assets/Scenes/Chunks/Corridor01_Chunk_09.unity
+    guid: c90571812c4e9423385da10d899c120e
+  - enabled: 1
+    path: Assets/Scenes/Chunks/Corridor01_Chunk_10.unity
+    guid: 18029f8f883cb40348f52b6db1c1ae45
+  - enabled: 1
+    path: Assets/Scenes/Chunks/Corridor01_Chunk_11.unity
+    guid: 9dfdd01cd192c445686858294d3b90be
+  - enabled: 1
+    path: Assets/Scenes/Chunks/Corridor01_Chunk_12.unity
+    guid: 44befd59f83cc46acbb7813dfa450e78
+  - enabled: 1
+    path: Assets/Scenes/Chunks/Corridor01_Chunk_13.unity
+    guid: df3d845f2c7934cb984bb3bd7f044ad7
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

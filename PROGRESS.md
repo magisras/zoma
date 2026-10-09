@@ -224,6 +224,44 @@ One entry per session. The next session reads this first.
 - `T` tows the bus back onto the kerb lane at the same point of the route, standing: the people and
   the truck of a real beaching, to be charged by the ledger later. The readout names it.
 
+## 10 Oct 2026
+
+**Step 43 — the whole route, Mirpur 12 to Azimpur, streamed a kilometre at a time** (done)
+
+- Owner: "what's the plan for the recurring 12 km map?" and "I agree with your recommendations":
+  the full corridor, cut into chunks, streamed around the bus, meshes regenerated rather than
+  stored. The route measures 13.6 km: Rokeya Sarani, Khamar Bari Road, Kazi Nazrul Islam Avenue,
+  Karwan Bazar, Shahbagh, TSC, Nilkhet, Mirpur Road to the Azimpur stand (S-007.6's pickups as the
+  markers, 16 of them, within 20 m of the stands at both ends).
+- `tools/osm/fetch.sh` downloads a corridor along the markers (roads within 600 m, buildings within
+  300 m), not a box: 18k ways, 11 MB, with a second Overpass server and retries, since the first
+  answered "too busy". `tools/osm/greybox.py` stitches the route through every marker in order (one
+  Dijkstra over (markers passed, node) states, so a candidate node on the wrong carriageway cannot
+  dead-end a leg), keeps buildings near the route only, and writes `Chunk_NN/` folders of 1 km along
+  the route plus `chunks.json` (each chunk's stretch sampled every 50 m). 14 chunks, 10k–52k
+  triangles each, 350k in all.
+- `GreyboxSceneBuilder` makes one scene per chunk under `Assets/Scenes/Chunks/` and the base scene
+  (sun, ground sized to the route, markers, bus, camera, streamer); all are in Build Settings.
+  `WorldStreamer` loads the chunks within 1,200 m of the bus additively and unloads beyond 1,700 m,
+  both directions, so the out-and-back day works. Verified by teleport: at Farmgate chunks 6–9 are
+  in and 0–1 out; back at the stand the reverse. One rule learned: a scene load, synchronous or not,
+  only reports loaded at the next frame, and asking again loads it again (400 copies of one chunk
+  before the bookkeeping was added).
+- `make world` rebuilds everything from the download; the meshes, chunk scenes and `centrelines.json`
+  are gitignored (the owner's choice over Git LFS). `route.json`, `chunks.json`, `markers.json` stay.
+- Found by driving the whole route by script (`tools/osm/drivetests/fullroute.cs`): trunk roads were
+  not in the generator's width table, so Kazi Nazrul Islam Avenue did not exist; roundabouts (closed
+  ways) were stitched the long way round and back; a node shared by two ways put a 6 m hairpin in the
+  route, and the median wall built from it stood square across the lane at Mirpur 10; the median
+  offset could step sideways across the lane, now limited to a quarter metre per metre of road;
+  a pavement ran on across the next road's carriageway at every junction, now clipped where it lies
+  on a road. After these: 13.6 km in 1,237 s at up to 45 km/h, max roll 8°, three tows, all at
+  sharp junction corners where the script driver (not the geometry) overshoots. Photos at Farmgate,
+  Shahbagh and Azimpur render clean 11 km from the origin, so no floating origin yet.
+- Not done: the far end is still only grey boxes with the Mirpur skin (zones for Agargaon, Farmgate,
+  Shahbagh and Azimpur are a later step); bus stops along the route from OSM; the return leg as a
+  trip in the day loop.
+
 ## 8 Oct 2026 — Moved to the owner's Mac
 
 - The cloud session was teleported into Claude Code on the MacBook Air; the game lives in
