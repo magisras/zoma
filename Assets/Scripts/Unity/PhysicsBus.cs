@@ -138,9 +138,11 @@ namespace TwentyTons.Unity
         {
             WheelCollider l = Wheels[left], r = Wheels[right];
             float travelL = Compression(l), travelR = Compression(r);
+            // The more compressed side is pushed up, the other down. (The first version had this the
+            // other way round and amplified the lean: the owner felt the bus "just tilt".)
             float force = (travelL - travelR) * _b.AntiRollNewtonsPerMetre;
-            if (l.isGrounded) Body.AddForceAtPosition(l.transform.up * -force, l.transform.position);
-            if (r.isGrounded) Body.AddForceAtPosition(r.transform.up * force, r.transform.position);
+            if (l.isGrounded) Body.AddForceAtPosition(l.transform.up * force, l.transform.position);
+            if (r.isGrounded) Body.AddForceAtPosition(r.transform.up * -force, r.transform.position);
         }
 
         /// <summary>How far this wheel's spring is compressed, metres, 0 when hanging free.</summary>

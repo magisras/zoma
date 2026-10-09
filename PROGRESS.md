@@ -187,6 +187,15 @@ One entry per session. The next session reads this first.
   the pavement at 25 km/h, stop, X with the wheel turned, back on the road in six seconds. The
   readout shows the signed speed, negative when backing.
 
+**Step 40 — the anti-roll bar pushed the wrong way** (done)
+
+- Owner: "before bus was fluid and reacted to turns, now it just tilts and is not fluid". The bar
+  added in Step 38 had its sign reversed: it pushed the compressed side down and amplified the lean,
+  so the body sat tilted. Fixed. Now a 1.5 s swerve at 40 km/h with 40 riders builds 0.4 → 6.6° of
+  lean and, wheel straight, rocks back through +1.5° and settles in about 2 s: the wallow of soft,
+  tired dampers. Full lock at 50 with 90 riders: 11.6°, stays up. Sideways into the kerb at 50 with 90:
+  over. The Step 38 lean figures were measured with the bar backwards and are superseded.
+
 ## 8 Oct 2026 — Moved to the owner's Mac
 
 - The cloud session was teleported into Claude Code on the MacBook Air; the game lives in
