@@ -21,6 +21,12 @@ for proportions, the body style and the livery until photographs of the chosen b
 - **S-026.5** Inside: a dark padded ceiling, roof hatches, fluorescent tubes, patterned seat covers, the conductor walking the aisle collecting fares, people standing from a yellow handrail (photos 04, 06).
 - **S-026.6** Dents and patches on every corner; minibuses in green, orange and white with the company name and a logo (photo 09).
 
+- **S-026.7** The current generation of the same bus (owner's photo, 9 Oct 2026, origin not recorded, reference only): a
+  Bikash Paribahan body in magenta and blue, one-piece curved windscreen, a copied Mercedes star on the grille, LED
+  lamps, roof dome, six windows a side, the doorway behind the front axle with no door, dual rear wheels. The body is
+  by a local coachbuilder (the name on the window glass reads TAMIM) on the same kind of truck chassis as the older,
+  flat-fronted body in photo 00. Same company, two generations of body, both on the road.
+
 ## Files
 
 | File | Commons page | Licence | Author |
@@ -31,4 +37,5 @@ for proportions, the body style and the livery until photographs of the chosen b
 | `04_Dhaka_Local_Bus_and_conductor.jpg` | https://commons.wikimedia.org/wiki/File%3ADhaka_Local_Bus_and_conductor.jpg | CC BY-SA 4.0 | Aashaa < |
 | `05_Dhaka_bus_3_october_2012.jpg` | https://commons.wikimedia.org/wiki/File%3ADhaka_bus_3_october_2012.jpg | CC BY-SA 2.0 | Sudipta Arka Das |
 | `06_Dhaka_local_bus_and_passenger.jpg` | https://commons.wikimedia.org/wiki/File%3ADhaka_local_bus_and_passenger.jpg | CC BY-SA 4.0 | Aashaa < |
+| `10_owner_bikash_pink_under_flyover.png` | owner-supplied, origin not recorded | unknown, reference only | — |
 | `09_Public_bus_stopped_at_road_side_of_Dhaka,2014.jpg` | https://commons.wikimedia.org/wiki/File%3APublic_bus_stopped_at_road_side_of_Dhaka%2C2014.jpg | CC BY-SA 3.0 | Aashaa < |
