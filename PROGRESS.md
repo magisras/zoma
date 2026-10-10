@@ -388,8 +388,15 @@ One entry per session. The next session reads this first.
   screen, the big tilted wheel of an old bus turning fourteen times the road wheels' angle, and the
   outside mirror on the right as a camera drawn onto a quad with the image flipped (`MirrorView`),
   the way bus games do it. Checked by rendering the driver's seat view from the terminal: the top
-  of the wheel in the bottom of the picture, the mirror showing the road behind. The cab layout is
-  from general knowledge of Bangladeshi local buses, to be checked against S-026.
+  of the wheel in the bottom of the picture, the mirror showing the road behind.
+- Then the owner sent three frames from a ride-along (S-026.8 to .10) and the cab was laid out
+  from them: orange-red painted metal, a one-piece screen in a thick frame with the name band across
+  the top, the big inside mirror hanging from it (a second camera), a black car-type wheel lying
+  back, low and close, the binnacle under its red cloth, the switch panel of four rows of six
+  toggles and buttons taped to the dash, the rod along the base of the screen, the cubby with the
+  bottle, the engine cowl under a cloth, and the padded bench along the left wall where passengers
+  sit beside the driver ("to fit more customers inside"). Checked from the seat looking ahead and
+  looking left.
 
 ## 8 Oct 2026 — Moved to the owner's Mac
 
