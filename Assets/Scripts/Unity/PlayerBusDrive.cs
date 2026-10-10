@@ -14,25 +14,26 @@ namespace TwentyTons.Unity
     /// kept current, so everything built on the Agent works in both.
     ///
     /// Keys: W/up throttle, S/down brake, A/D or left/right steer, space full brake, X reverse at a
-    /// walk, R back to the stand, [ and ] ten riders off and on (to feel the mass), C the camera.
+    /// walk, H horn, P pay / N refuse the sergeant or the men with the ropes, R a new day at the stand,
+    /// [ and ] ten riders off and on (to feel the mass), C the camera, T the tow.
     ///
-    /// The day is legs: out to Azimpur on route.json, back to Mirpur 12 on route_back.json (the other
-    /// carriageway where the road is dual). Standing at the far stand turns the leg around; the bus
-    /// itself has to be turned by the driver. Reaching Mirpur 12 again completes a trip
-    /// (docs/ROUTE_AND_TRIPS.md: three or four a day, the lineman paid at the stand each time).
+    /// The road is the whole round trip as one loop: out to Azimpur on route.json, back to Mirpur 12
+    /// on route_back.json (the other carriageway where the road is dual), joined at the stands. The
+    /// leg is where you are on the loop; turning the bus at a stand and driving on is the turnaround,
+    /// and passing the Mirpur 12 stand again is a trip (docs/ROUTE_AND_TRIPS.md: three or four a day).
+    /// With a <see cref="StreetSim"/> on the same object the street is alive: crowds, rivals, traffic,
+    /// people crossing, the sergeant, the ledger.
     /// </summary>
     public sealed class PlayerBusDrive : MonoBehaviour
     {
         [Tooltip("Every number the bus model uses lives here (Assets/Data/TuningTable.asset).")]
         public TuningTable Tuning;
-        [Tooltip("Assets/World/Corridor01/route.json from tools/osm/greybox.py: the main road as a polyline.")]
+        [Tooltip("Assets/World/Corridor01/route.json from tools/osm/greybox.py: the main road out, as a polyline.")]
         public TextAsset RouteJson;
-        [Tooltip("Assets/World/Corridor01/route_back.json: the way back from Azimpur, on the other carriageway. Without it the day is one leg.")]
+        [Tooltip("Assets/World/Corridor01/route_back.json: the way back from Azimpur, on the other carriageway. Without it the road is one leg and open.")]
         public TextAsset RouteBackJson;
-        [Tooltip("Assets/World/Corridor01/stops.json: the stops of both legs, for the readout and, later, the demand zones.")]
+        [Tooltip("Assets/World/Corridor01/stops.json: the stops of both legs, for the readout and the sim's demand zones.")]
         public TextAsset StopsJson;
-        [Tooltip("Standing within this many metres of the end of the leg turns the leg around: the stand.")]
-        public float StandReachMetres = 80f;
         [Tooltip("Metres along the route to start at; the stand is at 0.")]
         public float StartAlong = 30f;
         [Tooltip("Metres across the carriageway to start at; negative is the left (kerb) side. Bangladesh drives on the left, " +
@@ -55,32 +56,36 @@ namespace TwentyTons.Unity
         /// </summary>
         public static bool Scripted;
         public static float ScriptThrottle, ScriptBrake, ScriptSteer;
-        public static bool ScriptReverse;
+        public static bool ScriptReverse, ScriptHorn;
         public static PlayerBusDrive Instance { get; private set; }
 
         public BusController Bus { get; private set; }
         public Agent Agent { get; private set; }
         public Corridor Corridor { get; private set; }
         public PhysicsBus Physics { get; private set; }
+        public StreetSim Street { get; private set; }
         public RouteStops Stops { get; private set; }
-        /// <summary>0: out, Mirpur 12 to Azimpur. 1: back.</summary>
-        public int Leg { get; private set; }
-        /// <summary>Round trips completed: back at Mirpur 12.</summary>
-        public int Trips { get; private set; }
+        /// <summary>Length of the way out: the loop's S where the way back begins.</summary>
+        public float OutLength { get; private set; }
+        /// <summary>0: out, Mirpur 12 to Azimpur. 1: back. Read off the loop.</summary>
+        public int Leg => Corridor.Closed && Agent.S >= OutLength ? 1 : 0;
+        /// <summary>The S of the stand at the end of the current leg.</summary>
+        public float LegEndS => Leg == 0 ? OutLength : Corridor.Length;
+        /// <summary>Round trips completed: back past the Mirpur 12 stand. The ledger's count when the street is alive.</summary>
+        public int Trips => Street != null ? Street.Sim.Economy.Ledger.Trips : _trips;
         public string LegName => Leg == 0 ? "to Azimpur" : "back to Mirpur 12";
 
         /// <summary>One line of state for a test log.</summary>
         public string Status => $"t={_clock:0.0} leg={Leg} trips={Trips} s={Agent.S:0.0} lat={Agent.Lateral:0.00} v={(Physics != null ? Physics.ForwardSpeed : Agent.Speed) * 3.6f:0.0}km/h air={Bus.AirPressure:0.00} applied={Bus.BrakeApplied:0.00} wear={Bus.BrakeWear:0.00} riders={Bus.Passengers} yaw={Agent.Yaw * Mathf.Rad2Deg:0} latAcc={LateralAccel:0.0} roll={Roll:0.0}";
 
         private float _steerInput, _throttle, _brake, _steerWanted, _clock;
-        private bool _reverse, _onPavement, _offRoad;
+        private bool _reverse, _horn, _onPavement, _offRoad;
         private float _carriagewayHalf = 4f;
-        private float[] _farS, _farEdge;      // distance along the route -> lateral of the far kerb (right side), this leg
-        private readonly Corridor[] _legs = new Corridor[2];
-        private readonly float[][] _legFarS = new float[2][], _legFarEdge = new float[2][];
-        private float _legStartedAt;
-        private string _standNote = ""; private float _standNoteAt = -99f;
+        private float[] _farS, _farEdge;      // distance along the loop -> lateral of the far kerb (right side)
         private BoxCollider _ghostBox;        // kinematic bus only: its shape for the wall push-out
+        private int _trips, _lastLeg, _lastRiders = -1;
+        private float _lastS;
+        private string _standNote = ""; private float _standNoteAt = -99f;
 
         private float LateralAccel => Physics != null ? Mathf.Abs(Physics.LateralAccel) : Mathf.Abs(Agent.Speed * Bus.LastYawRate);
         private float Roll => Physics != null ? Physics.RollDegrees : 0f;
@@ -96,23 +101,12 @@ namespace TwentyTons.Unity
         public void SetUp()
         {
             if (Tuning == null) Tuning = ScriptableObject.CreateInstance<TuningTable>();   // defaults, so the scene runs even unwired
-            _legs[0] = LoadRoute(RouteJson, "Rokeya Sarani, out", out _legFarS[0], out _legFarEdge[0]);
-            _legs[1] = RouteBackJson != null ? LoadRoute(RouteBackJson, "Rokeya Sarani, back", out _legFarS[1], out _legFarEdge[1]) : null;
+            Corridor = LoadLoop();
             Stops = RouteStops.Load(StopsJson);
-            Trips = 0;
-            UseLeg(0);
-            Agent = new Agent { Corridor = Corridor, Class = VehicleClass.Bus, Shape = VehicleShape.For(VehicleClass.Bus), IsPlayer = true };
-            Bus = new BusController
-            {
-                BrakeWear = Tuning.Bus.StartingBrakeWear,
-                AirPressure = Tuning.Bus.AirPressureAtDayStart,
-                Passengers = Tuning.Bus.StartingPassengers,
-            };
             Physics = GetComponent<PhysicsBus>();
             if (Physics != null)
             {
-                Physics.Build(Tuning.Bus, Agent.Shape);
-                Physics.SetLoad(Bus.Passengers);
+                Physics.Build(Tuning.Bus, VehicleShape.For(VehicleClass.Bus));
             }
             else
             {
@@ -122,98 +116,126 @@ namespace TwentyTons.Unity
                 _ghostBox.center = Vector3.zero;
                 _ghostBox.size = Vector3.one;                   // the cube is scaled to the bus, so the collider is too
             }
-            PlaceAtStart();
-        }
-
-        /// <summary>The leg the bus is on: its corridor and its far kerbs. The Agent follows.</summary>
-        private void UseLeg(int leg)
-        {
-            if (_legs[leg] == null) leg = 0;
-            Leg = leg;
-            Corridor = _legs[leg];
-            _farS = _legFarS[leg];
-            _farEdge = _legFarEdge[leg];
-            if (Agent != null) Agent.Corridor = Corridor;
-            _legStartedAt = _clock;
+            NewDay();
         }
 
         /// <summary>
-        /// The stand at the end of the leg. Standing still within reach of it, the leg turns around:
-        /// the corridor becomes the way back and the readout says so. The driver turns the bus. Back at
-        /// Mirpur 12 that is one trip done. The sandbox's Economy charges the lineman per trip; here it
-        /// is counted, and the ledger follows when the sim is wired in.
+        /// The day from the stand: with a StreetSim, a fresh sim on the loop owns the player's Agent
+        /// and the BusController (so its tired hands, its wear and its ledger are the bus's); without
+        /// one, a plain Agent and a plain model. Then the bus is placed at the start.
         /// </summary>
-        private void WatchStands()
+        public void NewDay()
         {
-            if (_legs[1] == null || _clock - _legStartedAt < 20f) return;
-            float speed = Physics != null ? Mathf.Abs(Physics.ForwardSpeed) : Agent.Speed;
-            if (speed > 1f || Agent.S < Corridor.Length - StandReachMetres) return;
-            if (Leg == 1) Trips++;
-            string where = Leg == 0 ? "Azimpur" : "Mirpur 12";
-            UseLeg(1 - Leg);
-            Corridor.Project(Agent.Position, out Agent.S, out Agent.Lateral);
-            _lastLateral = Agent.Lateral; _wasOnPavement = false;      // the lateral jumps to the other leg's frame: not a kerb hit
-            _standNote = Leg == 1 ? $"At the {where} stand. Turn the bus around: {LegName}." : $"At the {where} stand: trip {Trips} done. Turn around: {LegName}.";
-            _standNoteAt = _clock;
-            Debug.Log($"STAND: {_standNote} s={Agent.S:0} lat={Agent.Lateral:0.0}");
+            Street = GetComponent<StreetSim>();
+            if (Street != null && Street.enabled && Physics != null && Application.isPlaying)
+            {
+                Street.Build(this, Corridor, Stops, OutLength);
+                Agent = Street.Sim.Player;
+                Bus = Street.Sim.Bus;
+            }
+            else
+            {
+                Street = null;
+                Agent = new Agent { Corridor = Corridor, Class = VehicleClass.Bus, Shape = VehicleShape.For(VehicleClass.Bus), IsPlayer = true };
+                Bus = new BusController
+                {
+                    BrakeWear = Tuning.Bus.StartingBrakeWear,
+                    AirPressure = Tuning.Bus.AirPressureAtDayStart,
+                    Passengers = Tuning.Bus.StartingPassengers,
+                };
+            }
+            _trips = 0;
+            _lastRiders = -1;
+            if (Physics != null) Physics.SetLoad(Bus.Passengers);
+            PlaceAtStart();
         }
 
-        /// <summary>The route file is {"xz":[x0,z0,...],"width":w,"farEdge":[...]}; a fallback straight road if missing.</summary>
-        private Corridor LoadRoute(TextAsset json, string name, out float[] farS, out float[] farEdge)
+        /// <summary>
+        /// The loop: route.json's points, then route_back.json's, closed. The far kerb of the oncoming
+        /// carriageway per point comes along, keyed by distance along the loop. The corridor's width is
+        /// the carriageway's; the pavements are PavementMetres beyond it on each side. Without the way
+        /// back the road is one open leg; without any file a straight 3 km road.
+        /// </summary>
+        private Corridor LoadLoop()
         {
-            farS = farEdge = null;
-            if (json != null)
+            RouteFile a = Read(RouteJson), b = Read(RouteBackJson);
+            if (a == null)
             {
-                RouteFile r = JsonUtility.FromJson<RouteFile>(json.text);
-                if (r != null && r.xz != null && r.xz.Length >= 4)
-                {
-                    var pts = new Vector3[r.xz.Length / 2];
-                    for (int i = 0; i < pts.Length; i++) pts[i] = new Vector3(r.xz[2 * i], 0f, r.xz[2 * i + 1]);
-                    // The corridor is the carriageway plus the pavement on each side: the kerb is 15 cm and
-                    // a Dhaka bus mounts it; the market stalls (the model's off-road drag) start beyond.
-                    _carriagewayHalf = (r.width > 0f ? r.width : 24f) * 0.5f;
-                    var corridor = new Corridor(pts, _carriagewayHalf * 2f + 2f * PavementMetres, false, name);
-                    // The far kerb of the oncoming carriageway, per route point, keyed by distance along.
-                    if (r.farEdge != null && r.farEdge.Length == pts.Length)
-                    {
-                        farS = new float[pts.Length];
-                        farEdge = r.farEdge;
-                        for (int i = 1; i < pts.Length; i++) farS[i] = farS[i - 1] + Vector3.Distance(pts[i - 1], pts[i]);
-                    }
-                    return corridor;
-                }
+                Debug.LogWarning("PlayerBusDrive: no route.json wired, driving a straight 3 km road");
+                OutLength = 3000f;
+                _farS = null;
+                return new Corridor(new[] { Vector3.zero, new Vector3(0f, 0f, -3000f) }, 8f, false, "straight");
             }
-            Debug.LogWarning("PlayerBusDrive: no route.json wired, driving a straight 3 km road");
-            return new Corridor(new[] { Vector3.zero, new Vector3(0f, 0f, -3000f) }, 24f, false, "straight");
+            _carriagewayHalf = (a.width > 0f ? a.width : 8f) * 0.5f;
+            var pts = new System.Collections.Generic.List<Vector3>();
+            var far = new System.Collections.Generic.List<float>();
+            Append(pts, far, a);
+            // The out leg's length on the loop is the arc length of its own points, plus the join at Azimpur.
+            OutLength = 0f;
+            for (int i = 1; i < pts.Count; i++) OutLength += Vector3.Distance(pts[i - 1], pts[i]);
+            if (b != null)
+            {
+                OutLength += Vector3.Distance(pts[pts.Count - 1], new Vector3(b.xz[0], 0f, b.xz[1]));
+                Append(pts, far, b);
+            }
+            var corridor = new Corridor(pts, _carriagewayHalf * 2f, b != null, b != null ? "Mirpur 12 to Azimpur and back" : "Rokeya Sarani");
+            _farS = new float[pts.Count];
+            _farEdge = far.ToArray();
+            for (int i = 1; i < pts.Count; i++) _farS[i] = _farS[i - 1] + Vector3.Distance(pts[i - 1], pts[i]);
+            return corridor;
+        }
+
+        private static RouteFile Read(TextAsset json)
+        {
+            if (json == null) return null;
+            RouteFile r = JsonUtility.FromJson<RouteFile>(json.text);
+            return r != null && r.xz != null && r.xz.Length >= 4 ? r : null;
+        }
+
+        private void Append(System.Collections.Generic.List<Vector3> pts, System.Collections.Generic.List<float> far, RouteFile r)
+        {
+            int n = r.xz.Length / 2;
+            bool hasFar = r.farEdge != null && r.farEdge.Length == n;
+            for (int i = 0; i < n; i++)
+            {
+                pts.Add(new Vector3(r.xz[2 * i], 0f, r.xz[2 * i + 1]));
+                far.Add(hasFar ? r.farEdge[i] : _carriagewayHalf + PavementMetres);
+            }
         }
 
         /// <summary>How far to the right of the route line the oncoming carriageway's far kerb is, here.</summary>
         private float FarEdgeAt(float s)
         {
-            if (_farS == null) return Corridor.HalfWidth;
+            if (_farS == null) return _carriagewayHalf + PavementMetres;
             int i = 1;
             while (i < _farS.Length - 1 && _farS[i] < s) i++;
             float t = Mathf.InverseLerp(_farS[i - 1], _farS[i], s);
             return Mathf.Lerp(_farEdge[i - 1], _farEdge[i], t);
         }
 
-        /// <summary>R: the stand at Mirpur 12, the day's first leg (trips are not reset).</summary>
-        private void PlaceAtStart() { StartLeg(0); }
+        /// <summary>The outer edge of the left pavement: beyond it is dirt.</summary>
+        private float LeftEdge => -(_carriagewayHalf + PavementMetres);
+
+        /// <summary>The stand at Mirpur 12, the start of the way out.</summary>
+        private void PlaceAtStart() { PlaceAt(StartAlong); }
 
         /// <summary>At the start of a leg, in the kerb lane, facing along it. Drive tests use it for the way back.</summary>
-        public void StartLeg(int leg)
+        public void StartLeg(int leg) { PlaceAt(leg == 1 && Corridor.Closed ? OutLength + StartAlong : StartAlong); }
+
+        private void PlaceAt(float s)
         {
-            UseLeg(leg);
-            Agent.Position = Corridor.PositionAt(StartAlong, StartLateral);
-            Vector3 ahead = Corridor.PositionAt(StartAlong + 5f, StartLateral) - Agent.Position;
+            Agent.Position = Corridor.PositionAt(s, StartLateral);
+            Vector3 ahead = Corridor.PositionAt(s + 5f, StartLateral) - Agent.Position;
             Agent.Yaw = Mathf.Atan2(ahead.x, ahead.z);
             Agent.Speed = 0f;
             Bus.SteerAngle = 0f;
             Bus.Throttle = Bus.Brake = Bus.Steer = 0f;
             _steerInput = 0f;
             _clock = 0f;
-            Corridor.Project(Agent.Position, out Agent.S, out Agent.Lateral);
+            _lastLeg = Corridor.Closed && s >= OutLength ? 1 : 0;
+            ProjectPlayer();
             Rolled = false; _rolledAt = -1f; _lastLateral = Agent.Lateral; _wasOnPavement = false;
+            _lastS = Agent.S;
             if (Physics != null) Physics.Teleport(Agent.Position, Agent.Yaw);
             else Apply();
         }
@@ -232,10 +254,44 @@ namespace TwentyTons.Unity
             Agent.Speed = 0f;
             Bus.SteerAngle = 0f;
             Rolled = false; _rolledAt = -1f;
-            Corridor.Project(Agent.Position, out Agent.S, out Agent.Lateral);
+            ProjectPlayer();
             _lastLateral = Agent.Lateral; _wasOnPavement = false;
             if (Physics != null) Physics.Teleport(Agent.Position, Agent.Yaw);
             else Apply();
+        }
+
+        /// <summary>
+        /// Where the bus is on the loop. The two legs run a few metres apart at the stands and wherever
+        /// the road is dual, so the nearest line is not the answer: the bus stays on its leg unless the
+        /// other leg is closer and the bus is heading its way (the U-turn at a stand). Crossing to the
+        /// oncoming carriageway on the way out is still the way out, on the wrong side.
+        /// </summary>
+        private void ProjectPlayer()
+        {
+            if (!Corridor.Closed) { Corridor.Project(Agent.Position, out Agent.S, out Agent.Lateral); return; }
+            int leg = _lastLeg;
+            float a0 = leg == 0 ? 0f : OutLength, a1 = leg == 0 ? OutLength : Corridor.Length;
+            float b0 = leg == 0 ? OutLength : 0f, b1 = leg == 0 ? Corridor.Length : OutLength;
+            Corridor.Project(Agent.Position, a0, a1, out float sSame, out float latSame, out float dSame);
+            Corridor.Project(Agent.Position, b0, b1, out float sOther, out float latOther, out float dOther);
+            Vector3 forward = new Vector3(Mathf.Sin(Agent.Yaw), 0f, Mathf.Cos(Agent.Yaw));
+            bool headingOther = Vector3.Dot(forward, Corridor.TangentAt(sOther)) > 0.3f;
+            if (dOther < dSame - 1f && headingOther) { Agent.S = sOther; Agent.Lateral = latOther; }
+            else { Agent.S = sSame; Agent.Lateral = latSame; }
+        }
+
+        /// <summary>The leg changed: the readout says so for a while. A lap past the stand is a trip.</summary>
+        private void WatchLegs()
+        {
+            if (Corridor.Closed && Agent.S < _lastS - Corridor.Length * 0.5f) _trips++;
+            _lastS = Agent.S;
+            int leg = Leg;
+            if (leg != _lastLeg)
+            {
+                _lastLeg = leg;
+                _standNote = leg == 1 ? "The Azimpur stand. Turn the bus around: back to Mirpur 12." : $"The Mirpur 12 stand: trip {Trips} done. Out again.";
+                _standNoteAt = _clock;
+            }
         }
 
         // ---------------------------------------------------------------- input
@@ -250,15 +306,17 @@ namespace TwentyTons.Unity
             float brake = (k.sKey.isPressed || k.downArrowKey.isPressed) ? 0.6f : 0f;   // a normal stop; space is the panic
             if (k.spaceKey.isPressed) brake = 1f;
             float steerWanted = (k.aKey.isPressed || k.leftArrowKey.isPressed ? -1f : 0f) + (k.dKey.isPressed || k.rightArrowKey.isPressed ? 1f : 0f);
-            bool reverse = k.xKey.isPressed;
-            if (Scripted) { throttle = ScriptThrottle; brake = ScriptBrake; steerWanted = ScriptSteer; reverse = ScriptReverse; }
+            bool reverse = k.xKey.isPressed, horn = k.hKey.isPressed;
+            if (Scripted) { throttle = ScriptThrottle; brake = ScriptBrake; steerWanted = ScriptSteer; reverse = ScriptReverse; horn = ScriptHorn; }
 
-            if (k.rKey.wasPressedThisFrame) { PlaceAtStart(); return; }
+            if (k.rKey.wasPressedThisFrame) { NewDay(); return; }
             if (k.tKey.wasPressedThisFrame) { Tow(); return; }
+            if (k.pKey.wasPressedThisFrame && Street != null) Street.Answer(true);
+            if (k.nKey.wasPressedThisFrame && Street != null) Street.Answer(false);
             if (k.rightBracketKey.wasPressedThisFrame) SetRiders(Bus.Passengers + 10);
             if (k.leftBracketKey.wasPressedThisFrame) SetRiders(Bus.Passengers - 10);
 
-            _throttle = throttle; _brake = brake; _steerWanted = steerWanted; _reverse = reverse;
+            _throttle = throttle; _brake = brake; _steerWanted = steerWanted; _reverse = reverse; _horn = horn;
             if (Physics == null) Tick(Time.deltaTime, throttle, brake, steerWanted);   // the kinematic bus moves per frame
             else Physics.UpdateWheelMeshes();
         }
@@ -270,27 +328,46 @@ namespace TwentyTons.Unity
 
         public void SetRiders(int riders)
         {
-            Bus.Passengers = Mathf.Clamp(riders, 0, Tuning.Bus.CrushCapacity);
+            riders = Mathf.Clamp(riders, 0, Tuning.Bus.CrushCapacity);
+            if (Street != null) Street.Sim.SetPassengerCount(Agent, riders);
+            Bus.Passengers = riders;
             if (Physics != null) Physics.SetLoad(Bus.Passengers);
         }
 
         // ---------------------------------------------------------------- the physics bus
 
-        /// <summary>One physics step: pedals to the model, the model to the wheels, the body back to the Agent.</summary>
+        /// <summary>One physics step: the body to the Agent, the street around it, the pedals to the model, the model to the wheels.</summary>
         private void PhysicsStep(float dt)
         {
             _steerInput = Mathf.MoveTowards(_steerInput, _steerWanted, SteerInputRate * dt * (_steerWanted == 0f ? 2f : 1f));
-            // Reverse is a gear: X alone opens the throttle, the body gets a backward torque.
-            Bus.Throttle = _reverse ? Mathf.Max(_throttle, 1f) : _throttle;
-            Bus.Brake = _brake;
-            Bus.Steer = _steerInput;
             float forward = Physics.ForwardSpeed;
+            SyncAgentFromBody();
+            float lateralVel = (Agent.Lateral - _lastLateral) / dt;
+
+            float cap = float.MaxValue;
+            if (Street != null)
+            {
+                // Through the sim: the hands reach the pedals late when tired, the world moves, a contact or a
+                // sergeant's hand comes back as a speed cap for the body.
+                Street.Step(dt, _throttle, _brake, _steerInput, _horn, lateralVel, out cap);
+                if (Bus.Held) { Bus.Throttle = 0f; Bus.Brake = 1f; }
+                if (Bus.Passengers != _lastRiders) { Physics.SetLoad(Bus.Passengers); _lastRiders = Bus.Passengers; }
+            }
+            else
+            {
+                Bus.Throttle = _throttle;
+                Bus.Brake = _brake;
+                Bus.Steer = _steerInput;
+            }
+            // Reverse is a gear: X alone opens the throttle, the body gets a backward torque.
+            if (_reverse) Bus.Throttle = Mathf.Max(Bus.Throttle, 1f);
             Physics.Drive(Bus, forward, dt, _reverse);
+            if (cap < float.MaxValue) Physics.Cap(cap, forward);
 
             // The street's rules that are not yet objects: the pavement crawl, the dirt beyond.
             float far = FarEdgeAt(Agent.S);
             _onPavement = Agent.Lateral < -_carriagewayHalf || Agent.Lateral > far - PavementMetres;
-            _offRoad = Agent.Lateral < -Corridor.HalfWidth || Agent.Lateral > far;
+            _offRoad = Agent.Lateral < LeftEdge || Agent.Lateral > far;
             if (_offRoad) Physics.Cap(OffRoadKmh / 3.6f, forward);
             else if (_onPavement) Physics.Cap(PavementKmh / 3.6f, forward);
 
@@ -299,7 +376,6 @@ namespace TwentyTons.Unity
             // Two trips: the kerb hit sideways at speed (the outer wheels catch the step), and leaving the
             // road altogether at speed (the ditch, the railing). Both need RolloverSpeedMs, 36 km/h.
             BusSettings b = Tuning.Bus;
-            float lateralVel = (Agent.Lateral - _lastLateral) / dt;
             // A 15 cm kerb trips a bus only when it is thrown at it sideways at speed, and a top-heavy
             // (loaded, people standing) bus far sooner than an empty one: the threshold is the full-load
             // figure, up to 60 % higher for an empty bus. Owner, 9 Oct: an empty bus at 40 km/h at 34°
@@ -307,7 +383,7 @@ namespace TwentyTons.Unity
             float load = Mathf.Clamp01(Bus.Passengers / (float)Mathf.Max(1, b.CrushCapacity));
             float tripAt = KerbTripSidewaysMs * (1f + 0.6f * (1f - load));
             bool kerbHit = _onPavement && !_wasOnPavement && Mathf.Abs(lateralVel) > tripAt;
-            float beyond = Mathf.Max(-Agent.Lateral - Corridor.HalfWidth, Agent.Lateral - far) - b.OffRoadToleranceMetres;
+            float beyond = Mathf.Max(LeftEdge - Agent.Lateral, Agent.Lateral - far) - b.OffRoadToleranceMetres;
             if (!Rolled && forward >= b.RolloverSpeedMs && (kerbHit || beyond > b.OffRoadRolloverMetres))
             {
                 Rolled = true;
@@ -315,13 +391,13 @@ namespace TwentyTons.Unity
                 Physics.Trip(lateralVel < 0f ? -1f : 1f);
                 float angle = Mathf.Atan2(Mathf.Abs(lateralVel), Mathf.Max(0.1f, forward)) * Mathf.Rad2Deg;
                 Debug.Log($"TRIP: {(kerbHit ? "kerb" : "off the road")} at {forward * 3.6f:0} km/h, sideways {Mathf.Abs(lateralVel):0.0} m/s ({angle:0}° to the kerb), threshold {tripAt:0.0}, {Bus.Passengers} riders, s={Agent.S:0} lat={Agent.Lateral:0.0}");
+                if (Street != null) Street.BodyTipped(kerbHit ? "thrown at the kerb" : "left the road at speed");
             }
             _wasOnPavement = _onPavement;
             _lastLateral = Agent.Lateral;
             if (Rolled && Mathf.Abs(Physics.RollDegrees) < 20f && _clock - _rolledAt > 3f) Rolled = false;   // righted (R) or it rocked back
 
-            SyncAgentFromBody();
-            WatchStands();
+            WatchLegs();
             _clock += dt;
         }
 
@@ -342,7 +418,7 @@ namespace TwentyTons.Unity
             if (f.sqrMagnitude > 1e-4f) Agent.Yaw = Mathf.Atan2(f.x, f.z);
             Agent.Speed = Mathf.Max(0f, Physics.ForwardSpeed);
             Bus.LastYawRate = Vector3.Dot(Physics.Body.angularVelocity, Vector3.up);
-            Corridor.Project(Agent.Position, out Agent.S, out Agent.Lateral);
+            ProjectPlayer();
         }
 
         // ---------------------------------------------------------------- the kinematic bus (no PhysicsBus)
@@ -359,14 +435,14 @@ namespace TwentyTons.Unity
             while (left > 0f)
             {
                 float h = Mathf.Min(step, left);
-                if (_reverse && Agent.Speed < 0.5f) Reverse(h); else Bus.Step(Agent, Corridor, Tuning.Bus, h, FarEdgeAt(Agent.S));
+                if (_reverse && Agent.Speed < 0.5f) Reverse(h); else { Bus.Step(Agent, Corridor, Tuning.Bus, h, FarEdgeAt(Agent.S)); ProjectPlayer(); }
                 _clock += h;
                 left -= h;
             }
             Kerb();
             StopAtWalls();
             Apply();
-            WatchStands();
+            WatchLegs();
         }
 
         private void Reverse(float dt)
@@ -378,7 +454,7 @@ namespace TwentyTons.Unity
             Agent.Yaw += yawRate * dt;
             Vector3 forward = new Vector3(Mathf.Sin(Agent.Yaw), 0f, Mathf.Cos(Agent.Yaw));
             Agent.Position -= forward * (pace * dt);
-            Corridor.Project(Agent.Position, out Agent.S, out Agent.Lateral);
+            ProjectPlayer();
         }
 
         private void Kerb()
@@ -388,7 +464,7 @@ namespace TwentyTons.Unity
             if (onPavement && !_onPavement) Agent.Speed = Mathf.Max(0f, Agent.Speed - KerbBumpMs);
             if (onPavement) Agent.Speed = Mathf.Min(Agent.Speed, PavementKmh / 3.6f);
             _onPavement = onPavement;
-            _offRoad = Agent.Lateral < -Corridor.HalfWidth || Agent.Lateral > far;
+            _offRoad = Agent.Lateral < LeftEdge || Agent.Lateral > far;
             if (_offRoad) Agent.Speed = Mathf.Min(Agent.Speed, OffRoadKmh / 3.6f);
         }
 
@@ -409,7 +485,7 @@ namespace TwentyTons.Unity
             push.y = 0f;
             Agent.Position += push + push.normalized * 0.05f;
             Agent.Speed = 0f;
-            Corridor.Project(Agent.Position, out Agent.S, out Agent.Lateral);
+            ProjectPlayer();
         }
 
         /// <summary>Kinematic bus: world pose from the model, the box sitting on the road.</summary>
@@ -429,6 +505,7 @@ namespace TwentyTons.Unity
         public string Simulate(float seconds, float throttle, float brake, float steer, bool reverse = false)
         {
             _reverse = reverse;
+            _horn = ScriptHorn;
             int frames = Mathf.RoundToInt(seconds * 60f);
             if (Physics == null)
             {
@@ -455,17 +532,18 @@ namespace TwentyTons.Unity
             float kmh = (Physics != null ? Physics.ForwardSpeed : Agent.Speed) * 3.6f;   // signed: negative when backing
             string where = Rolled ? "  ON ITS SIDE (T: the men right it)" : _offRoad ? "  OFF THE ROAD" : _onPavement ? "  ON THE PAVEMENT" : "";
             // The leg and the next stop: "Trip 1 to Azimpur, Farmgate in 240 m".
-            RouteStops.Stop next = Stops.Next(Leg, Agent.S, out float ahead);
+            RouteStops.Stop next = Stops.Next(Leg, Leg == 0 ? Agent.S : Agent.S - OutLength, out float ahead);
             string trip = $"Trip {Trips + 1} {LegName}" + (next != null ? $",  {(next.IsStand ? "the stand" : next.name)} in {Mathf.Max(0f, ahead):0} m" : "") +
-                          $"  ({Corridor.Length - Agent.S:0} m to the stand)";
+                          $"  ({LegEndS - Agent.S:0} m to the stand)";
             if (_clock - _standNoteAt < 10f) trip = _standNote;
             string text =
                 $"{kmh,5:0} km/h   air {Bus.AirPressure * 100f,3:0} %   brakes {Bus.BrakeApplied * 100f,3:0} %  (wear {Bus.BrakeWear * 100f:0} %)\n" +
                 $"{Bus.Passengers} riders, {Bus.MassKg(Tuning.Bus) / 1000f:0.0} t   lateral {LateralAccel:0.0} m/s²   lean {Roll:+0.0;-0.0}°\n" +
                 $"{Agent.S:0} m along, {Agent.Lateral:+0.0;-0.0} m across (kerb at {-_carriagewayHalf:0}){where}\n" +
                 trip + "\n" +
-                "W/S drive, A/D steer, space full brake, X reverse, [ ] riders, C camera, T tow back to the lane, R back to the stand";
-            GUI.Label(new Rect(16f, 12f, 900f, 150f), text, new GUIStyle(GUI.skin.label) { fontSize = 18, richText = false });
+                (Street != null ? Street.Readout() : "") +
+                "W/S drive, A/D steer, space full brake, X reverse, H horn, P/N pay/refuse, [ ] riders, C camera, T tow, R new day";
+            GUI.Label(new Rect(16f, 12f, 1100f, 260f), text, new GUIStyle(GUI.skin.label) { fontSize = 18, richText = false });
         }
 
         [System.Serializable] private class RouteFile { public float[] xz; public float width; public float length; public float[] farEdge; }

@@ -310,6 +310,52 @@ One entry per session. The next session reads this first.
   sandbox's Economy, not yet wired to the Unity day; the scripted driver still clips the median
   wall at the Mirpur 10 roundabout exit on both legs.
 
+**Step 45 — the street is alive on the real road: the sim, people and traffic, the day as one loop, zone skins** (done)
+
+- Owner: "lets do all of it" (the sim wired in, people and rickshaws, zone skins; the play-test is
+  theirs). The core `TrafficSim` now runs behind the physics bus (`StreetSim`): crowds grow at the
+  stops and board at the open door, two named crews of the owner's company (Rafiq, Jamal) race for
+  them, generic traffic and other buses fill the road around the player, people cross anywhere, the
+  sergeant's boxes stand at Mirpur 10, Agargaon, Farmgate and Shahbagh both ways, the ledger counts
+  fares, fuel, the lineman per trip and the party man at Karwan Bazar. The bus body is the authority:
+  each physics step the player's Agent is written from the body, the sim steps the world and applies
+  the delayed, possibly frozen, hands to the BusController the body drives with
+  (`TrafficSim.ExternalPlayer` skips the kinematic step and the core's rollover check; the physics
+  body tips itself and tells the core, so the crowd and the ropes follow). What the sim does to the
+  player's speed, a truck in the nose or a sergeant's hand, comes back as a cap on the body.
+- The road is one closed corridor: out on `route.json`, back on `route_back.json`, joined at the
+  stands, 27.2 km round. The stops of both legs are zones along it (41), a trip is a lap, the leg is
+  where you are. The projection keeps its leg: the two carriageways are a few metres apart at the
+  stands and on dual stretches, so the nearest line is not the answer (the way back flipped onto the
+  way out at the Azimpur corner); the bus changes leg only when the other leg is closer and it is
+  heading that leg's way, the U-turn at the stand (`Corridor.Project` over a stretch, with memory in
+  `PlayerBusDrive.ProjectPlayer`).
+- `StreetView` draws the sim: vehicles as boxes of their shape coloured by class (the company's
+  buses in the player's own colour), people as capsules, the crowd at each stop on the kerb. No
+  colliders: the bus meets them through the sim's contact rules. Real bodies are the art pass.
+- The readout: the clock, fares, paid out, the zoma, the crew's take, trips; aboard and waiting at
+  the next stop; the own-company bus ahead and behind; the sergeant's demand (P pay, N refuse);
+  the ropes after a rollover; the last three ledger lines; the day's end (R: a new day). H is the horn.
+- Zone skins in `Surface.shader`: five bands of world z along the route change the facades' palette,
+  the share of shops and signboards and the grime: Mirpur as before; Agargaon concrete and white
+  with few shops; Farmgate and Karwan Bazar shops and signboards on every ground floor, grimy; the
+  university stretch red brick and old white; Nilkhet and Azimpur lime and pastel, shops, the
+  dampest walls. The characters are the builder's reading, to check against street photographs.
+- Tests: `fullroute.cs` drives the road alone (street off): out 1,246 s, back 1,189 s, no tow either
+  way, the leg turning at each stand. `street.cs` drives the first 3.6 km with the street alive and
+  a driver who brakes for the gap ahead and for people on the carriageway: 774 s, seven stops
+  worked, Tk 40 of fares, Rafiq first at four crowds, three contacts (two hard), two near misses,
+  nobody hurt. A second run of the same test ended the day at the Mirpur 10 roundabout after 575 s:
+  the driver cut the corner onto the pavement at 28 km/h and knocked three people down, Tk 6,000
+  each on the spot and the bus seized at the second, Tk 19,000 of cases against Tk 90 of fares. The first version
+  of that driver stood twenty minutes at Mirpur 12 because it counted the crowd on the pavement as
+  people in its lane; the sim's own earlier run killed someone at Mirpur 11 within ninety seconds
+  with a driver that does not look. That is the game: the street punishes a driver that does not
+  look, and the test driver is crude.
+- Placeholders for the owner: the day is three real hours (`StreetSim.DayLengthSeconds`), real money
+  (`MoneyScale` 1, the zoma Tk 3,000), a trip's fuel over 13.6 km; junction officers with cross
+  streets are not in yet (the cane and the rope), nor the household between days.
+
 ## 8 Oct 2026 — Moved to the owner's Mac
 
 - The cloud session was teleported into Claude Code on the MacBook Air; the game lives in

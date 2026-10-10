@@ -227,6 +227,10 @@ namespace TwentyTons.EditorTools
             var physics = bus.AddComponent<TwentyTons.Unity.PhysicsBus>();
             physics.Build(tuning.Bus, shape);
             physics.WheelMeshes = TwentyTons.Unity.BusBody.Build(bus.transform, tuning.Bus, shape, paint, glass, rubber, dark);
+            // The street: the core sim on the loop (crowds, rivals, traffic, people, the sergeant, the ledger)
+            // and the view that draws its agents. Both wake up in Play mode only.
+            bus.AddComponent<TwentyTons.Unity.StreetSim>();
+            bus.AddComponent<TwentyTons.Unity.StreetView>();
             var drive = bus.AddComponent<TwentyTons.Unity.PlayerBusDrive>();
             drive.Tuning = tuning;
             drive.RouteJson = route;

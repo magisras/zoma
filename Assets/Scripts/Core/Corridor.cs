@@ -131,6 +131,37 @@ namespace TwentyTons.Core
             }
         }
 
+        /// <summary>
+        /// The same projection, but only onto the stretch of road between two S values (segments that
+        /// overlap it), with the plain distance to the closest point as well. A loop that runs out along
+        /// one carriageway and back along the other has two stretches a few metres apart; the caller
+        /// decides which one the vehicle is on, with memory and heading, instead of the nearest line.
+        /// </summary>
+        public void Project(Vector3 world, float sFrom, float sTo, out float s, out float lateral, out float distance)
+        {
+            float bestDistanceSq = float.MaxValue;
+            s = sFrom;
+            lateral = 0f;
+            for (int i = 0; i < _segmentCount; i++)
+            {
+                if (_cumulative[i + 1] < sFrom || _cumulative[i] > sTo) continue;
+                Vector3 a = Points[i];
+                Vector3 ab = Points[(i + 1) % Points.Count] - a;
+                float lengthSq = ab.sqrMagnitude;
+                if (lengthSq < 1e-6f) continue;
+                float t = Mathf.Clamp01(Vector3.Dot(world - a, ab) / lengthSq);
+                Vector3 closest = a + ab * t;
+                float distanceSq = (world - closest).sqrMagnitude;
+                if (distanceSq < bestDistanceSq)
+                {
+                    bestDistanceSq = distanceSq;
+                    s = _cumulative[i] + Mathf.Sqrt(lengthSq) * t;
+                    lateral = Vector3.Dot(world - closest, RightOfSegment(i));
+                }
+            }
+            distance = bestDistanceSq < float.MaxValue ? Mathf.Sqrt(bestDistanceSq) : float.MaxValue;
+        }
+
         /// <summary>Distance from a world point to the centreline, for "which corridor am I on?".</summary>
         public float DistanceTo(Vector3 world)
         {

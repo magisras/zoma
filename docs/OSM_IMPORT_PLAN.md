@@ -42,6 +42,10 @@ clear instead (roundabouts, junctions), and nowhere else: a pier is never on a c
 either leg, and the deck carries on without one. A chunk's file is deleted when the generator no longer
 builds that kind there, so a stale mesh cannot survive a rebuild.
 
+`Assets/World/Shaders/Surface.shader` skins it all without textures, and its facades change by zone
+along the route (five bands of world z: Mirpur, Agargaon, Farmgate and Karwan Bazar, the university,
+Nilkhet and Azimpur) in palette, shops, signboards and grime.
+
 `GreyboxSceneBuilder` (`Assets/Editor/`) makes one scene per chunk under `Assets/Scenes/Chunks/`
 and the base scene `Corridor01_Greybox` with the sun, the ground, the markers, a post and a board
 at every stop of each leg, the bus (with both routes and the stops wired in) and the

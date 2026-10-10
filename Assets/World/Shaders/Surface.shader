@@ -8,6 +8,13 @@
 //   3 concrete  the viaduct and the stations
 //   4 dirt      the ground between things
 // Everything is hashed from world position: no textures, nothing to download, nothing to license.
+// The route runs north to south (z from 0 at Mirpur 12 to -11,200 at Azimpur), and the facades change
+// by zone along it (zoneOf): Mirpur's mixed residential rows; Agargaon's government blocks, concrete
+// and white, few shops; Farmgate and Karwan Bazar, shops and signboards on every ground floor, grimy;
+// the university stretch at Shahbagh and TSC, red brick and old white, hardly a shutter; Nilkhet and
+// Azimpur, old Dhaka's lime and pastel, book stalls and shops, the dampest walls. The bands are world
+// z thresholds between the named stops (stops.json); the characters are the builder's reading of the
+// districts, to be checked against street photographs (S-026) when the art pass comes.
 // Lit by the main light with shadows and the sky's ambient; URP, SRP-batcher compatible.
 Shader "Twenty Tons/Surface"
 {
@@ -91,12 +98,31 @@ Shader "Twenty Tons/Surface"
                 return float3(0.30, 0.30, 0.32);
             }
 
+            // Which stretch of the route a point is in, by world z: 0 Mirpur, 1 Agargaon, 2 Farmgate and
+            // Karwan Bazar, 3 the university, 4 Nilkhet and Azimpur.
+            float zoneOf(float3 p)
+            {
+                if (p.z > -4800.0) return 0.0;
+                if (p.z > -7300.0) return 1.0;
+                if (p.z > -9500.0) return 2.0;
+                if (p.z > -10700.0) return 3.0;
+                return 4.0;
+            }
+
             // Rule learned the hard way: the Mac shader compiler process dies on a noise call inside a
             // branch. Every hash and noise value is computed up front; the branches only pick colours.
             float3 facade(float3 p, float3 n, float seed, float storeys, out float gloss)
             {
                 gloss = 0.0;
-                float3 wall = wallColour(seed) * (0.85 + 0.3 * hash1(seed + 0.7));
+                // The zone's character: which colours its walls draw from, how many ground floors are shops,
+                // how many of those hang a signboard, how dirty the walls are.
+                float zone = zoneOf(p);
+                float wallSeed = seed, shopShare = 0.55, signShare = 0.6, grime = 1.0;
+                if (zone > 0.5 && zone < 1.5) { wallSeed = seed * 0.25 + 0.75 * step(0.7, seed); shopShare = 0.2; signShare = 0.4; grime = 0.7; }        // concrete, lime wash, old white
+                else if (zone > 1.5 && zone < 2.5) { wallSeed = 0.25 + seed * 0.75; shopShare = 0.9; signShare = 0.85; grime = 1.3; }                  // yellow, salmon, brick, sky
+                else if (zone > 2.5 && zone < 3.5) { wallSeed = 0.625 + seed * 0.25; shopShare = 0.15; signShare = 0.3; grime = 0.8; }                 // red brick and old white
+                else if (zone > 3.5) { wallSeed = 0.125 + seed * 0.4; shopShare = 0.75; signShare = 0.7; grime = 1.4; }                                 // lime, yellow, salmon
+                float3 wall = wallColour(wallSeed) * (0.85 + 0.3 * hash1(seed + 0.7));
                 float along = p.x;
                 if (abs(n.x) > abs(n.z)) along = p.z;
                 float up = p.y;
@@ -116,13 +142,13 @@ Shader "Twenty Tons/Surface"
                 float balcony = step(0.6, hash1(float2(cellId * 3.0, storey + seed * 17.0)));
                 float streak = fbm(float2(along * 0.6, up * 0.08));
                 float stain = fbm(float2(along * 0.25, up * 0.25)) * 0.25;
-                float damp = saturate(1.0 - up / 3.0) * 0.45;
+                float damp = saturate(1.0 - up / 3.0) * 0.45 * grime;
                 float grille = step(frac(along * 3.0), 0.12) + step(frac(up * 3.0), 0.12);
                 float3 board = float3(0.8, 0.1, 0.1);
                 if (shopR < 0.33) board = float3(0.1, 0.3, 0.7);
                 else if (shopR < 0.66) board = float3(0.95, 0.75, 0.1);
-                bool shops = hash1(seed + 5.3) < 0.55;                 // a row of shops, or a house with a gate
-                bool signboard = hash1(float2(cellId + 7.0, seed)) < 0.6;
+                bool shops = hash1(seed + 5.3) < shopShare;            // a row of shops, or a house with a gate
+                bool signboard = hash1(float2(cellId + 7.0, seed)) < signShare;
                 bool gate = hash1(float2(cellId * 1.7, seed + 2.2)) < 0.3;
 
                 float3 col = wall;
@@ -165,7 +191,7 @@ Shader "Twenty Tons/Surface"
                     col = wall * 0.9;                                   // parapet and stair head
                 }
                 if (hasFloors && (cx < 0.03 || cx > 0.97)) col = lerp(col, float3(0.55, 0.53, 0.5), 0.6);   // the frame's columns
-                col *= 1.0 - damp - stain * 0.9 - 0.2 * streak;
+                col *= 1.0 - damp - stain * 0.9 * grime - 0.2 * streak * grime;
                 return col;
             }
 

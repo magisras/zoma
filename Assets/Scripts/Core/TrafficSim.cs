@@ -71,6 +71,13 @@ namespace TwentyTons.Core
         public int Day = 1;
         public CrewVoice Voice;
         public Agent Player;
+        /// <summary>
+        /// The player's bus is moved by something outside the sim (the Unity physics body) which writes
+        /// the Player's pose, speed and corridor coordinates before each step. The sim then applies the
+        /// delayed inputs to the BusController for that body to drive with, and leaves the integration
+        /// and the physical rollover to it; everything else (fatigue, boarding, contacts, the ledger) runs.
+        /// </summary>
+        public bool ExternalPlayer;
 
         private readonly InputDelay _inputDelay = new InputDelay();
         private PlayerInput _latestInput;
@@ -335,11 +342,14 @@ namespace TwentyTons.Core
                 // The sandbox day stands for a whole day's driving: wear is scaled like the money is.
                 Condition.Brake(Bus.Held ? 0f : Bus.Brake, Player.Speed, dt / Mathf.Max(0.01f, Tuning.Economy.MoneyScale), Tuning.Bus);
                 Bus.BrakeWear = Condition.BrakeWear;
-                float lateralBefore = Player.Lateral;
-                // The wrong side is still road: the far edge is the oncoming carriageway's outer edge.
-                float farEdge = Oncoming != null ? Corridor.HalfWidth + Tuning.Spawn.MedianMetres + Oncoming.Width : Corridor.HalfWidth;
-                Bus.Step(Player, Corridor, Tuning.Bus, dt, farEdge);
-                Player.LateralVelocity = (Player.Lateral - lateralBefore) / dt;   // for the flank rule in contacts
+                if (!ExternalPlayer)
+                {
+                    float lateralBefore = Player.Lateral;
+                    // The wrong side is still road: the far edge is the oncoming carriageway's outer edge.
+                    float farEdge = Oncoming != null ? Corridor.HalfWidth + Tuning.Spawn.MedianMetres + Oncoming.Width : Corridor.HalfWidth;
+                    Bus.Step(Player, Corridor, Tuning.Bus, dt, farEdge);
+                    Player.LateralVelocity = (Player.Lateral - lateralBefore) / dt;   // for the flank rule in contacts
+                }
                 Metrics.DistanceMetres += Player.Speed * dt;
                 Player.HornTimer = Mathf.Max(0f, Player.HornTimer - dt);
                 WatchPlayerAtJunctions();
@@ -351,7 +361,7 @@ namespace TwentyTons.Core
                     Metrics.WrongSideNow = Player.Lateral > Corridor.HalfWidth + Tuning.Spawn.MedianMetres * 0.5f;
                     if (Metrics.WrongSideNow) Metrics.WrongSideSeconds += dt;
                 }
-                Core.Rollover.Check(this, dt);      // after the ghost knows which road we are on
+                if (!ExternalPlayer) Core.Rollover.Check(this, dt);      // after the ghost knows which road we are on; a physics body tips itself
             }
 
             for (int i = 0; i < Agents.Count; i++)
