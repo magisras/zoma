@@ -64,11 +64,13 @@ namespace TwentyTons.Unity
                     _pending[i] = true;
                     if (now) SceneManager.LoadScene(ScenePaths[i], LoadSceneMode.Additive);
                     else SceneManager.LoadSceneAsync(ScenePaths[i], LoadSceneMode.Additive);
+                    Note($"chunk {i} (km {_chunks[i].s0 / 1000f:0}-{_chunks[i].s1 / 1000f:0.0}) loading, {d:0} m ahead");
                 }
                 else if (loaded && d > UnloadBeyond && !now)
                 {
                     _pending[i] = false;
                     SceneManager.UnloadSceneAsync(scene);
+                    Note($"chunk {i} unloaded, {d:0} m behind");
                 }
             }
         }
@@ -86,6 +88,14 @@ namespace TwentyTons.Unity
         }
 
         /// <summary>Which chunks are loaded, for the readout: "chunks 3 4 5".</summary>
+        /// <summary>The last few loads and unloads, newest last, for the readout.</summary>
+        public readonly List<string> Notes = new List<string>();
+        private void Note(string text)
+        {
+            Notes.Add($"{Time.time:0}s  {text}");
+            if (Notes.Count > 4) Notes.RemoveAt(0);
+        }
+
         public string Status
         {
             get

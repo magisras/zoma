@@ -92,6 +92,14 @@ namespace TwentyTons.Unity
         private float LateralAccel => Physics != null ? Mathf.Abs(Physics.LateralAccel) : Mathf.Abs(Agent.Speed * Bus.LastYawRate);
         private float Roll => Physics != null ? Physics.RollDegrees : 0f;
 
+        /// <summary>
+        /// G: ghost drive, for testing the map and the streaming. The street is off, the kerb and
+        /// off-road crawls are off, the body ignores the pavements and the invisible walls, nothing
+        /// tips. The road is still the road; everything that stops a bus is not.
+        /// </summary>
+        public bool Ghost { get; private set; }
+        private readonly System.Collections.Generic.HashSet<Collider> _ignored = new System.Collections.Generic.HashSet<Collider>();
+        private float _nextGhostSweep;
         private Transform _wheel;         // the cab's steering wheel pivot, turned with the steering
         private BusInterior _interior;    // seats, racks, the people aboard
 
@@ -322,6 +330,8 @@ namespace TwentyTons.Unity
             if (k.rKey.wasPressedThisFrame) { NewDay(); return; }
             // O: the street off or on (traffic, people, crowds, the sergeant), a new day at the stand either way.
             if (k.oKey.wasPressedThisFrame) { var st = GetComponent<StreetSim>(); if (st != null) st.enabled = !st.enabled; NewDay(); return; }
+            if (k.gKey.wasPressedThisFrame) { SetGhost(!Ghost); return; }
+            if (Ghost && Time.time >= _nextGhostSweep) { GhostSweep(); _nextGhostSweep = Time.time + 1f; }
             if (k.tKey.wasPressedThisFrame) { Tow(); return; }
             if (k.pKey.wasPressedThisFrame && Street != null) Street.Answer(true);
             if (k.nKey.wasPressedThisFrame && Street != null) Street.Answer(false);
@@ -384,6 +394,7 @@ namespace TwentyTons.Unity
             float far = FarEdgeAt(Agent.S);
             _onPavement = Agent.Lateral < -_carriagewayHalf || Agent.Lateral > far - PavementMetres;
             _offRoad = Agent.Lateral < LeftEdge || Agent.Lateral > far;
+            if (Ghost) { _wasOnPavement = _onPavement; _lastLateral = Agent.Lateral; WatchLegs(); _clock += dt; return; }
             if (_offRoad) Physics.Cap(OffRoadKmh / 3.6f, forward);
             else if (_onPavement) Physics.Cap(PavementKmh / 3.6f, forward);
 
@@ -441,6 +452,36 @@ namespace TwentyTons.Unity
                 Physics.Body.position += dir.normalized * (dist + 0.1f);
                 Physics.Body.linearVelocity = Vector3.Project(Physics.Body.linearVelocity, t.forward);
                 Debug.Log($"UNWEDGED from {wall.name} by {dist:0.0} m at s={Agent.S:0} lat={Agent.Lateral:0.0}");
+            }
+        }
+
+        /// <summary>Ghost drive on or off: the street goes off with it; the ignored colliders are restored when it ends.</summary>
+        public void SetGhost(bool on)
+        {
+            Ghost = on;
+            var st = GetComponent<StreetSim>();
+            if (st != null && st.enabled == on) { st.enabled = !on; NewDay(); }
+            if (!on)
+            {
+                var box = GetComponent<BoxCollider>();
+                foreach (Collider c in _ignored) if (c != null && box != null) UnityEngine.Physics.IgnoreCollision(box, c, false);
+                _ignored.Clear();
+            }
+            else GhostSweep();
+        }
+
+        /// <summary>Every pavement and invisible wall in the loaded chunks: the body passes through them.</summary>
+        private void GhostSweep()
+        {
+            var box = GetComponent<BoxCollider>();
+            if (box == null) return;
+            foreach (MeshCollider mc in FindObjectsByType<MeshCollider>(FindObjectsSortMode.None))
+            {
+                if (_ignored.Contains(mc)) continue;
+                string root = mc.transform.root.name;
+                if (root != "Pavements" && root != "Invisible walls" && root != "Median barrier" && root != "MRT Line 6 viaduct") continue;
+                UnityEngine.Physics.IgnoreCollision(box, mc, true);
+                _ignored.Add(mc);
             }
         }
 
@@ -585,8 +626,9 @@ namespace TwentyTons.Unity
                 $"{Agent.S:0} m along, {Agent.Lateral:+0.0;-0.0} m across (kerb at {-_carriagewayHalf:0}){where}\n" +
                 trip + "\n" +
                 (Street != null ? Street.Readout() : "") +
-                (WorldStreamer.Instance != null ? $"world: {WorldStreamer.Instance.Status} loaded, km {Agent.S / 1000f:0.0} of the loop; loads within {WorldStreamer.Instance.LoadWithin:0} m, drops beyond {WorldStreamer.Instance.UnloadBeyond:0} m\n" : "") +
-                "W/S drive, A/D steer, space full brake, X reverse, H horn, P/N pay/refuse, [ ] riders, C camera, T tow, R new day, O street " + (Street != null ? "off" : "on");
+                (Ghost ? "GHOST DRIVE: street off, kerbs, walls and piers ignored, nothing tips.  G to end it.\n" : "") +
+                (WorldStreamer.Instance != null ? $"world: {WorldStreamer.Instance.Status} loaded, km {Agent.S / 1000f:0.0} of the loop; loads within {WorldStreamer.Instance.LoadWithin:0} m, drops beyond {WorldStreamer.Instance.UnloadBeyond:0} m\n" + string.Join("\n", WorldStreamer.Instance.Notes) + (WorldStreamer.Instance.Notes.Count > 0 ? "\n" : "") : "") +
+                "W/S drive, A/D steer, space full brake, X reverse, H horn, P/N pay/refuse, [ ] riders, C camera, T tow, R new day, O street " + (Street != null ? "off" : "on") + ", G ghost drive";
             GUI.Label(new Rect(16f, 12f, 1100f, 260f), text, new GUIStyle(GUI.skin.label) { fontSize = 18, richText = false });
         }
 
