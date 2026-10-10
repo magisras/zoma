@@ -396,7 +396,12 @@ One entry per session. The next session reads this first.
   toggles and buttons taped to the dash, the rod along the base of the screen, the cubby with the
   bottle, the engine cowl under a cloth, and the padded bench along the left wall where passengers
   sit beside the driver ("to fit more customers inside"). Checked from the seat looking ahead and
-  looking left.
+  looking left. A fourth frame (S-026.11, the saloon from the back) gave `BusInterior`: two-and-two
+  high-backed seats in red vinyl on green cushions down a bare metal aisle, luggage racks both
+  sides, the painted walls and roof, and the riders as capsules, the first two on the cab's bench,
+  then the 44 seats, then standing three abreast in the aisle, as many as the model says are
+  aboard; the inside mirror now shows them. The frames are from Andrew Fraser's ride-along film,
+  which RESEARCH.md already names.
 
 ## 8 Oct 2026 — Moved to the owner's Mac
 

@@ -93,6 +93,7 @@ namespace TwentyTons.Unity
         private float Roll => Physics != null ? Physics.RollDegrees : 0f;
 
         private Transform _wheel;         // the cab's steering wheel pivot, turned with the steering
+        private BusInterior _interior;    // seats, racks, the people aboard
 
         private void Awake()
         {
@@ -102,6 +103,7 @@ namespace TwentyTons.Unity
             var rig = FindFirstObjectByType<CameraRig>();
             Vector3 eye = rig != null ? rig.DriverSeat : new Vector3(0.85f, 2.35f, 4.3f);
             _wheel = BusCabin.Build(transform, eye, Agent.Shape.Width);
+            _interior = new BusInterior(transform, Agent.Shape, eye);
         }
 
         /// <summary>Build the corridor and the model and put the bus at its start. Public so the scene
@@ -331,6 +333,7 @@ namespace TwentyTons.Unity
             else Physics.UpdateWheelMeshes();
             // The cab's wheel: about fourteen turns of the rim per turn of the road wheels, an old bus's gearing.
             if (_wheel != null) _wheel.localRotation = Quaternion.Euler(-55f, 0f, 0f) * Quaternion.Euler(0f, Bus.SteerAngle * Mathf.Rad2Deg * 14f, 0f);
+            if (_interior != null) _interior.Show(Bus.Passengers);
         }
 
         private void FixedUpdate()

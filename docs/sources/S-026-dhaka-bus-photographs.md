@@ -27,7 +27,7 @@ for proportions, the body style and the livery until photographs of the chosen b
   by a local coachbuilder (the name on the window glass reads TAMIM) on the same kind of truck chassis as the older,
   flat-fronted body in photo 00. Same company, two generations of body, both on the road.
 
-- **S-026.8** The driver's cab from the seat (owner-supplied frame, 10 Oct 2026, origin not recorded, reference only):
+- **S-026.8** The driver's cab from the seat (owner-supplied frame, 10 Oct 2026, from Andrew Fraser's "Why Bangladesh Has the Deadliest Buses on Earth", RESEARCH.md; reference only):
   right-hand drive; every surface painted orange-red metal; a one-piece windscreen in a thick frame with a painted
   name band across its top in Bangla and a cloth curtain hanging at the top left; a large rectangular inside mirror
   on a stalk from the top of the screen, right of centre; a black car-type steering wheel, small, lying well back,
@@ -36,7 +36,7 @@ for proportions, the body style and the livery until photographs of the chosen b
   cowl between the driver and the door under a cloth; bare metal floor; the right side window open with the outside
   mirror's arm at its edge; a passenger stepping in at the open door on the left. The bus ahead has a hand-painted
   rear with a number plate on a board. The cab in `BusCabin` is laid out from this frame.
-- **S-026.9** The dash close up (owner-supplied frame, 10 Oct 2026, same source, reference only): a white panel
+- **S-026.9** The dash close up (owner-supplied frame, 10 Oct 2026, the same Fraser film, reference only): a white panel
   taped to the dash left of the binnacle carrying four rows of six small switches, two rows of toggles and two of
   round push buttons, the bus's own wiring (lights, horns, wipers); the instrument binnacle's hood with a checked
   gamcha cloth stuffed over the dials; a long black rod along the base of the screen; the windscreen cracked in a
@@ -48,6 +48,11 @@ for proportions, the body style and the livery until photographs of the chosen b
   beside the driver (the owner: "to fit more customers inside"); the cubby with the bottle and the switch panel
   are on the dash's left end; stickers and a phone number on the name band; the inside mirror top right shows the
   passengers behind.
+- **S-026.11** The saloon looking forward from the back (owner-supplied frame, 10 Oct 2026, the same Fraser film,
+  reference only): two-and-two high-backed seats, each back in a red floral vinyl cover tied on, green cushions,
+  a narrow aisle of bare dirty metal, luggage racks of slatted metal along both sides overhead, a ceiling of metal
+  slats with fans, stickers on the sliding windows, and the cab ahead with the painted name band across the top of
+  the screen and the orange dash. The interior in `BusInterior` is laid out from this frame.
 
 ## Files
 
@@ -60,7 +65,8 @@ for proportions, the body style and the livery until photographs of the chosen b
 | `05_Dhaka_bus_3_october_2012.jpg` | https://commons.wikimedia.org/wiki/File%3ADhaka_bus_3_october_2012.jpg | CC BY-SA 2.0 | Sudipta Arka Das |
 | `06_Dhaka_local_bus_and_passenger.jpg` | https://commons.wikimedia.org/wiki/File%3ADhaka_local_bus_and_passenger.jpg | CC BY-SA 4.0 | Aashaa < |
 | `10_owner_bikash_pink_under_flyover.png` | owner-supplied, origin not recorded | unknown, reference only | — |
-| `11_owner_ride_along_cab_frame.png` | owner-supplied, origin not recorded (a ride-along film frame) | unknown, reference only | — |
-| `12_owner_ride_along_dash_frame.png` | owner-supplied, origin not recorded (a ride-along film frame) | unknown, reference only | — |
-| `13_owner_ride_along_cab_bench_frame.png` | owner-supplied, origin not recorded (a ride-along film frame) | unknown, reference only | — |
+| `11_owner_ride_along_cab_frame.png` | owner-supplied, a frame of Andrew Fraser's film (RESEARCH.md) | unknown, reference only | — |
+| `12_owner_ride_along_dash_frame.png` | owner-supplied, a frame of Andrew Fraser's film (RESEARCH.md) | unknown, reference only | — |
+| `13_owner_ride_along_cab_bench_frame.png` | owner-supplied, a frame of Andrew Fraser's film (RESEARCH.md) | unknown, reference only | — |
+| `14_fraser_interior_frame.png` | owner-supplied, a frame of Andrew Fraser's film (RESEARCH.md) | unknown, reference only | Andrew Fraser |
 | `09_Public_bus_stopped_at_road_side_of_Dhaka,2014.jpg` | https://commons.wikimedia.org/wiki/File%3APublic_bus_stopped_at_road_side_of_Dhaka%2C2014.jpg | CC BY-SA 3.0 | Aashaa < |
