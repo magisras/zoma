@@ -1188,10 +1188,16 @@ namespace TwentyTons.Core
             {
                 Corridor cross = Junctions[i].Cross;
                 if (cross == Oncoming) continue;
+                // Only the junctions near the player get their cross traffic: a real route has dozens.
+                if ((Junctions[i].Centre - Player.Position).sqrMagnitude > Tuning.Performance.DespawnRadiusMetres * Tuning.Performance.DespawnRadiusMetres) continue;
                 int have = crossCounts.ContainsKey(cross) ? crossCounts[cross] : 0;
+                // Before the first stop line only: a short cross street from the map put the box 23 m
+                // from its start, and vehicles born inside the box stood there and blocked the main road.
+                float line = Junctions[i].FirstOfPair.StopLineOn(cross, Tuning.Officer.StopLineSetbackMetres);
+                float farthest = Mathf.Max(8f, Mathf.Min(40f, line - 8f));
                 for (int attempt = 0; have < spawn.CrossVehiclesPerJunction && attempt < 5; attempt++)
                 {
-                    if (TrySpawnOn(cross, Random.Range(5f, 40f))) have++;
+                    if (TrySpawnOn(cross, Random.Range(5f, farthest))) have++;
                 }
             }
         }

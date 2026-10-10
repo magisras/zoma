@@ -352,9 +352,24 @@ One entry per session. The next session reads this first.
   people in its lane; the sim's own earlier run killed someone at Mirpur 11 within ninety seconds
   with a driver that does not look. That is the game: the street punishes a driver that does not
   look, and the test driver is crude.
+- The police hand: `greybox.py` writes `crossings.json`, the cross streets with an officer. OSM
+  splits ways at junctions, so each street is stitched from the arms leaving the node (the two most
+  opposite arms make a crossing, one arm a T run into the junction), 150 m either side, and cut
+  against each leg's centreline for the S on the leg and on the street. Six of them on the way
+  out, four on the way back (Agargaon Link Road, Rokeya Sarani's own branch at Agargaon, Lake Road,
+  a T at Kazi Nazrul Islam Avenue, Natun Eskaton Road, Minto Road); the residential side streets
+  are not junctions, and a stub whose box sits within 30 m of its start is dropped, since cross
+  traffic born inside the box blocked the main road for good (the first run jammed at 613 m behind
+  twenty standing vehicles). Cross traffic is born only before the first stop line. `StreetSim` adds a `Junction` per cut, the back leg's mirroring
+  the out leg's officer as the sandbox's two carriageways did; cross traffic spawns only at the
+  junctions within 400 m of the player (`MaintainPopulation`), since a route has dozens where the
+  ring had two. `StreetView` draws the officer facing the stream he lets through and the rope across
+  the stop line when he has stretched it; the readout says when the cane is against you and how
+  far the line is. Mirpur 10's roundabout and Farmgate's turn have no officer yet: they are not
+  crossings of a main street in the map's terms.
 - Placeholders for the owner: the day is three real hours (`StreetSim.DayLengthSeconds`), real money
-  (`MoneyScale` 1, the zoma Tk 3,000), a trip's fuel over 13.6 km; junction officers with cross
-  streets are not in yet (the cane and the rope), nor the household between days.
+  (`MoneyScale` 1, the zoma Tk 3,000), a trip's fuel over 13.6 km; the household between days is
+  not wired.
 
 ## 8 Oct 2026 — Moved to the owner's Mac
 

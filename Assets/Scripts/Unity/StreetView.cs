@@ -21,7 +21,9 @@ namespace TwentyTons.Unity
         private readonly List<int> _seen = new List<int>();
         private readonly List<Transform> _crowd = new List<Transform>();
         private Transform _root;
-        private Material _bus, _ownBus, _truck, _car, _cng, _rickshaw, _person, _waiting;
+        private Material _bus, _ownBus, _truck, _car, _cng, _rickshaw, _person, _waiting, _officer, _rope;
+        private readonly List<Transform> _officers = new List<Transform>();
+        private readonly List<Transform> _ropes = new List<Transform>();
 
         private void Start()
         {
@@ -35,6 +37,8 @@ namespace TwentyTons.Unity
             _rickshaw = Make(new Color(0.75f, 0.25f, 0.30f));
             _person = Make(new Color(0.30f, 0.25f, 0.35f));
             _waiting = Make(new Color(0.55f, 0.45f, 0.30f));
+            _officer = Make(new Color(0.15f, 0.20f, 0.55f));
+            _rope = Make(new Color(0.85f, 0.80f, 0.60f));
         }
 
         private static Material Make(Color c)
@@ -100,6 +104,44 @@ namespace TwentyTons.Unity
                 }
             }
             for (int i = used; i < _crowd.Count; i++) _crowd[i].gameObject.SetActive(false);
+
+            // The officer in the middle of each junction, facing the stream he is letting through, and the
+            // constable's rope across the main road's stop line when he has stretched it against us.
+            int o = 0, r = 0;
+            foreach (Junction j in sim.Junctions)
+            {
+                if ((j.Centre - here).sqrMagnitude > DrawWithin * DrawWithin) continue;
+                Transform officer;
+                if (o < _officers.Count) officer = _officers[o];
+                else { officer = Person(_officer); officer.name = "Officer"; _officers.Add(officer); }
+                officer.gameObject.SetActive(true);
+                Vector3 face = j.Open == JunctionFlow.Main ? sim.Corridor.RightAt(j.MainS) : -sim.Corridor.TangentAt(j.MainS);
+                officer.position = j.Centre + Vector3.up * 0.85f;
+                officer.rotation = Quaternion.LookRotation(face, Vector3.up);
+                o++;
+                if (j.Roped && j.Open == JunctionFlow.Cross)
+                {
+                    Transform rope;
+                    if (r < _ropes.Count) rope = _ropes[r];
+                    else
+                    {
+                        var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                        Destroy(go.GetComponent<Collider>());
+                        go.transform.SetParent(_root, false);
+                        go.GetComponent<MeshRenderer>().sharedMaterial = _rope;
+                        go.name = "Rope";
+                        rope = go.transform; _ropes.Add(rope);
+                    }
+                    rope.gameObject.SetActive(true);
+                    float lineS = j.StopLineOn(sim.Corridor, sim.Tuning.Officer.StopLineSetbackMetres);
+                    rope.position = sim.Corridor.PositionAt(lineS, 0f) + Vector3.up * 0.9f;
+                    rope.rotation = Quaternion.LookRotation(sim.Corridor.TangentAt(lineS), Vector3.up);
+                    rope.localScale = new Vector3(sim.Corridor.Width + 1f, 0.05f, 0.05f);
+                    r++;
+                }
+            }
+            for (int i = o; i < _officers.Count; i++) _officers[i].gameObject.SetActive(false);
+            for (int i = r; i < _ropes.Count; i++) _ropes[i].gameObject.SetActive(false);
         }
 
         private Transform Spawn(Agent a)

@@ -3,12 +3,13 @@
 // the gap the sim reports ahead, and a person within 25 m in the lane. Stops at the end of the
 // stretch, when the day ends, or after 1200 s. Logs every 20 s and the ledger's events as they come,
 // to SHOTS/street.log; a photo at the first crowd worked. Replace SHOTS with a folder.
-float UNTIL = 3600f;
+float FROM = 30f, UNTIL = 3600f;      // metres along the way out: FROM 5500, UNTIL 7600 covers the Agargaon officers
 var d = TwentyTons.Unity.PlayerBusDrive.Instance; var w = TwentyTons.Unity.WorldStreamer.Instance; var sb = new System.Text.StringBuilder();
 var street = d.GetComponent<TwentyTons.Unity.StreetSim>(); street.enabled = true;
+float startWas = d.StartAlong; d.StartAlong = FROM;
 TwentyTons.Unity.PlayerBusDrive.Scripted = true; d.SetUp(); w.Refresh(true);
 var sim = d.Street.Sim; var ledger = sim.Economy.Ledger; int seenEvents = 0;
-float lane = -2.5f, nextLog = 20f, nextStream = 0f, t = 0f, dt = 1f / 60f, stuckFor = 0f; bool shot = false; int stops = 0, dumps = 0; float stoodAt = -1f;
+float lane = -2.5f, nextLog = 20f, nextStream = 0f, t = 0f, dt = 1f / 60f, stuckFor = 0f; bool shot = false, caneShot = false; int stops = 0, dumps = 0; float stoodAt = -1f;
 string st = "";
 sb.Append("zones " + sim.Zones.Count + ", checkpoints " + sim.Checkpoints.Count + ", agents " + sim.Agents.Count + ", aboard " + sim.Player.Load.Count + "\n");
 while (t < 1200f)
@@ -31,6 +32,9 @@ while (t < 1200f)
     bool working = zone != null && (zone.Waiting.Count > 0 || sim.Player.Load.AtDoor != null || sim.Player.Load.Leaving != null);
     if (working) { limit = 0f; if (stoodAt < 0f) { stoodAt = t; stops++; if (!shot) { UnityEditor.EditorApplication.Step(); UnityEditor.EditorApplication.isPaused = false; TwentyTons.EditorTools.SceneShots.Chase("SHOTS/street_crowd.png"); shot = true; } } }
     else stoodAt = -1f;
+    // The cane: the sim's stop line ahead when the officer holds our stream. Brake to it, like the traffic does.
+    float line = sim.StopDistanceAhead(sim.Player, 80f);
+    if (line < 80f) { limit = Mathf.Min(limit, Mathf.Max(0f, (line - 4f) * 2f)); if (!caneShot && line < 15f) { caneShot = true; UnityEditor.EditorApplication.Step(); UnityEditor.EditorApplication.isPaused = false; TwentyTons.EditorTools.SceneShots.Chase("SHOTS/street_cane.png"); } }
     float throttle = kmh < limit ? 1f : 0f;
     float brake = kmh > limit + 3f ? 0.6f : 0f;
     if (limit <= 0f) { throttle = 0f; brake = 1f; }
@@ -43,6 +47,6 @@ while (t < 1200f)
     if (sim.Economy.DayOver) { sb.Append("DAY OVER: " + sim.Economy.DayOverReason + " " + st + "\n"); break; }
     if (d.Agent.S > UNTIL) { sb.Append("DONE: " + st + "\n"); break; }
 }
-sb.Append("end " + st + "; stops " + stops + ", fares Tk " + ledger.FaresTk.ToString("0") + ", paid out Tk " + ledger.PaidOutTk.ToString("0") + ", contacts " + sim.Metrics.Contacts + " hard " + sim.Metrics.HardContacts + ", near misses " + sim.Metrics.NearMisses + ", knocked down " + sim.Metrics.PeopleKnockedDown + ", stops lost " + sim.Metrics.StopsLost + " first " + sim.Metrics.StopsFirst + "/" + sim.Metrics.StopsContested + ", horn " + sim.Metrics.HornPresses + ", " + w.Status + "\n");
+sb.Append("end " + st + "; stops " + stops + ", fares Tk " + ledger.FaresTk.ToString("0") + ", paid out Tk " + ledger.PaidOutTk.ToString("0") + ", contacts " + sim.Metrics.Contacts + " hard " + sim.Metrics.HardContacts + ", near misses " + sim.Metrics.NearMisses + ", knocked down " + sim.Metrics.PeopleKnockedDown + ", stops lost " + sim.Metrics.StopsLost + " first " + sim.Metrics.StopsFirst + "/" + sim.Metrics.StopsContested + ", horn " + sim.Metrics.HornPresses + ", cane runs " + sim.Metrics.CaneRuns + ", held at the rope " + sim.Metrics.RopeHeldSeconds.ToString("0") + " s, waited at lines " + sim.Metrics.CaneWaitSeconds.ToString("0") + " s, junctions " + sim.Junctions.Count + ", " + w.Status + "\n");
 UnityEditor.EditorApplication.Step(); UnityEditor.EditorApplication.isPaused = false; TwentyTons.EditorTools.SceneShots.Chase("SHOTS/street_end.png");   // a frame first: the street is drawn in LateUpdate, which the scripted drive never runs
-d.SetUp(); w.Refresh(true); TwentyTons.Unity.PlayerBusDrive.Scripted = false; System.IO.File.WriteAllText("SHOTS/street.log", sb.ToString()); return "see SHOTS/street.log";
+d.StartAlong = startWas; d.SetUp(); w.Refresh(true); TwentyTons.Unity.PlayerBusDrive.Scripted = false; System.IO.File.WriteAllText("SHOTS/street.log", sb.ToString()); return "see SHOTS/street.log";

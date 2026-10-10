@@ -34,6 +34,8 @@ namespace TwentyTons.Unity
         public TextAsset RouteBackJson;
         [Tooltip("Assets/World/Corridor01/stops.json: the stops of both legs, for the readout and the sim's demand zones.")]
         public TextAsset StopsJson;
+        [Tooltip("Assets/World/Corridor01/crossings.json: the cross streets with an officer, for the sim's junctions.")]
+        public TextAsset CrossingsJson;
         [Tooltip("Metres along the route to start at; the stand is at 0.")]
         public float StartAlong = 30f;
         [Tooltip("Metres across the carriageway to start at; negative is the left (kerb) side. Bangladesh drives on the left, " +
@@ -129,7 +131,7 @@ namespace TwentyTons.Unity
             Street = GetComponent<StreetSim>();
             if (Street != null && Street.enabled && Physics != null && Application.isPlaying)
             {
-                Street.Build(this, Corridor, Stops, OutLength);
+                Street.Build(this, Corridor, Stops, OutLength, CrossingsJson);
                 Agent = Street.Sim.Player;
                 Bus = Street.Sim.Bus;
             }

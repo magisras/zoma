@@ -236,6 +236,7 @@ namespace TwentyTons.EditorTools
             drive.RouteJson = route;
             drive.RouteBackJson = AssetDatabase.LoadAssetAtPath<TextAsset>(WorldDir + "/route_back.json");
             drive.StopsJson = AssetDatabase.LoadAssetAtPath<TextAsset>(WorldDir + "/stops.json");
+            drive.CrossingsJson = AssetDatabase.LoadAssetAtPath<TextAsset>(WorldDir + "/crossings.json");
             drive.SetUp();                                             // stands at the start lane in the saved scene
             physics.UpdateWheelMeshes();
 

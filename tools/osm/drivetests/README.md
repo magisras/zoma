@@ -27,7 +27,9 @@ PNGs first (`sed "s#SHOTS#/tmp/shots#g"`). Enter Play mode before running them
   people, the sergeant, the ledger) and a driver who brakes for the gap the sim reports ahead and
   for people on the carriageway, and stands at a crowd until the door is quiet. Logs every 20 s with
   aboard, fares, the gap and the zone, every ledger event, who is in front after 30 s standing, and
-  the sim's counts at the end. `fullroute.cs` switches the street off for its runs: the road alone.
+  the sim's counts at the end, among them the cane runs and the seconds held at lines. `FROM` and
+  `UNTIL` pick the stretch (5500 to 7600 covers the Agargaon officers). `fullroute.cs` switches the
+  street off for its runs: the road alone.
   A frame (`Step()`) is run before each photo, since the street is drawn in LateUpdate.
 - `route.cs`: the first 3 km to Kazipara with a driver's eyes (aim point ahead on the lane), a log
   line every 10 s, photos at Mirpur 11, Mirpur 10 and Kazipara, a photo where it gets stuck.

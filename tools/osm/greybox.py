@@ -27,6 +27,8 @@ and beside them:
     route_back.json   the same from Azimpur back to Mirpur 12, on the other carriageway where dual
     stops.json        the bus stops: OSM bus_stop nodes on the kerb side of each leg, plus the
                       research's named pickups and stands (hot), with S on each leg
+    crossings.json    the cross streets with an officer: the crossing way 150 m either side, and where
+                      it cuts each leg (TrafficSim.Junction)
     chunks.json       each chunk's stretch of the route sampled every 50 m: WorldStreamer's index
 A Unity scene is made of each chunk folder and streamed around the bus (GreyboxSceneBuilder,
 WorldStreamer). None of the meshes are in git: make world.
@@ -842,6 +844,174 @@ def median_line(route, centrelines):
     return out, room, matched
 
 
+def segment_hit(a, b, c, d):
+    """Where segment a-b crosses segment c-d: (t along a-b, u along c-d) in [0, 1], or None."""
+    (ax, az), (bx, bz), (cx, cz), (dx, dz) = a, b, c, d
+    rx, rz, sx, sz = bx - ax, bz - az, dx - cx, dz - cz
+    den = rx * sz - rz * sx
+    if abs(den) < 1e-9:
+        return None
+    qx, qz = cx - ax, cz - az
+    t = (qx * sz - qz * sx) / den
+    u = (qx * rz - qz * rx) / den
+    return (t, u) if 0.0 <= t <= 1.0 and 0.0 <= u <= 1.0 else None
+
+
+def route_crossings(cross, junctions, centrelines, route, route_back, rpts_route):
+    """The cross streets with an officer (TrafficSim.Junction): for each junction node where a main
+    street crosses the route (the `cross` set), the crossing street's polyline 150 m either side of
+    the node, and where it cuts each leg's centreline (S on the leg, S on the cross street). OSM
+    splits ways at junctions, so the street is stitched from the arms leaving the node: the two most
+    opposite arms make a crossing, one arm a T, which is run into the junction and 20 m out. A dual
+    carriageway is cut twice by the same street, once per leg; the same officer works both. Cross
+    streets within 25 m of each other are one junction (the widest wins)."""
+    legs = []
+    for r in (route, route_back):
+        pts = [tuple(p) for p in r["points"]]
+        legs.append((pts, arc_length(pts)))
+    by_node = {}
+    for w in centrelines:
+        if w["class"] in ("primary", "primary_link", "secondary", "secondary_link", "tertiary", "tertiary_link", "trunk", "trunk_link"):
+            for nd in w["nodes"]:
+                by_node.setdefault(nd, []).append(w)
+    node_at = {tuple(xy): nd for nd, xy in junctions.items()}
+
+    def route_dir(x, z):
+        i = min(range(len(rpts_route)), key=lambda j: math.dist(rpts_route[j], (x, z)))
+        (ax, az), (bx, bz) = rpts_route[max(0, i - 1)], rpts_route[min(len(rpts_route) - 1, i + 1)]
+        l = math.hypot(bx - ax, bz - az) or 1.0
+        return ((bx - ax) / l, (bz - az) / l)
+
+    def walk(way, k, step, limit=150.0):
+        """The street's points from index k of a way outward in one direction, up to limit metres,
+        carrying on into the next way where this one ends (OSM splits a street at every junction):
+        the way through the end node that keeps the direction best."""
+        got, left, seen = [], limit, {way["id"]}
+        pts = [tuple(p) for p in way["points"]]
+        i = k
+        while left > 0:
+            if not (0 <= i + step < len(pts)):
+                # The end of this way: carry on along another way through its end node.
+                end_node = way["nodes"][0] if step < 0 else way["nodes"][-1]
+                prev = got[-2] if len(got) >= 2 else (got[-1] if got else pts[k])
+                here = pts[i]
+                hx, hz = here[0] - prev[0], here[1] - prev[1]
+                hl = math.hypot(hx, hz) or 1.0
+                best = None
+                for w2 in by_node.get(end_node, []):
+                    if w2["id"] in seen:
+                        continue
+                    idx2 = w2.get("node_index", {})
+                    if end_node not in idx2:
+                        continue
+                    p2 = [tuple(p) for p in w2["points"]]
+                    k2 = idx2[end_node]
+                    for step2 in (-1, 1):
+                        if not (0 <= k2 + step2 < len(p2)):
+                            continue
+                        nx, nz = p2[k2 + step2][0] - here[0], p2[k2 + step2][1] - here[1]
+                        nl = math.hypot(nx, nz) or 1.0
+                        dot = (hx * nx + hz * nz) / (hl * nl)
+                        if dot > 0.5 and (best is None or dot > best[0]):
+                            best = (dot, w2, k2, step2, p2)
+                if best is None:
+                    break
+                _, way, i, step, pts = best
+                seen.add(way["id"])
+                continue
+            d = math.dist(pts[i], pts[i + step])
+            if d > left:
+                f = left / d
+                got.append((pts[i][0] + (pts[i + step][0] - pts[i][0]) * f, pts[i][1] + (pts[i + step][1] - pts[i][1]) * f))
+                break
+            got.append(pts[i + step]); left -= d; i += step
+        return got
+
+    out = []
+    for cx, cz in sorted(cross):
+        nd = node_at.get((cx, cz))
+        if nd is None:
+            continue
+        dx, dz = route_dir(cx, cz)
+        arms = []                                   # (direction away from the node, points outward, way)
+        for w in by_node.get(nd, []):
+            idx = w.get("node_index", {})
+            if nd not in idx:
+                continue
+            k = idx[nd]
+            for step in (-1, 1):
+                arm = walk(w, k, step)
+                if len(arm) < 1 or math.dist(arm[0], (cx, cz)) < 1.0 and len(arm) < 2:
+                    continue
+                far = arm[min(len(arm) - 1, 1)] if math.dist(arm[0], (cx, cz)) < 3.0 else arm[0]
+                l = math.hypot(far[0] - cx, far[1] - cz) or 1.0
+                d = ((far[0] - cx) / l, (far[1] - cz) / l)
+                if abs(d[0] * dx + d[1] * dz) > 0.7:
+                    continue                        # along the route: our own road or its continuation
+                arms.append((d, arm, w))
+        if not arms:
+            continue
+        # A crossing: the two arms most opposite each other. Otherwise a T: one arm, into the junction.
+        best = None
+        for i in range(len(arms)):
+            for j in range(i + 1, len(arms)):
+                dot = arms[i][0][0] * arms[j][0][0] + arms[i][0][1] * arms[j][0][1]
+                if dot < -0.5 and (best is None or dot < best[0]):
+                    best = (dot, i, j)
+        if best is not None:
+            a, b = arms[best[1]], arms[best[2]]
+            line = list(reversed(a[1])) + [(cx, cz)] + b[1]
+            width = max(a[2]["width"], b[2]["width"])
+            name = a[2]["name"] or b[2]["name"] or a[2]["name_bn"] or "cross street"
+        else:
+            a = max(arms, key=lambda t: t[2]["width"])
+            tail = (cx - a[0][0] * 20.0, cz - a[0][1] * 20.0)
+            line = list(reversed(a[1])) + [(cx, cz), tail]
+            width = a[2]["width"]
+            name = a[2]["name"] or a[2]["name_bn"] or "cross street"
+        if arc_length(line)[-1] < 40.0:
+            continue
+        # Orient a crossing left to right across the way out: cross traffic reaches the out
+        # carriageway first, as the sandbox's does (Junction.FirstOfPair). A T keeps its direction.
+        rx_, rz_ = dz, -dx
+        if best is not None and (line[-1][0] - line[0][0]) * rx_ + (line[-1][1] - line[0][1]) * rz_ < 0:
+            line.reverse()
+        along_line = arc_length(line)
+        entry = {"name": name, "x": round(cx, 1), "z": round(cz, 1), "width": width, "tee": best is None,
+                 "xz": [round(c, 1) for p in line for c in p]}
+        for leg_name, (lpts, lalong) in zip(("out", "back"), legs):
+            hit_s, hit_cs = -1.0, -1.0
+            for i in range(len(lpts) - 1):
+                if math.dist(lpts[i], (cx, cz)) > 120.0 and math.dist(lpts[i + 1], (cx, cz)) > 120.0:
+                    continue
+                for j in range(len(line) - 1):
+                    h = segment_hit(lpts[i], lpts[i + 1], line[j], line[j + 1])
+                    if h is not None:
+                        t, u = h
+                        hit_s = lalong[i] + t * math.dist(lpts[i], lpts[i + 1])
+                        hit_cs = along_line[j] + u * math.dist(line[j], line[j + 1])
+                        break
+                if hit_s >= 0:
+                    break
+            entry[leg_name + "S"] = round(hit_s, 1)
+            entry[leg_name + "CrossS"] = round(hit_cs, 1)
+        if entry["outS"] < 0 and entry["backS"] < 0:
+            continue
+        # Cross traffic needs road before its first box to be born on: a street whose junction sits at
+        # its start (a short stub the map ends at the next corner) is no junction for the sim.
+        first_box = min(v for v in (entry["outCrossS"], entry["backCrossS"]) if v >= 0)
+        if first_box < 30.0:
+            continue
+        twin = next((o for o in out if math.hypot(o["x"] - cx, o["z"] - cz) < 25.0), None)
+        if twin is not None:
+            if entry["width"] > twin["width"]:
+                out.remove(twin); out.append(entry)
+            continue
+        out.append(entry)
+    out.sort(key=lambda c: c["outS"] if c["outS"] >= 0 else 1e9 - c["backS"])
+    return out
+
+
 def cut_at_junctions(points, gaps, half_gap=14.0):
     """Split a polyline into pieces that stay clear of the given points: the median barrier opens
     where a street crosses, as a real one does. Pieces shorter than a bus are dropped."""
@@ -1206,6 +1376,10 @@ def main(osm_path, out_dir, building_radius):
                 median.add(chunk, "Median", v, f)
                 v, f = box_ribbon(piece, 0.0, MEDIAN_WIDTH, WALL_HEIGHT)
                 walls.add(chunk, "MedianWall", v, f)
+    crossings = route_crossings(cross, junctions, centrelines, route, route_back, rpts_route)
+    with open(os.path.join(out_dir, "crossings.json"), "w") as f:
+        json.dump({"attribution": "Map data (c) OpenStreetMap contributors, ODbL", "crossings": crossings}, f, indent=1, ensure_ascii=False)
+    print(f"crossings: {len(crossings)} cross streets with an officer ({sum(1 for c in crossings if c['outS'] >= 0)} on the way out, {sum(1 for c in crossings if c['backS'] >= 0)} on the way back)")
     print(f"median barrier opens at {len(cross)} crossings, no room for one at {sum(1 for d, r in zip(dual, room) if d and not r)} of {sum(dual)} dual route points; viaduct over {sum(under_metro)} of {len(rpts)} route points, {piers} piers")
 
     for w in (roads, buildings, rail, markings, kerbs, walls, median):

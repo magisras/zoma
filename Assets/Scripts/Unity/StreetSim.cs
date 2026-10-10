@@ -35,7 +35,10 @@ namespace TwentyTons.Unity
         private readonly List<string> _note = new List<string>();
 
         /// <summary>Build the day: the sim on the loop corridor, the zones from the stops, the rivals.</summary>
-        public void Build(PlayerBusDrive drive, Corridor road, RouteStops stops, float outLength)
+        [System.Serializable] private sealed class Crossing { public string name; public float x, z, width; public bool tee; public float[] xz; public float outS, outCrossS, backS, backCrossS; }
+        [System.Serializable] private sealed class CrossingFile { public List<Crossing> crossings; }
+
+        public void Build(PlayerBusDrive drive, Corridor road, RouteStops stops, float outLength, TextAsset crossingsJson)
         {
             _drive = drive;
             OutLength = outLength;
@@ -70,6 +73,31 @@ namespace TwentyTons.Unity
                 foreach (string b in boxes)
                 {
                     if (z.Name.StartsWith(b)) Sim.AddCheckpoint(z.Name + " box", z.S);
+                }
+            }
+            // The officers: a junction where each cross street cuts a leg, the same officer (Mirror) for
+            // both legs of a dual carriageway, as the sandbox pairs its two carriageways.
+            CrossingFile cf = crossingsJson != null ? JsonUtility.FromJson<CrossingFile>(crossingsJson.text) : null;
+            if (cf != null && cf.crossings != null)
+            {
+                foreach (Crossing c in cf.crossings)
+                {
+                    if (c.xz == null || c.xz.Length < 4) continue;
+                    var pts = new Vector3[c.xz.Length / 2];
+                    for (int i = 0; i < pts.Length; i++) pts[i] = new Vector3(c.xz[2 * i], 0f, c.xz[2 * i + 1]);
+                    var cross = new Corridor(pts, c.width > 0f ? c.width : 8f, false, c.name);
+                    Junction first = null;
+                    if (c.outS >= 0f) first = Sim.AddJunction(c.outS, cross, c.outCrossS);
+                    if (c.backS >= 0f)
+                    {
+                        if (first == null) Sim.AddJunction(outLength + c.backS, cross, c.backCrossS);
+                        else
+                        {
+                            var mirror = new Junction(road, outLength + c.backS, cross, c.backCrossS) { Mirror = first };
+                            Sim.Junctions.Add(mirror);
+                            if (!Sim.Corridors.Contains(cross)) Sim.Corridors.Add(cross);
+                        }
+                    }
                 }
             }
             Boarding.SeedCrowds(Sim, Tuning.Passengers.InitialCrowdMinutes);
@@ -140,6 +168,8 @@ namespace TwentyTons.Unity
             if (ahead1 != null) sb.Append($"   {ahead1.Brain.CrewName} {mAhead:0} m ahead");
             if (behind != null) sb.Append($"   {behind.Brain.CrewName} {mBehind:0} m behind");
             sb.Append('\n');
+            float line = Sim.StopDistanceAhead(Sim.Player, 120f);
+            if (line < 120f) sb.Append(Sim.Bus.HeldByRope ? "THE ROPE across the road ahead.  " : $"The cane is against you: stop line in {Mathf.Max(0f, line):0} m.  ");
             if (eco.Sergeant.Active && eco.Sergeant.ReleaseAt < 0f)
                 sb.Append($"SERGEANT, {eco.Sergeant.Reason}: Tk {eco.Sergeant.DemandTk:0}.  P pay, N refuse.\n");
             else if (eco.Sergeant.Active)

@@ -34,7 +34,9 @@ kerb per point, which points are dual carriageway), `route_back.json` (the same 
 on the other carriageway where the road is dual), `stops.json` (the bus stops: OSM `bus_stop`
 nodes on the kerb side of each leg, and the research's 16 named pickups and stands as the hot
 ones, each with its distance along both legs and a point for a sign on each leg's kerb),
-`chunks.json` (each chunk's stretch of the route, the streamer's index), `markers.json`,
+`crossings.json` (the cross streets with an officer: each stitched from the arms leaving the
+junction node, 150 m either side, with where it cuts each leg), `chunks.json` (each chunk's stretch
+of the route, the streamer's index), `markers.json`,
 `centrelines.json` (every drivable way: milestone 3's corridors). Origin is the Mirpur 12 stand,
 x east, z north. The viaduct's piers stand on the median line where the median was found between
 two carriageways and is clear of both legs' carriageways, on the mapped metro line where that is
