@@ -9,9 +9,12 @@ PNGs first (`sed "s#SHOTS#/tmp/shots#g"`). Enter Play mode before running them
 
 - `pedals.cs`: full throttle from rest; stops from 40 km/h with worn and new brakes, empty and with
   90 riders; a full-lock swerve; a run into the median; 0-40 loaded against empty.
-- `fullroute.cs`: Mirpur 12 to Azimpur on the physics bus with a driver who slows for corners he can
-  see; a log line every 30 s, photos at Farmgate, Shahbagh and the end, a tow when stuck for 4 s
-  with a photo and a top-down of the first six. Writes `SHOTS/full.log` because the editor's bridge
+- `fullroute.cs`: one leg of the route on the physics bus with a driver who slows for corners he can
+  see: `LEG = 0` Mirpur 12 to Azimpur, `LEG = 1` the way back (`sed 's#int LEG = 0;#int LEG = 1;#'`).
+  A log line every 30 s, photos at three points and the end, a tow when stuck for 4 s with a photo
+  and a top-down of the first six. The run ends when the leg turns at the far stand
+  (`PlayerBusDrive.WatchStands`), so it checks the turnaround too. Writes `SHOTS/full_<LEG>.log`
+  because the editor's bridge
   gives a command 5 s of the main thread and then answers with a timeout, while the script runs on
   to the end (a minute or two). Before it: load every chunk, since a scene load only completes at a
   frame and the scripted drive runs none:

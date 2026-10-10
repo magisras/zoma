@@ -26,14 +26,25 @@ flow), and writes `Chunk_NN/` folders, one per kilometre of route, each with `Ro
 road class), `Buildings.obj` (footprints extruded 3 m a storey, within 300 m of the route),
 `Rail.obj` (the MRT viaduct 12 m up with piers every 30 m in the median, only where the mapped metro
 follows the road), `Markings.obj`, `Kerbs.obj` (pavements, clipped where they would lie on another
-road), `Median.obj` (drawn only) and `Walls.obj` (the invisible collider over the median). Beside
-them: `route.json` (the polyline, its width, the far kerb per point, which points are dual
-carriageway), `chunks.json` (each chunk's stretch of the route, the streamer's index), `markers.json`,
+road), `Median.obj` (drawn only) and `Walls.obj` (the invisible collider over the median, only where the
+two carriageways leave room for a barrier; where they are closer than 12 m centre to centre, as on
+Mirpur Road through Nilkhet and Azimpur, there is a painted line and nothing to hit). Beside
+them: `route.json` (the polyline, its width and the carriageway's width at each point, the far
+kerb per point, which points are dual carriageway), `route_back.json` (the same route searched with the markers reversed: the way back,
+on the other carriageway where the road is dual), `stops.json` (the bus stops: OSM `bus_stop`
+nodes on the kerb side of each leg, and the research's 16 named pickups and stands as the hot
+ones, each with its distance along both legs and a point for a sign on each leg's kerb),
+`chunks.json` (each chunk's stretch of the route, the streamer's index), `markers.json`,
 `centrelines.json` (every drivable way: milestone 3's corridors). Origin is the Mirpur 12 stand,
-x east, z north.
+x east, z north. The viaduct's piers stand on the median line where the median was found between
+two carriageways and is clear of both legs' carriageways, on the mapped metro line where that is
+clear instead (roundabouts, junctions), and nowhere else: a pier is never on a carriageway of
+either leg, and the deck carries on without one. A chunk's file is deleted when the generator no longer
+builds that kind there, so a stale mesh cannot survive a rebuild.
 
 `GreyboxSceneBuilder` (`Assets/Editor/`) makes one scene per chunk under `Assets/Scenes/Chunks/`
-and the base scene `Corridor01_Greybox` with the sun, the ground, the markers, the bus and the
+and the base scene `Corridor01_Greybox` with the sun, the ground, the markers, a post and a board
+at every stop of each leg, the bus (with both routes and the stops wired in) and the
 `WorldStreamer`, which loads the chunks within 1.2 km of the bus and unloads those beyond 1.7 km.
 Three chunks at a time is under 150k triangles. The 13.6 km route is 14 chunks, 350k triangles in
 all. The `.osm` download, the chunk folders, the chunk scenes and `centrelines.json` are not in

@@ -262,6 +262,54 @@ One entry per session. The next session reads this first.
   Shahbagh and Azimpur are a later step); bus stops along the route from OSM; the return leg as a
   trip in the day loop.
 
+**Step 44 — the way back, the stops, and the day as legs** (done)
+
+- Owner: "lets go" on the plan's next step. `tools/osm/greybox.py` now runs its route search a second
+  time with the markers reversed, so the way back from Azimpur comes out on the other carriageway
+  wherever the road is dual (`route_back.json`, 13,585 m, the same length to the metre). The Overpass
+  download asks for bus stop nodes too (`highway=bus_stop`, bus platforms, stations); `stops.json`
+  holds the 9 OSM stops that lie on the kerb side of a leg, plus the research's 16 named pickups and
+  stands (S-007.6, RESEARCH.md) as the hot ones, each with its distance along both legs and a point
+  for a sign on each leg's kerb. The research markers were read off the map by eye and sit up to
+  280 m off the road (Taltola, Shewrapara, Shahbagh); their S is the projection, the sign stands on
+  the kerb at that S. These are milestone 4's demand zones; `TrafficSim.AddZone` takes the same three
+  things (name, S, hot).
+- `PlayerBusDrive` drives legs: out on `route.json`, back on `route_back.json`, each with its own far
+  kerb. Standing within 80 m of the end of the leg turns the leg around (`WatchStands`); the driver
+  turns the bus. Back at Mirpur 12 is one trip. The readout shows the trip, the leg, the next stop and
+  its distance, and the note at the stand for ten seconds. `RouteStops` reads the file; the scene
+  builder puts a post and a board on the kerb at every stop (41 signs, hot ones bigger) and wires
+  both routes and the stops to the bus.
+- Found by driving both legs by script (`fullroute.cs`, now with a `LEG`): a median wall stood in
+  the lane of the way back at Azimpur, where the two carriageways are 8 m apart and the median
+  matcher, which only knew primary roads, had carried an offset from up the road. The matcher now
+  takes any one-way main road, and builds no barrier where the gap has no room for one (84 of 308
+  dual route points, Mirpur Road through Nilkhet and Azimpur among them: a painted line there,
+  crossing to the wrong side open). The chunk writer now deletes a chunk's file when the generator
+  no longer builds that kind there, or the stale mesh stays in the scene: that wall survived one
+  rebuild that way. MRT piers stood in the lane too, at Mirpur 10 round the roundabout, where the
+  median line was carried, and inside the roundabout's other arc, 11 m from ours, where it was
+  matched. The pier line is now the median where it was found and stands clear of both legs'
+  carriageways, else the mapped metro line where that is clear (at Khamarbari the metro line runs
+  along the outbound centreline in OSM, so it is not), else the median line with no pier at that
+  point: the deck alone. The barrier gets the same rule. Clearance is measured from the carriageway's
+  own width at that point (`route.json` now carries `widthAt`; the one `width` is the narrowest way
+  on the route, 8 m, while Kazi Nazrul Islam Avenue is 10.5 m): a pier that cleared the narrow width
+  stood in the outer lane at Karwan Bazar and sent the bus crawling along the kerb for eight
+  minutes. 300 piers now against 373, and barriers at 189 of 308 dual route points: on Rokeya
+  Sarani OSM draws the carriageways 12.4 m apart, which leaves no 3 m barrier between 10.5 m
+  carriageways; the piers there stand on the mapped metro line instead.
+- Result of the script drives after the fixes, every chunk loaded: out, 13,585 m in 1,248 s, top
+  45 km/h, max roll 8°, one tow, at the sharp Azimpur corner where the script driver runs 6 m wide
+  onto the pavement (Step 43's Mirpur 10 and Nilkhet tows are gone with the pier and the barriers
+  that stood in the road); back, 13,584 m in 1,189 s, top 45 km/h, max roll 15°, no tow. At Azimpur
+  the leg turned to the way back; at Mirpur 12 the leg turned again and trip 1 was counted. 41 stop
+  signs stand on the kerbs.
+- Not done: the stops are signs and a name in the readout, not crowds (milestone 3's people and
+  milestone 4's zones come from the same file); the lineman and the ledger per trip are in the
+  sandbox's Economy, not yet wired to the Unity day; the scripted driver still clips the median
+  wall at the Mirpur 10 roundabout exit on both legs.
+
 ## 8 Oct 2026 — Moved to the owner's Mac
 
 - The cloud session was teleported into Claude Code on the MacBook Air; the game lives in

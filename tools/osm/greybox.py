@@ -24,6 +24,9 @@ and beside them:
     route.json        the route through the markers as one polyline: the shortest path over the main
                       roads respecting one-way flow, its kerb-to-kerb width, the far kerb per point and
                       which points are on a dual carriageway; the bus's corridor
+    route_back.json   the same from Azimpur back to Mirpur 12, on the other carriageway where dual
+    stops.json        the bus stops: OSM bus_stop nodes on the kerb side of each leg, plus the
+                      research's named pickups and stands (hot), with S on each leg
     chunks.json       each chunk's stretch of the route sampled every 50 m: WorldStreamer's index
 A Unity scene is made of each chunk folder and streamed around the bus (GreyboxSceneBuilder,
 WorldStreamer). None of the meshes are in git: make world.
@@ -35,8 +38,11 @@ turns into outward normals after its mirror.
 Map data (c) OpenStreetMap contributors, ODbL. Keep the credit in the game.
 """
 import json
+import bisect
+import glob
 import math
 import os
+import shutil
 import sys
 import xml.etree.ElementTree as ET
 
@@ -86,6 +92,7 @@ MARKERS = [
 # Marker 0 is the first stand, the last marker the other; the bus runs between them all day.
 CORRIDOR_ROADS = 600.0      # metres either side of the route line that the download covers
 CORRIDOR_BUILDINGS = 300.0
+CORRIDOR_STOPS = 60.0        # bus stops this close to the route line are the route's stops
 
 # Rail: the viaduct deck and its piers.
 RAIL_DECK_HEIGHT = 12.0
@@ -327,22 +334,40 @@ class Chunked:
             folder = os.path.join(out_dir, f"Chunk_{chunk:02d}")
             os.makedirs(folder, exist_ok=True)
             w.write(os.path.join(folder, self.filename))
+        # A chunk that has nothing of this kind any more loses the old file, or a stale mesh stays
+        # in the scene: a median wall that the generator no longer builds stood in the lane at Azimpur.
+        for folder in glob.glob(os.path.join(out_dir, "Chunk_[0-9][0-9]")):
+            if int(folder[-2:]) not in self.writers:
+                for stale in (os.path.join(folder, self.filename), os.path.join(folder, self.filename + ".meta")):
+                    if os.path.exists(stale):
+                        os.remove(stale)
 
 
 # ---------------------------------------------------------------- the extract
 
+def is_stop(tags):
+    """An OSM bus stop: the classic tag, the public-transport platform for buses, or a station."""
+    return (tags.get("highway") == "bus_stop" or tags.get("amenity") == "bus_station"
+            or (tags.get("public_transport") == "platform" and tags.get("bus") == "yes"))
+
+
 def load(path):
-    nodes, ways = {}, []
+    nodes, ways, stops = {}, [], []
     for _, el in ET.iterparse(path, events=("end",)):
         if el.tag == "node":
-            nodes[el.get("id")] = (float(el.get("lat")), float(el.get("lon")))
+            lat, lon = float(el.get("lat")), float(el.get("lon"))
+            nodes[el.get("id")] = (lat, lon)
+            if len(el):                                     # a tagged node: a bus stop, a shop, a crossing
+                tags = {t.get("k"): t.get("v") for t in el.findall("tag")}
+                if is_stop(tags):
+                    stops.append((lat, lon, tags))
             el.clear()
         elif el.tag == "way":
             refs = [nd.get("ref") for nd in el.findall("nd")]
             tags = {t.get("k"): t.get("v") for t in el.findall("tag")}
             ways.append((el.get("id"), refs, tags))
             el.clear()
-    return nodes, ways
+    return nodes, ways, stops
 
 
 KERB_HEIGHT = 0.15
@@ -479,12 +504,14 @@ def simplify(points, tolerance):
     return simplify(points[:worst + 1], tolerance)[:-1] + simplify(points[worst:], tolerance)
 
 
-def main_road_route(centrelines, junctions):
+def main_road_route(centrelines, junctions, markers=None):
     """The bus's road: the shortest path along the main roads from marker to marker, in order, as one
     polyline. Dijkstra over the ways' nodes, one leg per pair of markers; a few thousand nodes, so
     plain lists do. Tertiary streets count double, so the path only takes one where no bigger road
-    goes (the Dhaka University stretch between TSC and Nilkhet)."""
+    goes (the Dhaka University stretch between TSC and Nilkhet). With the markers reversed it
+    gives the way back, on the other carriageway where the road is dual."""
     import heapq
+    markers = markers or MARKERS
     graph = {}
     pos = {}
     hop = {}        # (a, b) -> (way, index of a, index of b) on that way's smoothed points
@@ -514,9 +541,9 @@ def main_road_route(centrelines, junctions):
     # over states (markers passed, node): passing a candidate of the next marker costs nothing and
     # moves to the next layer, so the shortest route that visits every marker in order falls out,
     # on whichever candidate nodes make it possible.
-    candidates = [set(nearest(*to_local(la, lo))) for _, la, lo in MARKERS]
-    marker_xz = [to_local(la, lo) for _, la, lo in MARKERS]
-    last = len(MARKERS) - 1
+    candidates = [set(nearest(*to_local(la, lo))) for _, la, lo in markers]
+    marker_xz = [to_local(la, lo) for _, la, lo in markers]
+    last = len(markers) - 1
     # Starting and ending cost twice the distance to the stand's marker, so the route begins and
     # ends by the stands: at the plain distance, starting 300 m down the road is a tie.
     dist, prev, heap = {}, {}, []
@@ -544,7 +571,7 @@ def main_road_route(centrelines, junctions):
                 heapq.heappush(heap, (nd, i, m))
     if goal is None:
         reached = max(i for i, _ in dist)
-        raise SystemExit(f"no one-way-respecting path from {MARKERS[reached][0]} to {MARKERS[reached + 1][0]}: move a marker onto the road")
+        raise SystemExit(f"no one-way-respecting path from {markers[reached][0]} to {markers[reached + 1][0]}: move a marker onto the road")
     length = dist[goal]
     path, state = [], goal
     while state in prev:
@@ -559,6 +586,7 @@ def main_road_route(centrelines, junctions):
     # median) or a two-way street.
     points = [list(pos[path[0]])]
     dual = [bool(hop[(path[0], path[1])][0].get("oneway_flow"))]
+    width_at = [hop[(path[0], path[1])][0]["width"]]              # the carriageway's width at each point
     for a, b in zip(path, path[1:]):
         way, ia, ib = hop[(a, b)]
         if way["nodes"][0] == way["nodes"][-1]:
@@ -578,12 +606,14 @@ def main_road_route(centrelines, junctions):
         for k in seq:
             points.append(list(way["points"][k]))
             dual.append(bool(way.get("oneway_flow")))
+            width_at.append(way["width"])
     points = [[round(x, 2), round(z, 2)] for x, z in points]
     # A node shared by two ways lands twice; a zero-length segment has no direction, and the
     # median line and the far kerb are built from directions.
     keep = [i for i in range(len(points)) if i == 0 or math.dist(points[i], points[i - 1]) >= 0.5]
     points = [points[i] for i in keep]
     dual = [dual[i] for i in keep]
+    width_at = [width_at[i] for i in keep]
     # Where two ways meet, the smoothed point a node maps to can lie a few metres past the
     # junction, and the stitch runs out to it and back: a hairpin spike that put the median wall
     # across the lane at Mirpur 10. Drop a point the line returns from.
@@ -591,7 +621,7 @@ def main_road_route(centrelines, junctions):
     while i < len(points) - 1:
         a, b, c = points[i - 1], points[i], points[i + 1]
         if math.dist(a, b) < 0.5 or math.dist(a, c) < max(math.dist(a, b), math.dist(b, c)) * 0.7:
-            del points[i], dual[i]
+            del points[i], dual[i], width_at[i]
             i = max(1, i - 1)
         else:
             i += 1
@@ -599,7 +629,132 @@ def main_road_route(centrelines, junctions):
     widths = [w["width"] for w in centrelines if w["class"] == "primary" and on_path.intersection(w["nodes"])]
     # "xz" is the same polyline flat (x0, z0, x1, z1, ...): Unity's JsonUtility reads float[] but not nested lists.
     return {"points": points, "xz": [c for p in points for c in p], "length": length, "width": min(widths) if widths else 10.0,
-            "dual": dual, "attribution": "Map data (c) OpenStreetMap contributors, ODbL"}
+            "widthAt": width_at, "dual": dual, "attribution": "Map data (c) OpenStreetMap contributors, ODbL"}
+
+
+def arc_length(pts):
+    """Distance along a polyline at each of its points, starting at 0."""
+    along = [0.0]
+    for p, q in zip(pts, pts[1:]):
+        along.append(along[-1] + math.dist(p, q))
+    return along
+
+
+def far_edges(route, median_pts):
+    """Per route point, how far right of the route line the far kerb is: on a two-way street the
+    route's own far kerb; on a dual carriageway across the median to the other carriageway's kerb
+    (the median line is halfway, so twice its offset). The drive treats everything up to it as
+    road: crossing to the wrong side is the game, not a wall."""
+    pts = [tuple(p) for p in route["points"]]
+    dual = route["dual"]
+    far = []
+    for i, (x, z) in enumerate(pts):
+        if not dual[i]:
+            far.append(round(route["width"] / 2.0 + 2.5, 1))
+            continue
+        (ax, az), (bx, bz) = pts[max(0, i - 1)], pts[min(len(pts) - 1, i + 1)]
+        dx, dz = bx - ax, bz - az
+        l = math.hypot(dx, dz) or 1.0
+        rx_, rz_ = dz / l, -dx / l
+        off = (median_pts[i][0] - x) * rx_ + (median_pts[i][1] - z) * rz_
+        far.append(round(off * 2.0 + route["width"] / 2.0 + 2.5, 1))
+    return far
+
+
+def project_on_route(pts, along, x, z):
+    """Where a point falls on a route: (distance along, lateral: right positive, left negative, and
+    how far it is from the line). The nearest segment wins."""
+    best = None
+    for i in range(len(pts) - 1):
+        (ax, az), (bx, bz) = pts[i], pts[i + 1]
+        dx, dz = bx - ax, bz - az
+        l = math.hypot(dx, dz)
+        if l < 1e-6:
+            continue
+        t = max(0.0, min(l, ((x - ax) * dx + (z - az) * dz) / l))
+        px, pz = ax + dx / l * t, az + dz / l * t
+        d = math.hypot(x - px, z - pz)
+        if best is None or d < best[2]:
+            lateral = ((x - ax) * dz - (z - az) * dx) / l       # right of the direction of travel
+            best = (along[i] + t, lateral, d)
+    return best
+
+
+def point_at(pts, along, s, lateral):
+    """The point at distance s along a polyline, lateral metres to the right of it."""
+    i = max(0, min(len(pts) - 2, bisect.bisect_right(along, s) - 1))
+    (ax, az), (bx, bz) = pts[i], pts[i + 1]
+    l = math.hypot(bx - ax, bz - az) or 1.0
+    t = max(0.0, min(1.0, (s - along[i]) / l))
+    dx, dz = (bx - ax) / l, (bz - az) / l
+    return (ax + dx * l * t + dz * lateral, az + dz * l * t - dx * lateral)
+
+
+def route_stops(stop_nodes, route, route_back):
+    """The stops of the route, on each leg: the OSM bus stop nodes on the left (kerb) side of the leg's
+    carriageway (left-hand traffic; a stop across a dual road belongs to the other leg), plus the
+    research's named pickups and stands (MARKERS, S-007.6), which are the hot ones. A stop's S on a
+    leg is -1 where it is not on that leg. Stops are demand zones for TrafficSim (RESEARCH.md: 'demand
+    zones along the road rather than fixed stops, with hot clusters at junctions')."""
+    legs = []
+    for r in (route, route_back):
+        pts = [tuple(p) for p in r["points"]]
+        legs.append((pts, arc_length(pts), r["width"] / 2.0))
+
+    def on_leg(leg, x, z, both_sides):
+        pts, along, half = legs[leg]
+        hit = project_on_route(pts, along, x, z)
+        if hit is None:
+            return None
+        s, lateral, d = hit
+        if both_sides:
+            # A research marker, read off the map by eye: anywhere near the road, either side, and
+            # the stands at the ends of the line.
+            return (s, lateral) if d < 350.0 else None
+        if d > abs(lateral) + 1.0:                      # beyond the end of the line, not beside it
+            return None
+        # The kerb side: the pavement and 25 m of the block behind it (a stop drawn inside a bay or
+        # a market), or inside the carriageway itself where the mapper put it mid-road.
+        return (s, lateral) if -(half + 25.0) < lateral < 3.0 else None
+
+    def entry(name, name_bn, x, z, hot, kind, source, out, back, on_kerb):
+        """One stop. outX/outZ and backX/backZ are where its sign stands on each leg: an OSM node where
+        the mapper put it; a research marker, read off the map by eye and often a block away, on the
+        leg's kerb at its S."""
+        st = {"name": name, "nameBn": name_bn, "x": round(x, 1), "z": round(z, 1), "hot": hot, "kind": kind, "source": source}
+        for leg, hit in (("out", out), ("back", back)):
+            pts, along, half = legs[0 if leg == "out" else 1]
+            sx, sz = (point_at(pts, along, hit[0], -(half + 1.0)) if (hit and on_kerb) else (x, z))
+            st[leg + "S"] = round(hit[0], 1) if hit else -1
+            st[leg + "Lat"] = round(hit[1], 1) if hit else 0
+            st[leg + "X"], st[leg + "Z"] = round(sx, 1), round(sz, 1)
+        return st
+
+    stops = []
+    for i, (name, la, lo) in enumerate(MARKERS):
+        x, z = to_local(la, lo)
+        kind = "stand" if i in (0, len(MARKERS) - 1) else "pickup"
+        stops.append(entry(name, "", x, z, True, kind, "research", on_leg(0, x, z, True), on_leg(1, x, z, True), True))
+    for la, lo, tags in stop_nodes:
+        x, z = to_local(la, lo)
+        out, back = on_leg(0, x, z, False), on_leg(1, x, z, False)
+        if out is None and back is None:
+            continue
+        # The same spot as a research pickup, or as a stop already kept on this leg: one stop, not two.
+        twin = False
+        for st in stops:
+            for leg, hit in (("out", out), ("back", back)):
+                if hit and st[leg + "S"] >= 0 and abs(st[leg + "S"] - hit[0]) < 40.0:
+                    twin = True
+                    if not st["nameBn"]:
+                        st["nameBn"] = tags.get("name:bn", "")
+                    if st["source"] == "osm" and not st["name"]:
+                        st["name"] = tags.get("name", "")
+        if twin:
+            continue
+        stops.append(entry(tags.get("name", ""), tags.get("name:bn", ""), x, z, False, "stop", "osm", out, back, False))
+    stops.sort(key=lambda st: st["outS"] if st["outS"] >= 0 else 1e9 - st["backS"])
+    return stops
 
 
 def median_line(route, centrelines):
@@ -608,10 +763,12 @@ def median_line(route, centrelines):
     traffic: the oncoming carriageway is on the right). Where none is found, at a junction say, the
     last offset is carried on, never the route line itself: that put piers in the bus's lane at
     Kalshi Road. The MRT piers stand on this line (RESEARCH.md: the viaduct in the middle of Rokeya
-    Sarani)."""
+    Sarani). Returns the line and, per point, whether there is room for a barrier between the two
+    carriageways: at Azimpur the pair is 8 m apart centre to centre (a painted line, no barrier),
+    and a barrier built there stood in the lane of the way back."""
     others = []
     for w in centrelines:
-        if w["class"] in ("primary", "trunk") and w.get("oneway_flow"):
+        if w["class"] in ("primary", "trunk", "secondary", "primary_link", "trunk_link", "secondary_link") and w.get("oneway_flow"):
             others.extend(zip(w["points"], w["points"][1:]))
     route_pts = [tuple(p) for p in route["points"]]
     route_set = set(route_pts)
@@ -638,11 +795,20 @@ def median_line(route, centrelines):
             along = (qx - x) * dx + (qz - z) * dz
             if abs(along) > 15.0:
                 continue                        # not abeam of us: a segment far down the road
-            if right < route["width"] + 1.0 or right > bd:
+            if right < route["width"] * 0.75 or right > bd:
                 continue                        # on our left or inside our own carriageway (a roundabout's
                                                 # far side), or further than the best so far
             best, bd = right, right
         offsets[i] = best / 2.0 if best is not None else None
+    matched = [o is not None for o in offsets]       # found here, not carried from up the road
+    # Room for a barrier: the gap between the carriageways holds it with a lane's margin either side.
+    room = [None if o is None else (o * 2.0 >= route["width"] + MEDIAN_WIDTH + 1.0) for o in offsets]
+    last = True
+    for i in range(n):
+        if room[i] is None:
+            room[i] = last
+        else:
+            last = room[i]
     # Carry offsets across gaps: previous known, else next known, else 10 m (a carriageway apart).
     last = None
     for i in range(n):
@@ -673,7 +839,7 @@ def median_line(route, centrelines):
         l = math.hypot(dx, dz) or 1.0
         rx, rz = dz / l, -dx / l
         out.append((x + rx * offsets[i], z + rz * offsets[i]))
-    return out
+    return out, room, matched
 
 
 def cut_at_junctions(points, gaps, half_gap=14.0):
@@ -702,7 +868,7 @@ def cut_at_junctions(points, gaps, half_gap=14.0):
 
 def main(osm_path, out_dir, building_radius):
     os.makedirs(out_dir, exist_ok=True)
-    nodes, ways = load(osm_path)
+    nodes, ways, stop_nodes = load(osm_path)
     local = {nid: to_local(lat, lon) for nid, (lat, lon) in nodes.items()}
 
     # Roads and centrelines.
@@ -748,10 +914,13 @@ def main(osm_path, out_dir, building_radius):
     # The route first: everything else is kept, chunked and dressed by where it stands along it.
     route = main_road_route(centrelines, junctions)
     rpts_route = [tuple(p) for p in route["points"]]
-    along = [0.0]
-    for p, q in zip(rpts_route, rpts_route[1:]):
-        along.append(along[-1] + math.dist(p, q))
+    along = arc_length(rpts_route)
     route["along"] = [round(v, 1) for v in along]
+    # The way back: the markers in reverse order, so the one-way rule puts it on the other carriageway.
+    route_back = main_road_route(centrelines, junctions, list(reversed(MARKERS)))
+    rpts_back = [tuple(p) for p in route_back["points"]]
+    along_back = arc_length(rpts_back)
+    route_back["along"] = [round(v, 1) for v in along_back]
     GRID = 50.0
     route_grid = {}
     for i, (x, z) in enumerate(rpts_route):
@@ -920,14 +1089,20 @@ def main(osm_path, out_dir, building_radius):
                     x, z = x0 + (x1 - x0) * f, z0 + (z1 - z0) * f
                     metro_grid.setdefault((int(x // GRID), int(z // GRID)), []).append((x, z))
 
-    def metro_near(x, z, within=45.0):
+    def metro_point(x, z, within=45.0):
+        """The nearest point of the mapped metro line within reach, or None."""
         gx, gz = int(x // GRID), int(z // GRID)
+        best, bd = None, within * within
         for cx in range(gx - 1, gx + 2):
             for cz in range(gz - 1, gz + 2):
                 for px, pz in metro_grid.get((cx, cz), ()):
-                    if (px - x) ** 2 + (pz - z) ** 2 < within * within:
-                        return True
-        return False
+                    d = (px - x) ** 2 + (pz - z) ** 2
+                    if d < bd:
+                        best, bd = (px, pz), d
+        return best
+
+    def metro_near(x, z, within=45.0):
+        return metro_point(x, z, within) is not None
 
     def runs(flags):
         """Index ranges [i, j) where flags are true, so a ribbon is built piece by piece."""
@@ -943,12 +1118,42 @@ def main(osm_path, out_dir, building_radius):
     rail = Chunked("Rail.obj")
     walls = Chunked("Walls.obj")
     median = Chunked("Median.obj")
-    rpts = median_line(route, centrelines)
+    rpts, room, matched = median_line(route, centrelines)
     dual = route["dual"]
     under_metro = [dual[i] and metro_near(x, z) for i, (x, z) in enumerate(rpts)]
+    # Where the median was found between two carriageways the piers stand on it; where it was only
+    # carried on (a roundabout, a junction) they stand on the mapped metro line instead: at Mirpur 10
+    # the carried line crossed the way back round the roundabout and a pier stood in its lane.
+    # The mapped line is not trusted onto a carriageway: at Khamarbari it runs along the outbound
+    # centreline itself (one of the two is drawn wrong), and a pier there stood in the lane.
+    legs_xz = [([tuple(p) for p in r["points"]], r["along"], r["widthAt"]) for r in (route, route_back)]
+
+    def clear_of_the_road(x, z, margin):
+        """Is a point this far beyond the edge of both legs' carriageways, at their width there? The
+        route's one width is the narrowest way on it; Kazi Nazrul Islam Avenue is wider, and a pier
+        that cleared the narrow width stood in its outer lane at Karwan Bazar."""
+        for pts, along, width_at in legs_xz:
+            hit = project_on_route(pts, along, x, z)
+            if hit is None:
+                continue
+            here = width_at[max(0, min(len(width_at) - 1, bisect.bisect_right(along, hit[0]) - 1))]
+            if hit[2] < here / 2.0 + margin:
+                return False
+        return True
+
+    # The pier line: the median where it was found and stands clear of both carriageways, else the
+    # metro line where that is clear, else the median line with no pier at that point (the deck
+    # alone). Round the Mirpur 10 roundabout the two arcs are 11 m apart and a matched median
+    # still put a pier inside the way back's arc.
+    pier_pts = []
+    for i, (x, z) in enumerate(rpts):
+        mp = None if matched[i] and clear_of_the_road(x, z, RAIL_PIER_SIZE) else metro_point(x, z)
+        pier_pts.append(mp if mp is not None and clear_of_the_road(*mp, RAIL_PIER_SIZE) else rpts[i])
+    # The barrier likewise: no wall where the median line is inside the way back's carriageway.
+    room = [r and clear_of_the_road(x, z, MEDIAN_WIDTH / 2.0 + 0.5) for r, (x, z) in zip(room, rpts)]
     piers = 0
     for i0, i1 in runs(under_metro):
-        for chunk, piece in split_by_chunk(rpts[i0:i1]):
+        for chunk, piece in split_by_chunk(pier_pts[i0:i1]):
             top, quads = offset_ribbon(piece, 0.0, RAIL_DECK_WIDTH, RAIL_DECK_HEIGHT)
             bottom = [(x, RAIL_DECK_HEIGHT - RAIL_DECK_THICKNESS, z) for x, _, z in top]
             m = len(top)
@@ -959,7 +1164,7 @@ def main(osm_path, out_dir, building_radius):
                 faces.append((i + 3, m + i + 3, m + i + 1, i + 1))         # right side
             rail.add(chunk, "Viaduct", top + bottom, faces)
         walked = 0.0
-        piece = rpts[i0:i1]
+        piece = pier_pts[i0:i1]
         for i in range(len(piece) - 1):
             (x0, z0), (x1, z1) = piece[i], piece[i + 1]
             seg = math.hypot(x1 - x0, z1 - z0)
@@ -967,6 +1172,9 @@ def main(osm_path, out_dir, building_radius):
             while t < seg:
                 f = t / seg
                 px, pz = x0 + (x1 - x0) * f, z0 + (z1 - z0) * f
+                if not clear_of_the_road(px, pz, RAIL_PIER_SIZE):
+                    t += RAIL_PIER_EVERY
+                    continue                                   # the deck crosses a carriageway here: no pier
                 sz = RAIL_PIER_SIZE / 2.0
                 base = [(px - sz, 0.0, pz - sz), (px + sz, 0.0, pz - sz), (px + sz, 0.0, pz + sz), (px - sz, 0.0, pz + sz)]
                 topv = [(x, RAIL_DECK_HEIGHT - RAIL_DECK_THICKNESS, z) for x, _, z in base]
@@ -991,14 +1199,14 @@ def main(osm_path, out_dir, building_radius):
             for nd in shared:
                 if nd in junctions:
                     cross.add(tuple(junctions[nd]))
-    for i0, i1 in runs(dual):
+    for i0, i1 in runs([d and r for d, r in zip(dual, room)]):
         for whole in cut_at_junctions(rpts[i0:i1], cross):
             for chunk, piece in split_by_chunk(whole):
                 v, f = box_ribbon(piece, 0.0, MEDIAN_WIDTH, MEDIAN_HEIGHT)
                 median.add(chunk, "Median", v, f)
                 v, f = box_ribbon(piece, 0.0, MEDIAN_WIDTH, WALL_HEIGHT)
                 walls.add(chunk, "MedianWall", v, f)
-    print(f"median barrier opens at {len(cross)} crossings; viaduct over {sum(under_metro)} of {len(rpts)} route points, {piers} piers")
+    print(f"median barrier opens at {len(cross)} crossings, no room for one at {sum(1 for d, r in zip(dual, room) if d and not r)} of {sum(dual)} dual route points; viaduct over {sum(under_metro)} of {len(rpts)} route points, {piers} piers")
 
     for w in (roads, buildings, rail, markings, kerbs, walls, median):
         w.write(out_dir)
@@ -1010,20 +1218,15 @@ def main(osm_path, out_dir, building_radius):
     # the far kerb beyond it (the other carriageway is as wide as ours, plus its pavement). The drive
     # treats everything up to the far kerb as road: crossing to the wrong side is the game, not a wall.
     # On a two-way street the oncoming lane is inside our own width, so the far kerb is our own.
-    far = []
-    for i, (x, z) in enumerate(rpts_route):
-        if not dual[i]:
-            far.append(round(route["width"] / 2.0 + 2.5, 1))
-            continue
-        (ax, az), (bx, bz) = rpts_route[max(0, i - 1)], rpts_route[min(len(rpts_route) - 1, i + 1)]
-        dx, dz = bx - ax, bz - az
-        l = math.hypot(dx, dz) or 1.0
-        rx_, rz_ = dz / l, -dx / l
-        off = (rpts[i][0] - x) * rx_ + (rpts[i][1] - z) * rz_
-        far.append(round(off * 2.0 + route["width"] / 2.0 + 2.5, 1))
-    route["farEdge"] = far
+    route["farEdge"] = far_edges(route, rpts)
     with open(os.path.join(out_dir, "route.json"), "w") as f:
         json.dump(route, f)
+    route_back["farEdge"] = far_edges(route_back, median_line(route_back, centrelines)[0])
+    with open(os.path.join(out_dir, "route_back.json"), "w") as f:
+        json.dump(route_back, f)
+    stops = route_stops(stop_nodes, route, route_back)
+    with open(os.path.join(out_dir, "stops.json"), "w") as f:
+        json.dump({"attribution": "Map data (c) OpenStreetMap contributors, ODbL", "stops": stops}, f, indent=1, ensure_ascii=False)
     with open(os.path.join(out_dir, "markers.json"), "w") as f:
         json.dump([{"name": n, "x": round(to_local(la, lo)[0], 1), "z": round(to_local(la, lo)[1], 1)} for n, la, lo in MARKERS], f, indent=1)
     # The chunk index for the streamer: each chunk's stretch of the route resampled every 50 m, flat,
@@ -1043,11 +1246,20 @@ def main(osm_path, out_dir, building_radius):
               for c, xz in sorted(samples.items())]
     with open(os.path.join(out_dir, "chunks.json"), "w") as f:
         json.dump({"chunks": chunks}, f)
+    for folder in glob.glob(os.path.join(out_dir, "Chunk_[0-9][0-9]")):
+        if int(folder[-2:]) >= len(chunks):
+            shutil.rmtree(folder)
+            if os.path.exists(folder + ".meta"):
+                os.remove(folder + ".meta")
 
     print(f"roads: {len(centrelines)} ways, {roads.triangles} triangles in {len(roads.objects)} cells; {len(junctions)} junction nodes")
     print(f"buildings: {kept} kept within {building_radius:.0f} m of the route ({skipped} beyond, {on_road} dropped for standing on a road), {buildings.triangles} triangles in {len(buildings.objects)} cells")
     print(f"rail: {rail.triangles} triangles; markings {markings.triangles}; kerbs {kerbs.triangles}; median {median.triangles}")
     print(f"route: {len(route['points'])} points, {along[-1]:.0f} m, width {route['width']:.0f} m, {len(chunks)} chunks of {CHUNK:.0f} m")
+    print(f"route back: {len(route_back['points'])} points, {along_back[-1]:.0f} m")
+    print(f"stops: {len(stop_nodes)} OSM stop nodes in the download, {sum(1 for st in stops if st['source'] == 'osm')} on the route "
+          f"({sum(1 for st in stops if st['outS'] >= 0)} out, {sum(1 for st in stops if st['backS'] >= 0)} back), "
+          f"{sum(1 for st in stops if st['hot'])} hot from the research")
     for c in chunks:
         tri = sum(w.writers.get(c["index"], ObjWriter()).triangles for w in (roads, buildings, rail, markings, kerbs, median))
         print(f"  {c['folder']}: {c['s0']:.0f}-{c['s1']:.0f} m, {tri} triangles")
@@ -1062,6 +1274,10 @@ def overpass_query():
             f'way["highway"](around:{CORRIDOR_ROADS:.0f},{line});'
             f'way["building"](around:{CORRIDOR_BUILDINGS:.0f},{line});'
             f'way["railway"](around:{CORRIDOR_BUILDINGS:.0f},{line});'
+            # Bus stops are nodes of their own, not part of any way: ask for them by name.
+            f'node["highway"="bus_stop"](around:{CORRIDOR_STOPS:.0f},{line});'
+            f'node["public_transport"="platform"]["bus"="yes"](around:{CORRIDOR_STOPS:.0f},{line});'
+            f'node["amenity"="bus_station"](around:{CORRIDOR_STOPS:.0f},{line});'
             ");(._;>;);out body;")
 
 

@@ -117,6 +117,42 @@ namespace TwentyTons.EditorTools
                 pole.GetComponent<MeshRenderer>().sharedMaterial = post;
             }
 
+            // Bus stops (tools/osm/greybox.py, stops.json): a post and a board on the kerb at each stop
+            // of each leg. A research pickup is on both kerbs of a dual road, so it gets a sign per leg;
+            // an OSM stop node is one place. Hot stops (the research's pickups and the stands) have
+            // the bigger board. Demand zones for milestone 4 start from the same file.
+            var stopsRoot = new GameObject("Bus stops");
+            Material sign = MakeMaterial(WorldDir + "/GreyboxSign.mat", new Color(0.95f, 0.78f, 0.18f));
+            var stops = TwentyTons.Unity.RouteStops.Load(AssetDatabase.LoadAssetAtPath<TextAsset>(WorldDir + "/stops.json"));
+            foreach (var st in stops.All)
+            {
+                for (int leg = 0; leg < 2; leg++)
+                {
+                    if (st.SOn(leg) < 0f) continue;
+                    Vector3 at = st.SignOn(leg);
+                    if (leg == 1 && st.SOn(0) >= 0f && Vector3.Distance(at, st.SignOn(0)) < 1f) continue;
+                    var go = new GameObject((st.hot ? "Pickup " : "Stop ") + (st.name.Length > 0 ? st.name : st.nameBn) + (leg == 1 ? " (back)" : ""));
+                    go.transform.SetParent(stopsRoot.transform);
+                    go.transform.position = at;
+                    var pole = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    pole.name = "Post";
+                    Object.DestroyImmediate(pole.GetComponent<Collider>());
+                    pole.transform.SetParent(go.transform, false);
+                    pole.transform.localPosition = new Vector3(0f, 1.4f, 0f);
+                    pole.transform.localScale = new Vector3(0.12f, 2.8f, 0.12f);
+                    pole.GetComponent<MeshRenderer>().sharedMaterial = post;
+                    var board = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    board.name = "Board";
+                    Object.DestroyImmediate(board.GetComponent<Collider>());
+                    board.transform.SetParent(go.transform, false);
+                    board.transform.localPosition = new Vector3(0f, st.hot ? 2.7f : 2.5f, 0f);
+                    board.transform.localScale = st.hot ? new Vector3(1.2f, 0.8f, 0.06f) : new Vector3(0.8f, 0.5f, 0.06f);
+                    board.GetComponent<MeshRenderer>().sharedMaterial = sign;
+                    GameObjectUtility.SetStaticEditorFlags(pole, StaticEditorFlags.BatchingStatic);
+                    GameObjectUtility.SetStaticEditorFlags(board, StaticEditorFlags.BatchingStatic);
+                }
+            }
+
             // The credit the ODbL licence asks for, in the scene where anyone opening it sees it.
             new GameObject("Map data (c) OpenStreetMap contributors, ODbL");
 
@@ -194,6 +230,8 @@ namespace TwentyTons.EditorTools
             var drive = bus.AddComponent<TwentyTons.Unity.PlayerBusDrive>();
             drive.Tuning = tuning;
             drive.RouteJson = route;
+            drive.RouteBackJson = AssetDatabase.LoadAssetAtPath<TextAsset>(WorldDir + "/route_back.json");
+            drive.StopsJson = AssetDatabase.LoadAssetAtPath<TextAsset>(WorldDir + "/stops.json");
             drive.SetUp();                                             // stands at the start lane in the saved scene
             physics.UpdateWheelMeshes();
 
