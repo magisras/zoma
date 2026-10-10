@@ -219,7 +219,9 @@ def offset_ribbon(points, offset, width, y=0.0):
 
 
 def box_ribbon(points, offset, width, height):
-    """A raised strip: a ribbon's top at `height` plus its two long sides down to the ground."""
+    """A raised strip: a ribbon's top at `height` plus its two long sides down to the ground, and a
+    cap at each end, both ways round so a body meets it from either side: the walls are hollow
+    meshes, and a bus that drove into an open end sat trapped inside the wall (owner, 10 Oct)."""
     top, quads = offset_ribbon(points, offset, width, height)
     base = [(x, 0.0, z) for x, _, z in top]
     m = len(top)
@@ -227,6 +229,9 @@ def box_ribbon(points, offset, width, height):
     for i in range(0, m - 2, 2):
         faces.append((i, m + i, m + i + 2, i + 2))             # left side, outward
         faces.append((i + 3, m + i + 3, m + i + 1, i + 1))     # right side, outward
+    for a, b in ((0, 1), (m - 1, m - 2)):                       # the start and the end
+        faces.append((a, b, m + b, m + a))
+        faces.append((m + a, m + b, b, a))
     return top + base, faces
 
 

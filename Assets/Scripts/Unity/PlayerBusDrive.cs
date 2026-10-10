@@ -15,7 +15,7 @@ namespace TwentyTons.Unity
     ///
     /// Keys: W/up throttle, S/down brake, A/D or left/right steer, space full brake, X reverse at a
     /// walk, H horn, P pay / N refuse the sergeant or the men with the ropes, R a new day at the stand,
-    /// [ and ] ten riders off and on (to feel the mass), C the camera, T the tow.
+    /// O the street off or on, [ and ] ten riders off and on (to feel the mass), C the camera, T the tow.
     ///
     /// The road is the whole round trip as one loop: out to Azimpur on route.json, back to Mirpur 12
     /// on route_back.json (the other carriageway where the road is dual), joined at the stands. The
@@ -92,10 +92,16 @@ namespace TwentyTons.Unity
         private float LateralAccel => Physics != null ? Mathf.Abs(Physics.LateralAccel) : Mathf.Abs(Agent.Speed * Bus.LastYawRate);
         private float Roll => Physics != null ? Physics.RollDegrees : 0f;
 
+        private Transform _wheel;         // the cab's steering wheel pivot, turned with the steering
+
         private void Awake()
         {
             Instance = this;
             SetUp();
+            // The cab for the driver's seat view, around the rig's eye position.
+            var rig = FindFirstObjectByType<CameraRig>();
+            Vector3 eye = rig != null ? rig.DriverSeat : new Vector3(0.85f, 2.35f, 4.3f);
+            _wheel = BusCabin.Build(transform, eye, Agent.Shape.Width);
         }
 
         /// <summary>Build the corridor and the model and put the bus at its start. Public so the scene
@@ -312,6 +318,8 @@ namespace TwentyTons.Unity
             if (Scripted) { throttle = ScriptThrottle; brake = ScriptBrake; steerWanted = ScriptSteer; reverse = ScriptReverse; horn = ScriptHorn; }
 
             if (k.rKey.wasPressedThisFrame) { NewDay(); return; }
+            // O: the street off or on (traffic, people, crowds, the sergeant), a new day at the stand either way.
+            if (k.oKey.wasPressedThisFrame) { var st = GetComponent<StreetSim>(); if (st != null) st.enabled = !st.enabled; NewDay(); return; }
             if (k.tKey.wasPressedThisFrame) { Tow(); return; }
             if (k.pKey.wasPressedThisFrame && Street != null) Street.Answer(true);
             if (k.nKey.wasPressedThisFrame && Street != null) Street.Answer(false);
@@ -321,6 +329,8 @@ namespace TwentyTons.Unity
             _throttle = throttle; _brake = brake; _steerWanted = steerWanted; _reverse = reverse; _horn = horn;
             if (Physics == null) Tick(Time.deltaTime, throttle, brake, steerWanted);   // the kinematic bus moves per frame
             else Physics.UpdateWheelMeshes();
+            // The cab's wheel: about fourteen turns of the rim per turn of the road wheels, an old bus's gearing.
+            if (_wheel != null) _wheel.localRotation = Quaternion.Euler(-55f, 0f, 0f) * Quaternion.Euler(0f, Bus.SteerAngle * Mathf.Rad2Deg * 14f, 0f);
         }
 
         private void FixedUpdate()
@@ -365,6 +375,7 @@ namespace TwentyTons.Unity
             if (_reverse) Bus.Throttle = Mathf.Max(Bus.Throttle, 1f);
             Physics.Drive(Bus, forward, dt, _reverse);
             if (cap < float.MaxValue) Physics.Cap(cap, forward);
+            UnwedgeFromWalls();
 
             // The street's rules that are not yet objects: the pavement crawl, the dirt beyond.
             float far = FarEdgeAt(Agent.S);
@@ -401,6 +412,33 @@ namespace TwentyTons.Unity
 
             WatchLegs();
             _clock += dt;
+        }
+
+        /// <summary>
+        /// A body that has got inside an invisible wall (the owner drove into a wall's open end on 10 Oct
+        /// and sat trapped in it, reversing along it) is pushed out the short way. PhysX resolves a
+        /// touch; a body already inside a hollow mesh it does not, so this does, each step, by the
+        /// penetration of the body's box against every wall it overlaps. Shallow contacts are left alone.
+        /// </summary>
+        private void UnwedgeFromWalls()
+        {
+            int noWheels = LayerMask.NameToLayer("NoWheels");
+            if (noWheels < 0) return;
+            var box = GetComponent<BoxCollider>();
+            if (box == null) return;
+            Transform t = Physics.Body.transform;
+            Vector3 centre = t.TransformPoint(box.center);
+            Vector3 half = Vector3.Scale(box.size, t.lossyScale) * 0.5f;
+            Collider[] hits = UnityEngine.Physics.OverlapBox(centre, half, t.rotation, 1 << noWheels, QueryTriggerInteraction.Ignore);
+            foreach (Collider wall in hits)
+            {
+                if (!UnityEngine.Physics.ComputePenetration(box, t.position, t.rotation, wall, wall.transform.position, wall.transform.rotation, out Vector3 dir, out float dist)) continue;
+                if (dist < 0.4f) continue;                       // a touch: the physics handles it
+                dir.y = 0f;
+                Physics.Body.position += dir.normalized * (dist + 0.1f);
+                Physics.Body.linearVelocity = Vector3.Project(Physics.Body.linearVelocity, t.forward);
+                Debug.Log($"UNWEDGED from {wall.name} by {dist:0.0} m at s={Agent.S:0} lat={Agent.Lateral:0.0}");
+            }
         }
 
         /// <summary>On its side. R puts it back on its wheels for now; the rope and the men come later.</summary>
@@ -544,7 +582,8 @@ namespace TwentyTons.Unity
                 $"{Agent.S:0} m along, {Agent.Lateral:+0.0;-0.0} m across (kerb at {-_carriagewayHalf:0}){where}\n" +
                 trip + "\n" +
                 (Street != null ? Street.Readout() : "") +
-                "W/S drive, A/D steer, space full brake, X reverse, H horn, P/N pay/refuse, [ ] riders, C camera, T tow, R new day";
+                (WorldStreamer.Instance != null ? $"world: {WorldStreamer.Instance.Status} loaded, km {Agent.S / 1000f:0.0} of the loop; loads within {WorldStreamer.Instance.LoadWithin:0} m, drops beyond {WorldStreamer.Instance.UnloadBeyond:0} m\n" : "") +
+                "W/S drive, A/D steer, space full brake, X reverse, H horn, P/N pay/refuse, [ ] riders, C camera, T tow, R new day, O street " + (Street != null ? "off" : "on");
             GUI.Label(new Rect(16f, 12f, 1100f, 260f), text, new GUIStyle(GUI.skin.label) { fontSize = 18, richText = false });
         }
 

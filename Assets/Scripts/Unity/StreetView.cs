@@ -51,7 +51,16 @@ namespace TwentyTons.Unity
 
         private void LateUpdate()
         {
-            if (_street == null || _street.Sim == null) return;
+            if (_street == null || _street.Sim == null || !_street.enabled)
+            {
+                // The street is off (O): nothing of it stays on the road.
+                foreach (var kv in _agents) Destroy(kv.Value.gameObject);
+                _agents.Clear();
+                foreach (Transform c in _crowd) c.gameObject.SetActive(false);
+                foreach (Transform officerT in _officers) officerT.gameObject.SetActive(false);
+                foreach (Transform ropeT in _ropes) ropeT.gameObject.SetActive(false);
+                return;
+            }
             TrafficSim sim = _street.Sim;
             Vector3 here = sim.Player.Position;
             _seen.Clear();

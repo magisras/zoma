@@ -371,6 +371,26 @@ One entry per session. The next session reads this first.
   (`MoneyScale` 1, the zoma Tk 3,000), a trip's fuel over 13.6 km; the household between days is
   not wired.
 
+**Step 46 — the owner's first play-test: wedged in a wall, the cab view, the street switch** (done)
+
+- Owner at the keyboard, 10 Oct evening. First thing: stuck 145 m from the stand, reversing did
+  not free the bus. The body had entered an invisible median wall through its open end (the wall
+  ribbons had a top and two sides, no caps) and sat inside it, able to slide along, not out. Fixed
+  twice: `box_ribbon` now caps both ends, both ways round; and `PlayerBusDrive.UnwedgeFromWalls`
+  pushes a body out of any wall it is deep inside each physics step, by the penetration of its box
+  against the wall. Lesson for the tester: a script change while the owner is in Play reloads the
+  domain and empties the bus's runtime state; say so and have them press Play again.
+- Asked for: the loaded chunks on the readout (`world: chunks 0 1 2 loaded, km 1.4 of the loop`),
+  the speed (it was there, top left, pointed out), a way to hide traffic and people (O switches the
+  street off or on and starts a new day at the stand; `StreetView` clears what it drew), and a
+  cab view. `BusCabin` builds the driver's cab from primitives at Play start, around the rig's
+  driver seat: dashboard, the windscreen frame with pillars and the centre divider of a two-piece
+  screen, the big tilted wheel of an old bus turning fourteen times the road wheels' angle, and the
+  outside mirror on the right as a camera drawn onto a quad with the image flipped (`MirrorView`),
+  the way bus games do it. Checked by rendering the driver's seat view from the terminal: the top
+  of the wheel in the bottom of the picture, the mirror showing the road behind. The cab layout is
+  from general knowledge of Bangladeshi local buses, to be checked against S-026.
+
 ## 8 Oct 2026 — Moved to the owner's Mac
 
 - The cloud session was teleported into Claude Code on the MacBook Air; the game lives in
